@@ -70,6 +70,11 @@ done
 `protoc` must be on `PATH` for the test suite and clippy — fixtures shell out
 to the real `protoc` to build descriptor sets. Override with `PROTOC=/path/to/protoc`.
 
+`buf` must be on `PATH` for the plugin's `cargo build` — the build script runs
+`buf export` against cludden's BSR module to pull the annotation schema (see
+the architecture section below). Offline builds: set `VENDORED_SCHEMA=1` to
+fall back to the in-tree `proto/` copy.
+
 ## Architecture: how the plugin works end-to-end
 
 1. **`main.rs`** reads `CodeGeneratorRequest` from stdin. It decodes the
@@ -83,13 +88,20 @@ to the real `protoc` to build descriptor sets. Override with `PROTOC=/path/to/pr
    extensions as unknown-field bytes that `prost-reflect` can then
    re-interpret via the schema compiled into the plugin at build time.
 
-2. **`build.rs`** compiles the vendored `temporal/v1/temporal.proto` (plus
-   transitively-required `temporal.api.enums.v1` enums) via `prost-build`
-   into typed Rust under `OUT_DIR`. `lib.rs` re-exports those under
+2. **`build.rs`** fetches cludden's annotation schema from BSR via
+   `buf export buf.build/cludden/protoc-gen-go-temporal:<commit-digest>`
+   into `OUT_DIR/cludden-schema/`, then runs `prost-build` over the
+   resulting tree to generate typed Rust under `OUT_DIR`. The pinned digest
+   lives in `build.rs::CLUDDEN_BSR_COMMIT` (matches the human-readable label
+   `v1.22.1`); BSR commits are immutable, BSR labels and git tags are not,
+   so we pin to the digest. `lib.rs` re-exports the generated types under
    `temporal::v1::*` and `temporal::api::enums::v1::*` so the parser can
    round-trip extension `Value`s through `DynamicMessage` and decode them
    into strongly-typed `WorkflowOptions` / `SignalOptions` / etc. (see
-   `parse.rs`).
+   `parse.rs`). The in-tree `proto/` directory is retained as the
+   `VENDORED_SCHEMA=1` fallback for offline / air-gapped builds; the tests'
+   `protoc -I` paths still resolve `import "temporal/v1/temporal.proto"`
+   against it.
 
 3. **`parse.rs`** walks `ServiceDescriptor`s in `files_to_generate`,
    pulls `temporal.v1.{service,workflow,activity,signal,query,update}`
