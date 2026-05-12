@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package cli.v1;
+
+import "temporal/v1/temporal.proto";
+
+// Exercises Phase 4.0 cli=true emit. Service with two workflows so the
+// emit produces multiple Start/Attach subcommand variants.
+service ReportService {
+  rpc Generate(GenerateInput) returns (GenerateOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "reports"
+      id: "gen-{{ .Name }}"
+    };
+  }
+
+  rpc Aggregate(AggregateInput) returns (AggregateOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "reports"
+    };
+  }
+}
+
+message GenerateInput   { string name = 1; }
+message GenerateOutput  { string report_id = 1; }
+message AggregateInput  { repeated string report_ids = 1; }
+message AggregateOutput { uint64 total_rows = 1; }

@@ -313,6 +313,47 @@ fn workflows_emit_renders_handler_name_consts() {
 }
 
 #[test]
+fn cli_emit_render_golden() {
+    assert_golden("cli_emit");
+}
+
+#[test]
+fn cli_emit_renders_clap_subcommands() {
+    let services = parse_and_validate("cli_emit");
+    let opts = load_fixture_options("cli_emit");
+    assert!(opts.cli, "fixture options.txt should enable cli");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub mod report_service_cli {"),
+        "missing CLI module: {source}"
+    );
+    assert!(
+        source.contains("#[derive(temporal_runtime::clap::Parser)]"),
+        "missing Cli derive"
+    );
+    assert!(
+        source.contains("StartGenerate(StartGenerateArgs),"),
+        "missing StartGenerate subcommand variant"
+    );
+    assert!(
+        source.contains("AttachAggregate(AttachAggregateArgs),"),
+        "missing AttachAggregate subcommand variant"
+    );
+    assert!(
+        source.contains("pub struct StartGenerateArgs {"),
+        "missing StartGenerateArgs struct"
+    );
+}
+
+#[test]
+fn cli_emit_off_by_default() {
+    let services = parse_and_validate("cli_emit");
+    let source = render::render(&services[0], &Default::default());
+    assert!(!source.contains("report_service_cli"));
+    assert!(!source.contains("clap::Parser"));
+}
+
+#[test]
 fn workflows_emit_off_by_default() {
     let services = parse_and_validate("workflows_emit");
     let source = render::render(&services[0], &Default::default());

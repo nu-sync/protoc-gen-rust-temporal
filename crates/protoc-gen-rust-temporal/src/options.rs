@@ -19,6 +19,12 @@ pub struct RenderOptions {
     /// name consts only; the workflow trait emit is deferred to Phase 3.1
     /// pending an adapter prototype against the SDK's `#[workflow]` macro.
     pub workflows: bool,
+    /// Emit a per-service `<service>_cli` module with clap-derive `Cli` +
+    /// per-workflow `Start<Workflow>` / `Attach<Workflow>` subcommands.
+    /// Phase 4.0 ships the parser structure only; the `Cli::run` dispatch
+    /// impl is deferred to Phase 4.1 once the JSON-input → proto deserialize
+    /// path is decided.
+    pub cli: bool,
 }
 
 /// Parse the protoc plugin parameter string.
@@ -36,6 +42,7 @@ pub fn parse_options(s: &str) -> Result<RenderOptions> {
         match key {
             "activities" => out.activities = parse_bool(key, value)?,
             "workflows" => out.workflows = parse_bool(key, value)?,
+            "cli" => out.cli = parse_bool(key, value)?,
             other => return Err(anyhow!("unknown plugin option `{other}`")),
         }
     }

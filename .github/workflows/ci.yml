@@ -82,6 +82,8 @@ jobs:
           cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
           cargo check -p job-queue-integration-example --features worker
           cargo clippy -p job-queue-integration-example --features worker --all-targets -- -D warnings
+          cargo check -p job-queue-integration-example --features cli
+          cargo clippy -p job-queue-integration-example --features cli --all-targets -- -D warnings
 
   compat-audit:
     # Cross-language wire-format audit. Runs both the Rust and Go arms of

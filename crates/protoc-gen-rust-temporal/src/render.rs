@@ -75,6 +75,16 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
     }
 
     let _ = writeln!(out, "}}");
+
+    // Phase 4.0: clap-derive Cli with per-workflow subcommands. Emitted at
+    // file scope (sibling to the service module) so the consumer can drop
+    // `<service>_cli::Cli::parse()` into a main.rs without an inner-mod
+    // import dance. Only emitted when `cli=true` AND the service has at
+    // least one workflow rpc.
+    if options.cli && !svc.workflows.is_empty() {
+        render_cli_module(&mut out, svc);
+    }
+
     out
 }
 
@@ -965,6 +975,116 @@ fn render_workflow_handler_name_consts(out: &mut String, svc: &ServiceModel) {
             u.registered_name
         );
     }
+}
+
+/// Phase 4.0: per-service `<service>_cli` module. Emits the clap-derive
+/// `Cli` + `Command` enum + per-workflow `Start<Workflow>Args` /
+/// `Attach<Workflow>Args` structs.
+///
+/// Phase 4.0 is the parser structure only — no `Cli::run` impl. The dispatch
+/// glue is deferred to Phase 4.1 once the JSON-input → proto-message
+/// deserialization story is decided (pbjson? a `--input` file flag with
+/// prost::Message::decode? Both?).
+fn render_cli_module(out: &mut String, svc: &ServiceModel) {
+    use heck::{ToPascalCase, ToSnakeCase};
+
+    let cli_mod = format!("{}_cli", svc.service.to_snake_case());
+    let proto_mod = proto_module_path(&svc.package);
+
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "/// Phase 4.0 CLI scaffold. clap-derive parser structure; dispatch"
+    );
+    let _ = writeln!(
+        out,
+        "/// is consumer-supplied until Phase 4.1 lands the `Cli::run` impl."
+    );
+    let _ = writeln!(out, "#[allow(clippy::all, unused_imports, dead_code)]");
+    let _ = writeln!(out, "pub mod {cli_mod} {{");
+    let _ = writeln!(out, "    use crate::temporal_runtime;");
+    let _ = writeln!(out, "    use {proto_mod}::*;");
+    let _ = writeln!(out);
+
+    let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Parser)]");
+    let _ = writeln!(
+        out,
+        "    #[command(name = \"{}\", about = \"Generated Temporal CLI for {}.{}\")]",
+        svc.service.to_snake_case(),
+        svc.package,
+        svc.service,
+    );
+    let _ = writeln!(out, "    pub struct Cli {{");
+    let _ = writeln!(out, "        #[command(subcommand)]");
+    let _ = writeln!(out, "        pub command: Command,");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+
+    let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Subcommand)]");
+    let _ = writeln!(out, "    pub enum Command {{");
+    for wf in &svc.workflows {
+        let pascal = wf.rpc_method.to_pascal_case();
+        let _ = writeln!(
+            out,
+            "        /// Start a new `{}` workflow.",
+            wf.registered_name
+        );
+        let _ = writeln!(out, "        Start{pascal}(Start{pascal}Args),");
+        let _ = writeln!(
+            out,
+            "        /// Attach to a running `{}` workflow by id.",
+            wf.registered_name
+        );
+        let _ = writeln!(out, "        Attach{pascal}(Attach{pascal}Args),");
+    }
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+
+    for wf in &svc.workflows {
+        let pascal = wf.rpc_method.to_pascal_case();
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Start{pascal}Args {{");
+        let _ = writeln!(
+            out,
+            "        /// Path to a JSON file containing the workflow input."
+        );
+        let _ = writeln!(
+            out,
+            "        /// Format: prost-json (matching pbjson) of `{}`.",
+            wf.input_type.full_name
+        );
+        let _ = writeln!(out, "        #[arg(long)]");
+        let _ = writeln!(out, "        pub input_file: ::std::path::PathBuf,");
+        let _ = writeln!(
+            out,
+            "        /// Override the workflow id (otherwise derived from the proto template / random)."
+        );
+        let _ = writeln!(out, "        #[arg(long)]");
+        let _ = writeln!(out, "        pub workflow_id: Option<String>,");
+        let _ = writeln!(
+            out,
+            "        /// Wait for the workflow to complete and print its result."
+        );
+        let _ = writeln!(out, "        #[arg(long)]");
+        let _ = writeln!(out, "        pub wait: bool,");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Attach{pascal}Args {{");
+        let _ = writeln!(out, "        /// Workflow id to attach to.");
+        let _ = writeln!(out, "        pub workflow_id: String,");
+        let _ = writeln!(
+            out,
+            "        /// Wait for the workflow to complete and print its result."
+        );
+        let _ = writeln!(out, "        #[arg(long)]");
+        let _ = writeln!(out, "        pub wait: bool,");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
+
+    let _ = writeln!(out, "}}");
 }
 
 #[cfg(test)]

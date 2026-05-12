@@ -732,6 +732,13 @@ pub mod worker {
 #[cfg(feature = "worker")]
 pub use worker::ActivityContext;
 
+/// Re-export `clap` (with the `derive` feature) so plugin-emitted CLI code
+/// can resolve `temporal_runtime::clap::Parser` / `Subcommand` / `Args`
+/// without the consumer adding a direct clap dep. Phase 4.0 emit references
+/// this path.
+#[cfg(feature = "cli")]
+pub use clap;
+
 #[cfg(test)]
 mod tests {
     use super::*;

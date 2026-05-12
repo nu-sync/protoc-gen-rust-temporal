@@ -14,6 +14,7 @@ categories = ["asynchronous"]
 
 [dependencies]
 anyhow = { workspace = true }
+clap = { workspace = true, optional = true }
 prost = { workspace = true }
 temporal-proto-runtime = { path = "../temporal-proto-runtime", version = "0.1", features = ["sdk"] }
 temporalio-client = { workspace = true }
@@ -29,6 +30,10 @@ default = []
 # temporalio-sdk = "=0.4.0". The plugin's client-side emit does NOT depend
 # on this feature.
 worker = ["dep:temporalio-sdk"]
+# Pulls in clap = "4" with the derive feature. Plugin emits
+# `#[derive(temporal_runtime::clap::Parser)]` etc. when `--rust-temporal_opt=cli=true`
+# is set, so generated CLIs require the consumer to enable this feature.
+cli = ["dep:clap"]
 
 [dev-dependencies]
 tokio = { workspace = true }

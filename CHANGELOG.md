@@ -52,6 +52,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `temporalio-sdk`'s `#[activity_definitions]` macro via a 15-LOC adapter
   documented in the bridge crate README.
 
+### Phase 4.0 (CLI scaffold)
+
+- **Phase 4.0 emit — clap-derive Cli scaffold** (opt-in via
+  `--rust-temporal_opt=cli=true`). Plugin generates a `<service>_cli` module
+  containing a `Cli` parser, a `Command` subcommand enum, and per-workflow
+  `Start<Workflow>Args` / `Attach<Workflow>Args` struct variants. No `Cli::run`
+  impl yet — that's Phase 4.1 once the JSON-input → prost-message
+  deserialize path is decided.
+- **`temporal-proto-runtime-bridge` `cli` feature** — opt-in `pub use clap;`
+  re-export so plugin-emitted code can resolve `temporal_runtime::clap::*`
+  without the consumer adding a direct clap dep.
+- Example crate gains a `cli` cargo feature flipping on the bridge's
+  feature, plus a CI step that runs `cargo check + clippy` with it.
+
 ### Phase 3.0 (workflows — name consts only)
 
 - **Phase 3.0 emit — workflow handler name consts** (opt-in via

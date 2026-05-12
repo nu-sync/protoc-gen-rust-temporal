@@ -135,6 +135,30 @@ without an adapter prototype yet.
 Trait emit lands in Phase 3.1 once the consume-self adapter shape is
 verified end-to-end against `temporalio-sdk`'s `#[workflow]` macro.
 
+## Phase 4.0 — CLI scaffold (opt-in via `cli=true`)
+
+When invoked with `--rust-temporal_opt=cli=true`, the plugin emits, per service
+with at least one workflow rpc, a sibling `<service>_cli` module containing:
+
+| Symbol | Shape |
+|---|---|
+| `<service>_cli::Cli` | `#[derive(clap::Parser)]` entry point with a single `command: Command` field. |
+| `<service>_cli::Command` | `#[derive(clap::Subcommand)]` enum with `Start<Workflow>` + `Attach<Workflow>` variants per workflow rpc. |
+| `<service>_cli::Start<Workflow>Args` | `#[derive(clap::Args)]` struct. Carries `--input-file`, optional `--workflow-id`, optional `--wait`. |
+| `<service>_cli::Attach<Workflow>Args` | `#[derive(clap::Args)]` struct. Carries a positional `workflow_id` + optional `--wait`. |
+
+Required runtime symbols (only when `cli=true`):
+
+| Symbol | Provided by |
+|---|---|
+| `temporal_runtime::clap` | bridge crate `cli` feature (re-exports the `clap` crate). |
+
+Phase 4.0 ships the parser structure only. **No `Cli::run` impl is emitted.**
+Consumers parse the CLI, match on `Command`, and call into the generated
+`<Service>Client` themselves. Phase 4.1 will add `Cli::run(self, &client)`
+once the JSON-input → prost-message deserialize path is decided (the open
+question is `pbjson` vs plain `prost::Message::decode` from a binary file).
+
 ## Future direction (post-1.0)
 
 The current contract is structural — the compiler tells consumers what

@@ -34,6 +34,11 @@ bridge = ["dep:temporal-proto-runtime-bridge"]
 # Phase 2: also pull the bridge's `worker` feature so we exercise the
 # SDK-worker re-exports through the example's dep tree. Implies `bridge`.
 worker = ["bridge", "temporal-proto-runtime-bridge/worker"]
+# Phase 4: pull the bridge's `cli` feature so the example exercises the
+# clap re-export. The example's generated emit doesn't yet include CLI
+# (regen would need `--rust-temporal_opt=cli=true`), so this just confirms
+# the bridge re-export compiles in the consumer's dep tree.
+cli = ["bridge", "temporal-proto-runtime-bridge/cli"]
 
 [build-dependencies]
 prost-build = { workspace = true }

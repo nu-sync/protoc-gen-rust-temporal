@@ -26,6 +26,7 @@ heck = "0.5"
 # Phase 1 bridge crate dependencies. Exact-patch pin on the SDK is intentional
 # (design §"SDK pinning"): when temporalio-sdk 0.5 ships, we cut a new bridge
 # crate minor version; plugin emit stays unchanged.
+clap = { version = "4", features = ["derive"] }
 temporalio-client = "=0.4.0"
 temporalio-common = "=0.4.0"
 temporalio-sdk = "=0.4.0"
