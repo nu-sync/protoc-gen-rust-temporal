@@ -1,0 +1,22 @@
+# Example consumer crate for protoc-gen-rust-temporal. Not part of the
+# workspace — kept out of `[workspace.members]` so the example does not
+# pull example-only deps (Temporal SDK, etc.) into the plugin's own CI.
+#
+# Treat this as a template: copy the directory into your repo and adjust.
+
+[package]
+name = "job-queue-integration-example"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+anyhow = "1"
+prost = "0.13"
+prost-types = "0.13"
+temporal-proto-runtime = "0.0"
+# Pin whichever Temporal SDK build you target. The runtime facade in
+# src/temporal_runtime.rs bridges this to the generated module.
+# temporalio-client = "0.4"
+# temporalio-sdk    = "0.4"

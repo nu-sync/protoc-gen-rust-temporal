@@ -6,7 +6,30 @@ use prost::Message;
 use prost_reflect::DescriptorPool;
 use prost_types::compiler::{CodeGeneratorRequest, CodeGeneratorResponse};
 
+const VERSION: &str = concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION"),);
+
 fn main() -> Result<()> {
+    // protoc invokes the plugin without args. Outside of protoc, support
+    // `--version` / `-V` and `--help` / `-h` so installations are
+    // diagnosable from a shell. Everything else falls through to the
+    // stdin/stdout protoc contract.
+    if let Some(flag) = std::env::args().nth(1) {
+        match flag.as_str() {
+            "--version" | "-V" => {
+                println!("{VERSION}");
+                return Ok(());
+            }
+            "--help" | "-h" => {
+                println!(
+                    "{VERSION}\n\nUsage: invoked by `protoc` via stdin/stdout.\n\
+                     See https://github.com/nu-sync/protoc-gen-rust-temporal for buf.gen.yaml examples."
+                );
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
+
     let mut input = Vec::new();
     io::stdin().read_to_end(&mut input).context("read stdin")?;
 
