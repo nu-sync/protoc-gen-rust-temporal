@@ -10,7 +10,7 @@ use anyhow::{Result, bail};
 
 use crate::model::ServiceModel;
 
-pub fn validate(model: &ServiceModel) -> Result<()> {
+pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) -> Result<()> {
     reject_rpc_collisions(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;

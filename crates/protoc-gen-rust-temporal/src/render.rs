@@ -26,7 +26,7 @@ use crate::model::{
 };
 
 /// Render the `<package>_<service>_temporal.rs` source for one service.
-pub fn render(svc: &ServiceModel) -> String {
+pub fn render(svc: &ServiceModel, _options: &crate::options::RenderOptions) -> String {
     let mut out = String::new();
     let mod_name = mod_name(svc);
     let proto_mod = proto_module_path(&svc.package);

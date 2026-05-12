@@ -46,12 +46,13 @@ pub mod temporal {
 pub fn run_with_pool(
     pool: &DescriptorPool,
     files_to_generate: &HashSet<String>,
+    options: &options::RenderOptions,
 ) -> Result<Vec<File>> {
     let services = parse::parse(pool, files_to_generate)?;
     let mut files = Vec::with_capacity(services.len());
     for service in &services {
-        validate::validate(service)?;
-        let content = render::render(service);
+        validate::validate(service, options)?;
+        let content = render::render(service, options);
         let name = output_file_name(service);
         files.push(File {
             name: Some(name),

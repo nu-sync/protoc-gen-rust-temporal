@@ -175,8 +175,9 @@ fn render_in_process(fixture_dir: &Path) -> String {
 
     let files: HashSet<String> = std::iter::once("input.proto".to_string()).collect();
     let services = parse::parse(&pool, &files).expect("parse");
+    let options = protoc_gen_rust_temporal::options::RenderOptions::default();
     for s in &services {
-        validate::validate(s).expect("validate");
+        validate::validate(s, &options).expect("validate");
     }
-    render::render(&services[0])
+    render::render(&services[0], &options)
 }

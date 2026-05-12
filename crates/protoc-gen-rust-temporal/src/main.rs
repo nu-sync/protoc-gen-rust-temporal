@@ -59,7 +59,10 @@ fn build_response(raw: &[u8]) -> Result<Vec<prost_types::compiler::code_generato
     // Decode with prost-types just to get file_to_generate; extensions on
     // MethodOptions are dropped here, but we don't read them from this form.
     let req = CodeGeneratorRequest::decode(raw).context("decode CodeGeneratorRequest")?;
+    let parameter = req.parameter().to_string();
     let files_to_generate: HashSet<String> = req.file_to_generate.into_iter().collect();
+    let options = protoc_gen_rust_temporal::options::parse_options(&parameter)
+        .context("parse plugin options")?;
 
     // Re-extract raw bytes of each FileDescriptorProto directly from the
     // original CodeGeneratorRequest wire payload. prost-types decode loses
@@ -82,7 +85,7 @@ fn build_response(raw: &[u8]) -> Result<Vec<prost_types::compiler::code_generato
     // `buf generate` may call the plugin many times, and stderr is
     // interleaved — without the file name in the message, you can't tell
     // which invocation failed without re-running with --debug.
-    protoc_gen_rust_temporal::run_with_pool(&pool, &files_to_generate).with_context(|| {
+    protoc_gen_rust_temporal::run_with_pool(&pool, &files_to_generate, &options).with_context(|| {
         let mut targets: Vec<&str> = files_to_generate.iter().map(String::as_str).collect();
         targets.sort();
         format!("generating from [{}]", targets.join(", "))
