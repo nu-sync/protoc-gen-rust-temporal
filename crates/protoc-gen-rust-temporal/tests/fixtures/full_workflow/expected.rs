@@ -8,6 +8,28 @@ pub mod full_v1_full_service_temporal {
     use crate::temporal_runtime;
     use crate::full::v1::*;
 
+    impl temporal_runtime::TemporalProtoMessage for BootstrapInput {
+        const MESSAGE_TYPE: &'static str = "full.v1.BootstrapInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for CancelInput {
+        const MESSAGE_TYPE: &'static str = "full.v1.CancelInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for ReconfigureInput {
+        const MESSAGE_TYPE: &'static str = "full.v1.ReconfigureInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for ReconfigureOutput {
+        const MESSAGE_TYPE: &'static str = "full.v1.ReconfigureOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for RunInput {
+        const MESSAGE_TYPE: &'static str = "full.v1.RunInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for RunOutput {
+        const MESSAGE_TYPE: &'static str = "full.v1.RunOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for StatusOutput {
+        const MESSAGE_TYPE: &'static str = "full.v1.StatusOutput";
+    }
+
     pub const RUN_WORKFLOW_NAME: &str = "full.v1.FullService/Run";
     pub const RUN_TASK_QUEUE: &str = "full";
 
@@ -157,7 +179,7 @@ pub mod full_v1_full_service_temporal {
             temporal_runtime::eval_id_expression("run-{{ .Name }}")
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
-        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<ReconfigureInput, ReconfigureOutput>(
+        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<RunInput, ReconfigureInput, ReconfigureOutput>(
             client,
             RUN_WORKFLOW_NAME,
             &workflow_id,

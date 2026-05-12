@@ -149,7 +149,11 @@ pub async fn signal_with_start_workflow_proto<W: TemporalProtoMessage, S: Tempor
     task_timeout: Option<std::time::Duration>,
 ) -> anyhow::Result<WorkflowHandle>;
 
-pub async fn update_with_start_workflow_proto<U: TemporalProtoMessage, O: TemporalProtoMessage>(
+pub async fn update_with_start_workflow_proto<
+    W: TemporalProtoMessage,    // workflow input
+    U: TemporalProtoMessage,    // update input
+    O: TemporalProtoMessage,    // update output
+>(
     /* same start args, plus update_name + update_input + wait_policy */
 ) -> anyhow::Result<(WorkflowHandle, O)>;
 ```

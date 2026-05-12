@@ -8,6 +8,19 @@ pub mod multi_v1_multi_service_temporal {
     use crate::temporal_runtime;
     use crate::multi::v1::*;
 
+    impl temporal_runtime::TemporalProtoMessage for AlphaInput {
+        const MESSAGE_TYPE: &'static str = "multi.v1.AlphaInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for AlphaOutput {
+        const MESSAGE_TYPE: &'static str = "multi.v1.AlphaOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for BetaInput {
+        const MESSAGE_TYPE: &'static str = "multi.v1.BetaInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for BetaOutput {
+        const MESSAGE_TYPE: &'static str = "multi.v1.BetaOutput";
+    }
+
     pub const ALPHA_WORKFLOW_NAME: &str = "multi.v1.MultiService/Alpha";
     pub const ALPHA_TASK_QUEUE: &str = "multi";
     pub const BETA_WORKFLOW_NAME: &str = "multi.v1.MultiService/Beta";

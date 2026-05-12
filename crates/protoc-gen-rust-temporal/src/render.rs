@@ -44,6 +44,7 @@ pub fn render(svc: &ServiceModel) -> String {
     let _ = writeln!(out, "    use {proto_mod}::*;");
     let _ = writeln!(out);
 
+    render_message_type_impls(&mut out, svc);
     render_constants(&mut out, svc);
     render_client_struct(&mut out, svc, &client_struct);
     for wf in &svc.workflows {
@@ -54,6 +55,62 @@ pub fn render(svc: &ServiceModel) -> String {
 
     let _ = writeln!(out, "}}");
     out
+}
+
+/// Emit one `impl temporal_runtime::TemporalProtoMessage for <Ty>` per
+/// distinct prost message type referenced by this service. The runtime
+/// facade re-exports the trait from `temporal-proto-runtime`, so this is
+/// what lets `start_workflow_proto::<I>` / `signal_proto::<I>` etc. resolve
+/// at the call site. `google.protobuf.Empty` types are skipped — the
+/// `_empty` runtime variants take no payload generic.
+fn render_message_type_impls(out: &mut String, svc: &ServiceModel) {
+    use std::collections::BTreeMap;
+
+    let mut by_rust_name: BTreeMap<String, String> = BTreeMap::new();
+    let mut record = |pt: &crate::model::ProtoType| {
+        if pt.is_empty {
+            return;
+        }
+        by_rust_name
+            .entry(pt.rust_name().to_string())
+            .or_insert_with(|| pt.full_name.clone());
+    };
+
+    for wf in &svc.workflows {
+        record(&wf.input_type);
+        record(&wf.output_type);
+    }
+    for s in &svc.signals {
+        record(&s.input_type);
+        record(&s.output_type);
+    }
+    for q in &svc.queries {
+        record(&q.input_type);
+        record(&q.output_type);
+    }
+    for u in &svc.updates {
+        record(&u.input_type);
+        record(&u.output_type);
+    }
+    // Activities are validate-only — their message types are not used by the
+    // emitted client surface, so they do not need impls.
+
+    if by_rust_name.is_empty() {
+        return;
+    }
+
+    for (rust_name, full_name) in &by_rust_name {
+        let _ = writeln!(
+            out,
+            "    impl temporal_runtime::TemporalProtoMessage for {rust_name} {{"
+        );
+        let _ = writeln!(
+            out,
+            "        const MESSAGE_TYPE: &'static str = \"{full_name}\";"
+        );
+        let _ = writeln!(out, "    }}");
+    }
+    let _ = writeln!(out);
 }
 
 fn render_constants(out: &mut String, svc: &ServiceModel) {
@@ -618,9 +675,14 @@ fn render_update_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
+    // Three explicit generics: workflow input (W), update input (U),
+    // update output (O). All three appear in distinct argument positions
+    // so they could in principle be inferred, but spelling them out keeps
+    // generated code grep-able and immune to inference brittleness.
     let _ = writeln!(
         out,
-        "        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<{}, {}>(",
+        "        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<{}, {}, {}>(",
+        wf.input_type.rust_name(),
         u.input_type.rust_name(),
         u.output_type.rust_name(),
     );

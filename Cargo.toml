@@ -4,6 +4,7 @@ members = [
     "crates/protoc-gen-rust-temporal",
     "crates/temporal-proto-runtime",
     "compat-tests/rust",
+    "examples/job-queue-integration",
 ]
 
 [workspace.package]

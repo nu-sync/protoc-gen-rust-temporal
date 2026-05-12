@@ -8,6 +8,19 @@ pub mod jobs_v1_job_service_temporal {
     use crate::temporal_runtime;
     use crate::jobs::v1::*;
 
+    impl temporal_runtime::TemporalProtoMessage for CancelJobInput {
+        const MESSAGE_TYPE: &'static str = "jobs.v1.CancelJobInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for JobInput {
+        const MESSAGE_TYPE: &'static str = "jobs.v1.JobInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for JobOutput {
+        const MESSAGE_TYPE: &'static str = "jobs.v1.JobOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for JobStatusOutput {
+        const MESSAGE_TYPE: &'static str = "jobs.v1.JobStatusOutput";
+    }
+
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService/RunJob";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
 

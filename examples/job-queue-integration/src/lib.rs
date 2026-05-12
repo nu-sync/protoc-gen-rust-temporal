@@ -1,31 +1,40 @@
-//! Example consumer crate root.
+//! Example consumer crate. Wired together so `cargo check --workspace`
+//! catches regressions in the plugin's rendered output, against the
+//! documented `temporal_runtime` facade.
 //!
-//! After `buf generate` runs (see `../buf.gen.yaml`), the prost output
-//! lives at `src/jobs/v1/mod.rs` and the plugin-generated Temporal client
-//! lives at `src/gen/jobs/v1/jobs_temporal.rs`. The two files below are
-//! placeholders for that output so the example compiles without a buf
-//! invocation in CI:
+//! Three layers:
+//! 1. `temporal_runtime` — consumer-supplied bridge (stubbed with
+//!    `todo!()`); see `temporal_runtime.rs`.
+//! 2. `jobs::v1` — prost types built by `build.rs`.
+//! 3. The plugin's emitted module, included at the crate root.
+//!
+//! Public usage example (does not compile-check the example itself —
+//! that's what the file structure above does — but reads well in docs):
+//!
+//! ```ignore
+//! use job_queue_integration_example::jobs_v1_job_service_temporal::{
+//!     JobServiceClient, RunJobStartOptions,
+//! };
+//! use job_queue_integration_example::jobs::v1::JobInput;
+//!
+//! # async fn demo(client: temporal_runtime::TemporalClient) -> anyhow::Result<()> {
+//! let client = JobServiceClient::new(client);
+//! let handle = client.run_job(
+//!     JobInput { name: "demo".into(), ..Default::default() },
+//!     RunJobStartOptions::default(),
+//! ).await?;
+//! let status = handle.get_status().await?;
+//! handle.cancel_job(/* CancelJobInput { .. } */).await?;
+//! let result = handle.result().await?;
+//! # Ok(()) }
+//! ```
 
 pub mod temporal_runtime;
 
-// pub mod jobs {
-//     pub mod v1 {
-//         include!("jobs/v1/mod.rs");           // protoc-gen-prost output
-//     }
-// }
-//
-// include!("gen/jobs/v1/jobs_temporal.rs");      // protoc-gen-rust-temporal output
-//
-// Once the includes above are wired up, the typed surface available to
-// callers is:
-//
-//   use crate::jobs_v1_job_service_temporal::{
-//       JobServiceClient, RunJobHandle, RunJobStartOptions,
-//   };
-//
-//   let client = JobServiceClient::new(temporal_runtime_client);
-//   let handle = client.run_job(JobInput { name: "demo".into(), ..Default::default() },
-//                                RunJobStartOptions::default()).await?;
-//   let status = handle.get_status().await?;
-//   let _ = handle.cancel_job(CancelJobInput { reason: "user".into() }).await?;
-//   let result = handle.result().await?;
+pub mod jobs {
+    pub mod v1 {
+        include!(concat!(env!("OUT_DIR"), "/jobs.v1.rs"));
+    }
+}
+
+include!("gen/jobs/v1/jobs_temporal.rs");

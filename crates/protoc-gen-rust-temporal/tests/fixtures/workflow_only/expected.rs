@@ -8,6 +8,13 @@ pub mod solo_v1_solo_service_temporal {
     use crate::temporal_runtime;
     use crate::solo::v1::*;
 
+    impl temporal_runtime::TemporalProtoMessage for WorkInput {
+        const MESSAGE_TYPE: &'static str = "solo.v1.WorkInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for WorkOutput {
+        const MESSAGE_TYPE: &'static str = "solo.v1.WorkOutput";
+    }
+
     pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService/DoWork";
     pub const DO_WORK_TASK_QUEUE: &str = "solo-tq";
 

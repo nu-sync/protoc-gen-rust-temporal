@@ -1,22 +1,31 @@
-# Example consumer crate for protoc-gen-rust-temporal. Not part of the
-# workspace — kept out of `[workspace.members]` so the example does not
-# pull example-only deps (Temporal SDK, etc.) into the plugin's own CI.
+# Example consumer crate for protoc-gen-rust-temporal. Included as a
+# workspace member so `cargo build --workspace` catches regressions where
+# the plugin's rendered output stops compiling against the documented
+# facade (`src/temporal_runtime.rs`). The example deliberately stubs the
+# Temporal SDK out (`todo!()` bodies) so the workspace stays SDK-free in CI.
 #
-# Treat this as a template: copy the directory into your repo and adjust.
+# To use this as a starting template: copy the directory into your repo,
+# drop the `[package.metadata.example]` block below, and replace the
+# stubbed bodies with calls into `temporalio-client` / `temporalio-sdk`.
 
 [package]
 name = "job-queue-integration-example"
 version = "0.0.0"
 publish = false
-edition = "2024"
-rust-version = "1.85"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 
 [dependencies]
-anyhow = "1"
-prost = "0.13"
-prost-types = "0.13"
-temporal-proto-runtime = "0.0"
-# Pin whichever Temporal SDK build you target. The runtime facade in
-# src/temporal_runtime.rs bridges this to the generated module.
+anyhow = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+temporal-proto-runtime = { path = "../../crates/temporal-proto-runtime" }
+# Pin whichever Temporal SDK build you target when you replace the stub
+# facade with real bodies. The plugin emits no direct SDK references, so
+# this dependency is owned by the consumer.
 # temporalio-client = "0.4"
 # temporalio-sdk    = "0.4"
+
+[build-dependencies]
+prost-build = { workspace = true }

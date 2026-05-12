@@ -152,10 +152,7 @@ pub async fn update_proto_empty<O: TemporalProtoMessage>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn signal_with_start_workflow_proto<
-    W: TemporalProtoMessage,
-    S: TemporalProtoMessage,
->(
+pub async fn signal_with_start_workflow_proto<W: TemporalProtoMessage, S: TemporalProtoMessage>(
     _client: &TemporalClient,
     _workflow_name: &'static str,
     _workflow_id: &str,
@@ -173,6 +170,7 @@ pub async fn signal_with_start_workflow_proto<
 
 #[allow(clippy::too_many_arguments)]
 pub async fn update_with_start_workflow_proto<
+    W: TemporalProtoMessage,
     U: TemporalProtoMessage,
     O: TemporalProtoMessage,
 >(
@@ -180,7 +178,7 @@ pub async fn update_with_start_workflow_proto<
     _workflow_name: &'static str,
     _workflow_id: &str,
     _task_queue: &str,
-    _workflow_input: &U, // workflow input — see render.rs; in practice it's a separate W
+    _workflow_input: &W,
     _update_name: &str,
     _update_input: &U,
     _wait_policy: WaitPolicy,
