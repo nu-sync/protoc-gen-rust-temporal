@@ -87,12 +87,35 @@ crate is a workspace member that exercises every emit branch and
 compiles end-to-end against a stubbed facade — use it as the starting
 template.
 
+## Consumer wiring (default)
+
+Add the plugin's runtime helpers + the default bridge crate:
+
+```toml
+[dependencies]
+temporal-proto-runtime = { version = "0.1", features = ["sdk"] }
+temporal-proto-runtime-bridge = "0.1"
+```
+
+Then in your crate's `lib.rs`:
+
+```rust,ignore
+pub use temporal_proto_runtime_bridge as temporal_runtime;
+```
+
+That single re-export satisfies every `crate::temporal_runtime::*` reference
+the plugin emits — the bridge crate ships a concrete impl backed by
+`temporalio-client 0.4`. Power users who need a custom transport, vendored
+SDK, or test stub can drop the `pub use` and write `mod temporal_runtime;`
+against the facade documented in [`docs/RUNTIME-API.md`](./docs/RUNTIME-API.md).
+
 ## Layout
 
 | Crate / file | Role |
 |---|---|
 | `crates/protoc-gen-rust-temporal/` | The plugin binary + library. |
 | `crates/temporal-proto-runtime/` | `TypedProtoMessage<T>` runtime helper used by generated code. |
+| `crates/temporal-proto-runtime-bridge/` | Default `temporal_runtime` facade impl backed by `temporalio-client 0.4`. |
 | `proto/temporal/v1/temporal.proto` | Vendored copy of cludden's annotation schema. |
 | `SPEC.md` | Design spec + phased delivery plan. |
 | `WIRE-FORMAT.md` | Pinned wire-format contract. |

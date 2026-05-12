@@ -3,7 +3,7 @@
 **Status:** Design — awaiting implementation plan.
 **Authors:** wcygan + Claude.
 **Date:** 2026-05-12.
-**Pinned cludden commit:** *(TBD — record at phase 1 start; see "Magnitude" risk.)*
+**Pinned cludden commit:** `cludden/protoc-gen-go-temporal@v1.22.1` (tag `v1.22.1`), matching what `compat-tests/` already audits against. Re-pinned only at Phase 5 start (per the spec's Nexus/XNS section).
 
 ## Goal
 
@@ -347,7 +347,6 @@ and trivially fixable (`just regen` per fixture).
 
 ## Open follow-ups
 
-- Pin the cludden commit at phase 1 start; record in this doc's header.
 - Decide bridge-crate Cargo feature naming convention (`cli`,
   `experimental-nexus`, …?) when phase 4/5 design lands.
 - Decide whether `compat-tests/cross-language-workflow/` runs in repo

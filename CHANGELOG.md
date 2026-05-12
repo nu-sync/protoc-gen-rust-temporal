@@ -6,6 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **`temporal-proto-runtime-bridge 0.1.0`** — default consumer-facing bridge
+  between the plugin's emit and `temporalio-client 0.4`. Drop one dep and one
+  `pub use temporal_proto_runtime_bridge as temporal_runtime;` in your
+  `lib.rs` and the generated code runs against the real SDK. See the design
+  doc at `docs/superpowers/specs/2026-05-12-cludden-parity-design.md` Phase 1
+  for the architectural rationale.
+- New `examples/job-queue-integration` cargo feature `bridge` that swaps the
+  stub `temporal_runtime.rs` for the bridge crate; `just verify-bridge`
+  exercises end-to-end compilation. CI gates this on every PR via the new
+  `verify-bridge` job.
+- **Pinned cludden commit** documented in the design doc header (resolves the
+  Phase 1 open follow-up).
+
+### Notes
+- Plugin output is unchanged in this release. Existing consumers on
+  `protoc-gen-rust-temporal 0.1.1` can adopt the bridge crate without
+  regenerating.
+- SDK pinning: the bridge crate pins `temporalio-client = "=0.4.0"` exact-
+  patch. SDK 0.5 will ship as `temporal-proto-runtime-bridge 0.2`; plugin
+  emit is unaffected.
+
 ## [0.1.1] — 2026-05-12
 
 Documentation-led release marking Phase 3 completion. No code or

@@ -198,8 +198,11 @@ pub async fn connect(url: &str, namespace: &str) -> Result<TemporalClient> {
     let connection = Connection::connect(ConnectionOptions::new(parsed).build())
         .await
         .context("connect to Temporal frontend")?;
-    let client = Client::new(connection, ClientOptions::new(namespace.to_string()).build())
-        .context("build Temporal client")?;
+    let client = Client::new(
+        connection,
+        ClientOptions::new(namespace.to_string()).build(),
+    )
+    .context("build Temporal client")?;
     Ok(TemporalClient::from_client(client))
 }
 

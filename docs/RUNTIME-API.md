@@ -7,6 +7,15 @@ signature it expects. If a function is missing from the consumer's
 facade, the generated code will fail to compile with a clear error
 pointing at the call site.
 
+**Default implementation:** [`temporal-proto-runtime-bridge`](../crates/temporal-proto-runtime-bridge/)
+ships a concrete impl of every function documented below, backed by
+`temporalio-client 0.4`. Add it as a dep and `pub use temporal_proto_runtime_bridge as temporal_runtime;`
+in your `lib.rs` to wire the plugin's generated code to the real SDK
+without writing the facade yourself. The stub at
+`examples/job-queue-integration/src/temporal_runtime.rs` stays the
+canonical override reference for power users who need to substitute a
+custom transport, vendored SDK, or test stub.
+
 The canonical stub implementation lives in
 [`examples/job-queue-integration/src/temporal_runtime.rs`](../examples/job-queue-integration/src/temporal_runtime.rs).
 That file is a workspace member that `cargo check`s clean — copying it
