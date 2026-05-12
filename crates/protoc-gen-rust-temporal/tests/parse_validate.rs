@@ -210,6 +210,31 @@ fn empty_input_workflow_render_golden() {
 }
 
 #[test]
+fn activity_only_render_golden() {
+    assert_golden("activity_only");
+}
+
+#[test]
+fn activity_only_emits_no_workflow_surface() {
+    let services = parse_and_validate("activity_only");
+    let svc = &services[0];
+    assert!(svc.workflows.is_empty());
+    assert!(svc.signals.is_empty());
+    assert!(svc.queries.is_empty());
+    assert!(svc.updates.is_empty());
+    assert_eq!(svc.activities.len(), 2);
+
+    let source = render::render(svc);
+    // No workflow constants, no handle struct, no _with_start free function.
+    assert!(!source.contains("_WORKFLOW_NAME"));
+    assert!(!source.contains("Handle {"));
+    assert!(!source.contains("_with_start("));
+    // The client struct still emits — keeps the import surface consistent
+    // with services that have a mix of activities and workflows.
+    assert!(source.contains("pub struct WorkerOnlyServiceClient"));
+}
+
+#[test]
 fn multiple_workflows_parses_correctly() {
     let services = parse_and_validate("multiple_workflows");
     let svc = &services[0];

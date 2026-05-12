@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package act.v1;
+
+import "temporal/v1/temporal.proto";
+
+// Service with only activity annotations and no workflows. Activity emit
+// is validate-only in v1, so the rendered module should contain just the
+// generated client scaffolding (with no workflow methods, no constants,
+// no handles).
+service WorkerOnlyService {
+  rpc ProcessChunk(ChunkInput) returns (ChunkOutput) {
+    option (temporal.v1.activity) = {
+      task_queue: "workers"
+      start_to_close_timeout: { seconds: 60 }
+    };
+  }
+
+  rpc Cleanup(CleanupInput) returns (CleanupOutput) {
+    option (temporal.v1.activity) = {
+      task_queue: "workers"
+    };
+  }
+}
+
+message ChunkInput { bytes data = 1; }
+message ChunkOutput { uint64 hash = 1; }
+message CleanupInput { string scope = 1; }
+message CleanupOutput { int32 freed = 1; }
