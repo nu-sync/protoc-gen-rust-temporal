@@ -58,6 +58,29 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo +1.88 build --workspace --all-targets
 
+  verify-bridge:
+    # Phase 1 exit criterion: prove the bridge crate is wire-compatible
+    # with the plugin's emit. Builds examples/job-queue-integration with
+    # --features bridge and clippy-cleans it. Default workspace builds
+    # remain SDK-free — this is the dedicated bridge gate.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build bridge crate
+        run: cargo build -p temporal-proto-runtime-bridge --all-targets
+      - name: Bridge crate tests
+        run: cargo test -p temporal-proto-runtime-bridge
+      - name: Verify example against bridge
+        run: |
+          cargo check -p job-queue-integration-example --features bridge
+          cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
+
   compat-audit:
     # Cross-language wire-format audit. Runs both the Rust and Go arms of
     # compat-tests/ and asserts the per-fixture Payload JSON diffs are empty.
