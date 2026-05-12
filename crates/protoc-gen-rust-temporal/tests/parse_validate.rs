@@ -180,11 +180,72 @@ fn workflow_without_task_queue_fails_validation() {
     );
 }
 
-/// Render the minimal_workflow fixture and check that the output contains
-/// the key declarations the rest of the toolchain depends on. This is not a
-/// byte-for-byte golden test (a strict golden is added once Phase 2's emit
-/// shape stabilises) — it just guards against silent regressions in the
-/// pieces consumer code actually links against.
+/// Byte-for-byte golden test for the `minimal_workflow` fixture. Run with
+/// `BLESS=1 cargo test --workspace --test parse_validate
+/// minimal_workflow_render_golden` to rebless after intentional render
+/// changes; the test will write `expected.rs` in place and pass.
+#[test]
+fn minimal_workflow_render_golden() {
+    assert_golden("minimal_workflow");
+}
+
+#[test]
+fn workflow_only_render_golden() {
+    assert_golden("workflow_only");
+}
+
+#[test]
+fn workflow_only_parses_and_validates() {
+    let services = parse_and_validate("workflow_only");
+    assert_eq!(services.len(), 1);
+    let svc = &services[0];
+    assert_eq!(svc.package, "solo.v1");
+    assert_eq!(svc.service, "SoloService");
+    // No service-level default — falls back to the workflow's own task_queue.
+    assert!(svc.default_task_queue.is_none());
+    assert_eq!(svc.workflows.len(), 1);
+    let wf = &svc.workflows[0];
+    assert_eq!(wf.task_queue.as_deref(), Some("solo-tq"));
+    assert!(wf.attached_signals.is_empty());
+    assert!(wf.attached_queries.is_empty());
+    assert!(wf.attached_updates.is_empty());
+    assert!(svc.signals.is_empty());
+    assert!(svc.queries.is_empty());
+    assert!(svc.updates.is_empty());
+    assert!(svc.activities.is_empty());
+    assert_eq!(
+        wf.execution_timeout,
+        Some(std::time::Duration::from_secs(3600))
+    );
+}
+
+fn assert_golden(name: &str) {
+    let services = parse_and_validate(name);
+    let actual = render::render(&services[0]);
+    let golden_path = fixture_path(name).join("expected.rs");
+
+    if std::env::var_os("BLESS").is_some() {
+        std::fs::write(&golden_path, &actual).expect("write golden");
+        return;
+    }
+
+    let expected = std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
+        panic!(
+            "missing golden file at {}. Run `BLESS=1 cargo test ... {name}` to create it.",
+            golden_path.display()
+        )
+    });
+    if actual != expected {
+        panic!(
+            "rendered output diverges from golden at {}. \
+             Rebless with `BLESS=1 cargo test ... {name}`.\n\n--- expected ---\n{expected}\n--- actual ---\n{actual}",
+            golden_path.display()
+        );
+    }
+}
+
+/// Smoke check on top of the golden — kept because it pinpoints which
+/// fragment changed when the golden diffs.
 #[test]
 fn minimal_workflow_render_smoke() {
     let services = parse_and_validate("minimal_workflow");

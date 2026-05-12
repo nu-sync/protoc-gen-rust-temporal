@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package solo.v1;
+
+import "temporal/v1/temporal.proto";
+
+// Smallest interesting fixture: one workflow, no signals/queries/updates/
+// activities, no service-level default. Exercises the bare emit path and
+// pins workflow_id generation (no id expression) + workflow-level task_queue
+// fallback.
+service SoloService {
+  rpc DoWork(WorkInput) returns (WorkOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "solo-tq"
+      execution_timeout: { seconds: 3600 }
+    };
+  }
+}
+
+message WorkInput { string job = 1; }
+message WorkOutput { int32 status = 1; }

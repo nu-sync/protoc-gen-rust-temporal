@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/protoc-gen-rust-temporal",
     "crates/temporal-proto-runtime",
+    "compat-tests/rust",
 ]
 
 [workspace.package]

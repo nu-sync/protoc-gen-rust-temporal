@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// Fixture types used by the cross-language wire-format audit.
+// Kept structurally minimal so a hand-rolled Go side can mirror them
+// without pulling in extra deps. See ../README.md for the audit procedure.
+
+package jobs.v1;
+
+message JobInput {
+  string name = 1;
+}
+
+message JobOutput {
+  string id = 1;
+}

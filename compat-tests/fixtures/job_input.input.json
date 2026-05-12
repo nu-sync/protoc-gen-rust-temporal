@@ -1,0 +1,6 @@
+{
+  "message_type": "jobs.v1.JobInput",
+  "fields": {
+    "name": "demo"
+  }
+}

@@ -1,0 +1,46 @@
+# BSR Remote Plugin manifest for `buf.build/nu-sync/rust-temporal`.
+#
+# Published via `buf push` once the nu-sync org exists on BSR. The image is
+# built from the repo root Dockerfile and tagged with the plugin's semantic
+# version on every release.
+#
+# Consumers reference this in their own buf.gen.yaml:
+#
+#   plugins:
+#     - remote: buf.build/nu-sync/rust-temporal
+#       out: src/gen
+#
+# Reference: https://buf.build/docs/bsr/remote-plugins/overview
+
+version: v1
+name: buf.build/nu-sync/rust-temporal
+plugin_version: v0.0.0
+
+source_url: https://github.com/nu-sync/protoc-gen-rust-temporal
+description: |
+  Emits a typed Rust Temporal client from temporal.v1.* method-options-annotated
+  protos (cludden's schema). Pairs with protoc-gen-go-temporal and
+  protoc-gen-ts-temporal so one proto produces Go, TS, and Rust clients.
+
+# Cludden's annotation schema. Pinned to a specific revision in production;
+# `:main` is a placeholder for the bootstrap commit and bumped on every
+# upstream schema change.
+deps:
+  - buf.build/cludden/protoc-gen-go-temporal:main
+
+# Output is a single Rust source file per service, named `<stem>_temporal.rs`.
+output_languages:
+  - rust
+
+spdx_license_id: MIT
+
+registry:
+  cargo:
+    # The runtime helper consumers must add to their Cargo.toml.
+    deps:
+      - name: temporal-proto-runtime
+        req_version: ">=0.0.0"
+      - name: anyhow
+        req_version: "1"
+      - name: prost
+        req_version: "0.13"
