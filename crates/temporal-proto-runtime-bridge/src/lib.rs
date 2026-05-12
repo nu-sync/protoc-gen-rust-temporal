@@ -26,15 +26,30 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use temporalio_client::grpc::WorkflowService;
+use temporalio_client::tonic::IntoRequest;
 use temporalio_client::{
-    Client, UntypedQuery, UntypedSignal, UntypedUpdate, UntypedWorkflowHandle,
+    Client, NamespacedClient, UntypedQuery, UntypedSignal, UntypedUpdate, UntypedWorkflowHandle,
     WorkflowGetResultOptions, WorkflowQueryOptions, WorkflowSignalOptions, WorkflowStartOptions,
-    WorkflowStartUpdateOptions, WorkflowUpdateWaitStage,
+    WorkflowStartSignal, WorkflowStartUpdateOptions, WorkflowUpdateWaitStage,
 };
 use temporalio_common::UntypedWorkflow;
 use temporalio_common::data_converters::RawValue;
-use temporalio_common::protos::temporal::api::common::v1::Payload;
+use temporalio_common::protos::temporal::api::common::v1::{
+    Payload, Payloads, WorkflowExecution, WorkflowType,
+};
 use temporalio_common::protos::temporal::api::enums::v1 as sdk_enums;
+use temporalio_common::protos::temporal::api::enums::v1::{TaskQueueKind, WorkflowIdConflictPolicy};
+use temporalio_common::protos::temporal::api::taskqueue::v1::TaskQueue;
+use temporalio_common::protos::temporal::api::update::v1 as update;
+use temporalio_common::protos::temporal::api::update::v1::WaitPolicy as ProtoWaitPolicy;
+use temporalio_common::protos::temporal::api::workflowservice::v1::execute_multi_operation_request::{
+    Operation, operation::Operation as OperationKind,
+};
+use temporalio_common::protos::temporal::api::workflowservice::v1::execute_multi_operation_response::response::Response as RespKind;
+use temporalio_common::protos::temporal::api::workflowservice::v1::{
+    ExecuteMultiOperationRequest, StartWorkflowExecutionRequest, UpdateWorkflowExecutionRequest,
+};
 
 pub use temporal_proto_runtime::TemporalProtoMessage;
 
@@ -471,6 +486,222 @@ where
         .first()
         .context("update returned no payloads")?;
     decode_proto_payload::<O>(payload).context("decode update output")
+}
+
+// ── With-start helpers ─────────────────────────────────────────────────
+
+/// Atomically start a workflow and send it an initial signal. The plugin
+/// emits a call to this function alongside the generated client whenever a
+/// signal annotation declares `start: true`.
+#[allow(clippy::too_many_arguments)]
+pub async fn signal_with_start_workflow_proto<W, S>(
+    client: &TemporalClient,
+    workflow_name: &'static str,
+    workflow_id: &str,
+    task_queue: &str,
+    workflow_input: &W,
+    signal_name: &str,
+    signal_input: &S,
+    id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    execution_timeout: Option<Duration>,
+    run_timeout: Option<Duration>,
+    task_timeout: Option<Duration>,
+) -> Result<WorkflowHandle>
+where
+    W: TemporalProtoMessage,
+    S: TemporalProtoMessage,
+{
+    let workflow_payload = encode_proto_payload(workflow_input);
+    let signal_payload = encode_proto_payload(signal_input);
+    let workflow_raw = RawValue::new(vec![workflow_payload]);
+    let signal_payloads = Payloads {
+        payloads: vec![signal_payload],
+    };
+
+    let start_signal = WorkflowStartSignal::new(signal_name.to_string())
+        .input(signal_payloads)
+        .build();
+
+    let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
+        .maybe_execution_timeout(execution_timeout)
+        .maybe_run_timeout(run_timeout)
+        .maybe_task_timeout(task_timeout)
+        .start_signal(start_signal);
+    let options = match id_reuse_policy {
+        Some(p) => base.id_reuse_policy(p.into()).build(),
+        None => base.build(),
+    };
+
+    let handle = client
+        .sdk()
+        .start_workflow(UntypedWorkflow::new(workflow_name), workflow_raw, options)
+        .await
+        .with_context(|| format!("signal-with-start workflow {workflow_name}"))?;
+    let info = handle.info().clone();
+    Ok(WorkflowHandle {
+        client: client.clone(),
+        workflow_id: info.workflow_id,
+        run_id: info.run_id,
+    })
+}
+
+/// Atomically start a workflow and send it an initial update. The plugin
+/// emits a call to this function alongside the generated client whenever an
+/// update annotation declares `start: true`.
+///
+/// Backed by the server's `ExecuteMultiOperationRequest` gRPC, since
+/// `temporalio-client 0.4` doesn't expose a friendly wrapper for this combo.
+#[allow(clippy::too_many_arguments)]
+pub async fn update_with_start_workflow_proto<W, U, O>(
+    client: &TemporalClient,
+    workflow_name: &'static str,
+    workflow_id: &str,
+    task_queue: &str,
+    workflow_input: &W,
+    update_name: &str,
+    update_input: &U,
+    wait_policy: WaitPolicy,
+    id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    execution_timeout: Option<Duration>,
+    run_timeout: Option<Duration>,
+    task_timeout: Option<Duration>,
+) -> Result<(WorkflowHandle, O)>
+where
+    W: TemporalProtoMessage,
+    U: TemporalProtoMessage,
+    O: TemporalProtoMessage,
+{
+    let sdk_client = client.sdk();
+    let namespace = sdk_client.namespace();
+    let identity = sdk_client.identity();
+
+    let workflow_payload = encode_proto_payload(workflow_input);
+    let update_payload = encode_proto_payload(update_input);
+
+    let id_reuse = id_reuse_policy
+        .map(sdk_enums::WorkflowIdReusePolicy::from)
+        .unwrap_or(sdk_enums::WorkflowIdReusePolicy::Unspecified) as i32;
+
+    let start = StartWorkflowExecutionRequest {
+        namespace: namespace.clone(),
+        workflow_id: workflow_id.to_string(),
+        workflow_type: Some(WorkflowType {
+            name: workflow_name.to_string(),
+        }),
+        task_queue: Some(TaskQueue {
+            name: task_queue.to_string(),
+            kind: TaskQueueKind::Unspecified as i32,
+            normal_name: String::new(),
+        }),
+        input: Some(Payloads {
+            payloads: vec![workflow_payload],
+        }),
+        workflow_execution_timeout: execution_timeout.and_then(|d| d.try_into().ok()),
+        workflow_run_timeout: run_timeout.and_then(|d| d.try_into().ok()),
+        workflow_task_timeout: task_timeout.and_then(|d| d.try_into().ok()),
+        workflow_id_reuse_policy: id_reuse,
+        // Update-with-start needs a non-default conflict policy server-side;
+        // UseExisting is the documented choice (start if absent, attach if
+        // present).
+        workflow_id_conflict_policy: WorkflowIdConflictPolicy::UseExisting as i32,
+        request_id: uuid::Uuid::new_v4().to_string(),
+        identity: identity.clone(),
+        ..Default::default()
+    };
+
+    let update_request = UpdateWorkflowExecutionRequest {
+        namespace: namespace.clone(),
+        workflow_execution: Some(WorkflowExecution {
+            workflow_id: workflow_id.to_string(),
+            run_id: String::new(),
+        }),
+        wait_policy: Some(ProtoWaitPolicy {
+            lifecycle_stage: sdk_enums::UpdateWorkflowExecutionLifecycleStage::from(wait_policy)
+                as i32,
+        }),
+        request: Some(update::Request {
+            meta: Some(update::Meta {
+                update_id: uuid::Uuid::new_v4().to_string(),
+                identity: identity.clone(),
+            }),
+            input: Some(update::Input {
+                header: None,
+                name: update_name.to_string(),
+                args: Some(Payloads {
+                    payloads: vec![update_payload],
+                }),
+            }),
+        }),
+        ..Default::default()
+    };
+
+    let req = ExecuteMultiOperationRequest {
+        namespace: namespace.clone(),
+        operations: vec![
+            Operation {
+                operation: Some(OperationKind::StartWorkflow(start)),
+            },
+            Operation {
+                operation: Some(OperationKind::UpdateWorkflow(update_request)),
+            },
+        ],
+        resource_id: workflow_id.to_string(),
+    };
+
+    let response =
+        WorkflowService::execute_multi_operation(&mut sdk_client.clone(), req.into_request())
+            .await
+            .with_context(|| format!("update-with-start workflow {workflow_name}"))?
+            .into_inner();
+
+    let start_resp = response
+        .responses
+        .first()
+        .and_then(|r| r.response.as_ref())
+        .context("execute_multi_operation: missing start response")?;
+    let update_resp = response
+        .responses
+        .get(1)
+        .and_then(|r| r.response.as_ref())
+        .context("execute_multi_operation: missing update response")?;
+
+    let run_id = match start_resp {
+        RespKind::StartWorkflow(r) => r.run_id.clone(),
+        RespKind::UpdateWorkflow(_) => {
+            anyhow::bail!("execute_multi_operation: response[0] was not StartWorkflow")
+        }
+    };
+    let update_payloads = match update_resp {
+        RespKind::UpdateWorkflow(r) => r
+            .outcome
+            .as_ref()
+            .and_then(|o| match &o.value {
+                Some(update::outcome::Value::Success(s)) => Some(s.payloads.clone()),
+                _ => None,
+            })
+            .context("execute_multi_operation: update outcome had no success payloads")?,
+        RespKind::StartWorkflow(_) => {
+            anyhow::bail!("execute_multi_operation: response[1] was not UpdateWorkflow")
+        }
+    };
+
+    let update_payload = update_payloads
+        .first()
+        .context("update returned no payloads")?;
+    let output: O = decode_proto_payload(update_payload).context("decode update output")?;
+
+    Ok((
+        WorkflowHandle {
+            client: client.clone(),
+            workflow_id: workflow_id.to_string(),
+            run_id: if run_id.is_empty() {
+                None
+            } else {
+                Some(run_id)
+            },
+        },
+        output,
+    ))
 }
 
 #[cfg(test)]
