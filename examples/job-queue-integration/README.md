@@ -1,71 +1,142 @@
 # Example: job-queue consumer
 
-This directory shows the **canonical consumer setup** for
-`protoc-gen-rust-temporal`. It is the smallest possible Rust crate that
-takes a cludden-annotated proto and ends up with a typed
-`JobServiceClient` — no Temporal SDK boot, no real worker, just the wiring
-the plugin expects.
+The smallest Rust crate that takes a cludden-annotated proto and produces a
+typed `JobServiceClient` — no Temporal SDK boot, no real worker, just the
+wiring `protoc-gen-rust-temporal` expects.
 
 The actual end-to-end demo lives at
 [`/Users/wcygan/Development/job-queue`](../../../job-queue) (the PoC); this
-example is the **published-plugin** form of that wiring, the one Phase 5 of
+crate is the **published-plugin** form of that wiring, the one Phase 5 of
 the [main SPEC](../../SPEC.md) migrates job-queue onto.
+
+## Run it locally
+
+The facade in `src/temporal_runtime.rs` is intentionally stubbed with
+`todo!()` bodies, so "running" the example here means **proving the
+wiring compiles** end-to-end against both (a) the workspace's path-dep
+runtime crate and (b) the published `temporal-proto-runtime` on
+crates.io. Anything beyond that needs a real Temporal Server and a real
+SDK facade (see `temporal_runtime` below).
+
+Prereqs:
+
+- Rust 1.88+ (`rust-toolchain.toml` pins this; `rustup` auto-installs).
+- `protoc` on `PATH` (for `regen` / `regen-check`).
+- [`just`](https://just.systems) on `PATH` (for the recipes below).
+
+### Step-by-step
+
+```bash
+cd examples/job-queue-integration
+
+# 1. List recipes.
+just
+
+# 2. Compile against the workspace path-dep (fast, ~1s after first build).
+just build
+
+# 3. CI-equivalent: fmt + clippy + build.
+just all
+
+# 4. Verify the checked-in snapshot at src/gen/ matches what the
+#    plugin would emit right now. Fails if drift exists.
+just regen-check
+
+# 5. Verify the example compiles against the *published* runtime crate
+#    (downloads `temporal-proto-runtime` from crates.io into a temp dir,
+#    swaps the path dep, vendors the annotation schema, and builds).
+just verify-published
+```
+
+If all five pass, the example is healthy.
+
+### Other recipes
+
+| Recipe | What it does |
+|---|---|
+| `just check` | `cargo check` — fastest type-check |
+| `just clippy` | Same flags as CI (`-D warnings`) |
+| `just fmt` / `fmt-check` | Format / verify formatting |
+| `just regen` | Rebuild the snapshot at `src/gen/` from the current plugin source |
+| `just clean` | `cargo clean -p job-queue-integration-example` |
+
+`just regen` is what you run after editing the proto or changing the
+plugin's emit; commit the resulting diff so `just regen-check` stays
+green in CI.
 
 ## Layout
 
 ```
 job-queue-integration/
 ├── Cargo.toml
+├── justfile                            # local-testing recipes
 ├── buf.gen.yaml
-├── proto/
-│   └── jobs/v1/
-│       └── jobs.proto                 # cludden-annotated service
+├── build.rs                            # prost-build for jobs.v1.* messages
+├── proto/jobs/v1/jobs.proto            # cludden-annotated service
 └── src/
-    ├── lib.rs                          # `include!`s the plugin output + re-exports the runtime facade
+    ├── lib.rs                          # include!s the plugin output + re-exports the runtime facade
     ├── temporal_runtime.rs             # consumer-supplied bridge — see below
     └── gen/jobs/v1/jobs_temporal.rs    # checked-in plugin output (reference snapshot)
 ```
 
 The `src/gen/jobs/v1/jobs_temporal.rs` file is **the actual output** of
-`protoc-gen-rust-temporal` against the example's `jobs.proto`. It is
-checked in as a documentation artifact so you can read what the plugin
-emits without running it. Regenerate with:
-
-```bash
-protoc \
-  --plugin=protoc-gen-rust-temporal=$(pwd)/target/debug/protoc-gen-rust-temporal \
-  -I examples/job-queue-integration/proto \
-  -I crates/protoc-gen-rust-temporal/proto \
-  --rust-temporal_out=examples/job-queue-integration/src/gen \
-  jobs/v1/jobs.proto
-```
+`protoc-gen-rust-temporal` against the example's `jobs.proto`, checked
+in as a documentation artifact so you can read what the plugin emits
+without running it. `just regen` regenerates it.
 
 ## buf.gen.yaml shape
 
 ```yaml
 version: v2
 plugins:
-  # Headline: BSR remote plugin. Requires no local install.
-  - remote: buf.build/nu-sync/rust-temporal
-    out: src/gen
-
-  # Fallback: locally-installed binary. Useful while iterating on the plugin.
-  # - local: protoc-gen-rust-temporal
+  # Headline (not yet published): BSR remote plugin.
+  # - remote: buf.build/nu-sync/rust-temporal
   #   out: src/gen
+
+  # Current path: locally-installed binary built by `just regen`.
+  - local: protoc-gen-rust-temporal
+    out: src/gen
 ```
 
-## Cargo.toml shape
+The BSR remote plugin (`buf.build/nu-sync/rust-temporal`) is not yet
+published; use the local form above (or invoke `protoc` directly, as
+`just regen` does) until it lands.
+
+## Cargo.toml shape (for a downstream consumer)
 
 ```toml
 [dependencies]
 anyhow = "1"
 prost = "0.13"
 prost-types = "0.13"
-temporal-proto-runtime = "0.0"
-# plus whatever you pin for the Temporal SDK:
+# `sdk` feature pulls `temporalio-common` and emits the
+# TemporalSerializable / TemporalDeserializable impls on
+# TypedProtoMessage<T>. Enable this once you replace the stub bodies
+# in temporal_runtime.rs with real SDK calls.
+temporal-proto-runtime = { version = "0.1", features = ["sdk"] }
+# Plus whatever you pin for the Temporal SDK proper:
 # temporalio-client = "0.4"
 # temporalio-sdk    = "0.4"
 ```
+
+This example itself uses a workspace path-dep (without the `sdk`
+feature) because its facade is stubbed; `just verify-published`
+exercises the registry-version path.
+
+## Vendoring the annotation schema
+
+`proto/jobs/v1/jobs.proto` imports `temporal/v1/temporal.proto`, so
+`prost-build` needs that file on its include path during parse. The
+published `protoc-gen-rust-temporal` crate does not ship it as a
+fetchable proto artifact — copy
+`crates/protoc-gen-rust-temporal/proto/temporal/v1/temporal.proto`
+(and its transitive `temporal/api/enums/v1/workflow.proto`) into your
+own consumer crate's proto tree.
+
+This example's `build.rs` reaches across the workspace at
+`../../crates/protoc-gen-rust-temporal/proto` to do that; outside this
+repo you'd vendor the file once and point `prost-build` at the local
+copy (which is what `just verify-published` does internally).
 
 ## The `temporal_runtime` facade — what the consumer wires up
 

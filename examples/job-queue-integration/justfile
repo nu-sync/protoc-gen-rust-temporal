@@ -1,0 +1,110 @@
+set shell := ["bash", "-uc"]
+
+# Paths are relative to this directory (the example crate root).
+workspace_root := justfile_directory() + "/../.."
+plugin_bin     := workspace_root + "/target/debug/protoc-gen-rust-temporal"
+schema_inc     := workspace_root + "/crates/protoc-gen-rust-temporal/proto"
+
+# List available recipes.
+default:
+    @just --list
+
+# Compile the example against the workspace path-dep `temporal-proto-runtime`.
+build:
+    cargo build -p job-queue-integration-example
+
+# Type-check only (faster than `build`).
+check:
+    cargo check -p job-queue-integration-example
+
+# Lint with the same flags CI uses.
+clippy:
+    cargo clippy -p job-queue-integration-example --all-targets -- -D warnings
+
+# Format the example.
+fmt:
+    cargo fmt -p job-queue-integration-example
+
+# Verify formatting (CI-equivalent).
+fmt-check:
+    cargo fmt -p job-queue-integration-example -- --check
+
+# fmt-check + clippy + build. Run before opening a PR that touches the example.
+all: fmt-check clippy build
+
+# Build the plugin binary (prereq for `regen` / `regen-check`).
+[private]
+plugin-build:
+    cargo build -p protoc-gen-rust-temporal
+
+# Regenerate the checked-in snapshot at src/gen/ via the locally-built plugin.
+regen: plugin-build
+    @echo "regenerating src/gen via {{plugin_bin}}"
+    protoc \
+      --plugin=protoc-gen-rust-temporal={{plugin_bin}} \
+      -I proto \
+      -I {{schema_inc}} \
+      --rust-temporal_out=src/gen \
+      proto/jobs/v1/jobs.proto
+
+# Regenerate into a temp dir and diff against the checked-in snapshot; fails on drift.
+regen-check: plugin-build
+    @tmp=$(mktemp -d); \
+    protoc \
+      --plugin=protoc-gen-rust-temporal={{plugin_bin}} \
+      -I proto \
+      -I {{schema_inc}} \
+      --rust-temporal_out=$tmp \
+      proto/jobs/v1/jobs.proto; \
+    if ! diff -ruN src/gen "$tmp" >/dev/null; then \
+      echo "snapshot drift: run \`just regen\` and commit the diff"; \
+      diff -ruN src/gen "$tmp"; \
+      rm -rf "$tmp"; \
+      exit 1; \
+    fi; \
+    rm -rf "$tmp"; \
+    echo "snapshot is current"
+
+# Build the example out-of-workspace against the published temporal-proto-runtime from crates.io.
+verify-published:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    work=$(mktemp -d)
+    echo "staging copy in $work"
+    cp -r . "$work/example"
+    rm -rf "$work/example/target" "$work/example/justfile"
+    mkdir -p "$work/example/proto/temporal"
+    cp -r {{schema_inc}}/temporal/* "$work/example/proto/temporal/"
+    cat > "$work/example/Cargo.toml" <<'EOF'
+    [package]
+    name = "job-queue-integration-example"
+    version = "0.0.0"
+    publish = false
+    edition = "2024"
+    rust-version = "1.88"
+    license = "MIT"
+
+    [dependencies]
+    anyhow = "1"
+    prost = "0.13"
+    prost-types = "0.13"
+    temporal-proto-runtime = "0.1"
+
+    [build-dependencies]
+    prost-build = "0.13"
+    EOF
+    cat > "$work/example/build.rs" <<'EOF'
+    use std::io::Result;
+    fn main() -> Result<()> {
+        println!("cargo:rerun-if-changed=proto");
+        let mut config = prost_build::Config::new();
+        config.compile_protos(&["proto/jobs/v1/jobs.proto"], &["proto"])?;
+        Ok(())
+    }
+    EOF
+    (cd "$work/example" && cargo build)
+    echo "example builds against published temporal-proto-runtime"
+
+# Remove build artifacts for the example only.
+clean:
+    cargo clean -p job-queue-integration-example
