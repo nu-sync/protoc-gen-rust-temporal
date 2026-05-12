@@ -86,8 +86,7 @@ fn load_fixture_options(name: &str) -> protoc_gen_rust_temporal::options::Render
     if !p.exists() {
         return protoc_gen_rust_temporal::options::RenderOptions::default();
     }
-    let s = std::fs::read_to_string(&p)
-        .unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+    let s = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
     protoc_gen_rust_temporal::options::parse_options(s.trim())
         .unwrap_or_else(|e| panic!("parse {}: {e}", p.display()))
 }
@@ -247,7 +246,10 @@ fn activities_emit_render_golden() {
 fn activities_emit_renders_trait_and_consts() {
     let services = parse_and_validate("activities_emit");
     let opts = load_fixture_options("activities_emit");
-    assert!(opts.activities, "fixture options.txt should enable activities");
+    assert!(
+        opts.activities,
+        "fixture options.txt should enable activities"
+    );
     let source = render::render(&services[0], &opts);
     assert!(
         source.contains("pub trait ChunkServiceActivities: Send + Sync + 'static"),
@@ -262,7 +264,9 @@ fn activities_emit_renders_trait_and_consts() {
         "missing Heartbeat name const"
     );
     assert!(
-        source.contains("fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput)"),
+        source.contains(
+            "fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput)"
+        ),
         "Process trait method signature wrong: {source}"
     );
     assert!(

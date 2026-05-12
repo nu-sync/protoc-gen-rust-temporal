@@ -90,6 +90,31 @@ message instead. So in practice, generated code never calls
 `signal_with_start_workflow_proto` or `update_with_start_workflow_proto`
 with `&()` arguments.
 
+## Phase 2 — Activities (opt-in via `activities=true`)
+
+When invoked with `--rust-temporal_opt=activities=true`, the plugin emits, per
+service with activity-annotated methods:
+
+| Symbol | Shape |
+|---|---|
+| `<METHOD>_ACTIVITY_NAME` | `pub const &'static str` per annotated activity. Value matches what the activity is registered under server-side (defaults to the rpc method name). |
+| `<Service>Activities` | `pub trait <Service>Activities: Send + Sync + 'static` with one method per activity. Signature: `fn <method>(&self, ctx: temporal_runtime::ActivityContext, input: <Input>) -> impl Future<Output = Result<<Output>>> + Send`. |
+
+The trait method takes `&self`. The consumer's adapter (which wires the trait
+to a `temporalio-sdk` Worker via `#[activity_definitions]`) does the
+`Arc<Self>` dance — see the `temporal-proto-runtime-bridge` README for the
+pattern.
+
+Required runtime symbols (only when `activities=true` is set):
+
+| Symbol | Provided by | Notes |
+|---|---|---|
+| `temporal_runtime::ActivityContext` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::activities::ActivityContext`. |
+
+The plugin does NOT emit a `register_<service>_activities(...)` function in
+Phase 2 — the consumer-side adapter pattern handles registration. This is the
+trait-only emit per the [Phase 2 spike findings](../docs/superpowers/specs/2026-05-12-phase-2-spike-findings.md).
+
 ## Future direction (post-1.0)
 
 The current contract is structural — the compiler tells consumers what

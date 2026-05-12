@@ -21,12 +21,47 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Phase 1 open follow-up).
 
 ### Notes
-- Plugin output is unchanged in this release. Existing consumers on
+- Plugin output is unchanged for default-flag builds. Existing consumers on
   `protoc-gen-rust-temporal 0.1.1` can adopt the bridge crate without
   regenerating.
 - SDK pinning: the bridge crate pins `temporalio-client = "=0.4.0"` exact-
-  patch. SDK 0.5 will ship as `temporal-proto-runtime-bridge 0.2`; plugin
+  patch (Phase 1) and `temporalio-sdk = "=0.4.0"` behind the `worker` feature
+  (Phase 2). SDK 0.5 will ship as `temporal-proto-runtime-bridge 0.2`; plugin
   emit is unaffected.
+
+### Phase 2 (activities)
+
+- **Phase 2 emit — activities trait** (opt-in via `--rust-temporal_opt=activities=true`).
+  Plugin generates a per-service `<Service>Activities` async trait + per-activity
+  name consts when the service has methods annotated with
+  `option (temporal.v1.activity) = {}`. Trait method signature uses
+  `impl Future<Output = Result<O>> + Send` (Rust 2024 / MSRV-1.88).
+- **`temporal-proto-runtime-bridge` `worker` feature** — opt-in re-export of
+  `temporalio-sdk 0.4`'s worker primitives (`Worker`, `ActivityContext`,
+  `ActivityError`, `ActivityDefinitions`, `ActivityDefinition`,
+  `ActivityImplementer`). Default builds remain SDK-worker-free; consumers
+  opt in when wiring the plugin's worker emit.
+- **Strict plugin options parser.** Unknown keys in `--rust-temporal_opt=...`
+  return a `CodeGeneratorResponse.error` rather than silently emitting
+  nothing — avoids the `worker=true` (missing `s`) trap.
+- **Phase 2 spike findings** documented at
+  `docs/superpowers/specs/2026-05-12-phase-2-spike-findings.md`. The SDK's
+  static-dispatch activity registration model rules out a name-based
+  registration helper, so the bridge ships re-exports rather than a
+  `register_activity_proto` function. Consumers wire the generated trait to
+  `temporalio-sdk`'s `#[activity_definitions]` macro via a 15-LOC adapter
+  documented in the bridge crate README.
+
+### Phase 2 notes
+
+- The `<Service>Activities` trait is **not dyn-compatible** (uses async-fn-in-
+  trait without box-future) — consumers should impl it on their concrete
+  state struct, not store `Box<dyn Trait>`. The adapter pattern assumes a
+  concrete impl.
+- Consumers writing workers must bring the SDK's `#[activity_definitions]`
+  macro themselves (the plugin doesn't emit the registration glue — see spike
+  findings Option B). The bridge crate's `worker` feature gives you the right
+  SDK types; you supply the macro invocation.
 
 ## [0.1.1] — 2026-05-12
 
