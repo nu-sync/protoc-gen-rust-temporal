@@ -1,0 +1,25 @@
+[package]
+name = "temporal-proto-runtime-bridge"
+version = "0.1.0"
+description = "Default bridge between protoc-gen-rust-temporal generated clients and temporalio-client 0.4. Drop-in `temporal_runtime` facade."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["temporal", "protobuf", "workflow", "client"]
+categories = ["asynchronous"]
+
+[dependencies]
+anyhow = { workspace = true }
+prost = { workspace = true }
+temporal-proto-runtime = { path = "../temporal-proto-runtime", version = "0.1", features = ["sdk"] }
+temporalio-client = { workspace = true }
+temporalio-common = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
