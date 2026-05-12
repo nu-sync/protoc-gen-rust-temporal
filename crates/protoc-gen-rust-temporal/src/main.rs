@@ -76,7 +76,17 @@ fn build_response(raw: &[u8]) -> Result<Vec<prost_types::compiler::code_generato
     pool.decode_file_descriptor_set(&*fds_bytes)
         .context("decode_file_descriptor_set (extensions preserved)")?;
 
-    protoc_gen_rust_temporal::run_with_pool(&pool, &files_to_generate)
+    // Surface the target file set in any error coming out of the pipeline.
+    // buf's per-target invocation pattern (buf v2 sends one
+    // CodeGeneratorRequest per target proto in a module) means a single
+    // `buf generate` may call the plugin many times, and stderr is
+    // interleaved — without the file name in the message, you can't tell
+    // which invocation failed without re-running with --debug.
+    protoc_gen_rust_temporal::run_with_pool(&pool, &files_to_generate).with_context(|| {
+        let mut targets: Vec<&str> = files_to_generate.iter().map(String::as_str).collect();
+        targets.sort();
+        format!("generating from [{}]", targets.join(", "))
+    })
 }
 
 /// Walk the `CodeGeneratorRequest` wire bytes and pull out each

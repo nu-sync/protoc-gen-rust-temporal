@@ -40,9 +40,14 @@ pub struct WorkflowModel {
     /// service-level default. `None` means neither was supplied — render
     /// will require the caller to pass one.
     pub task_queue: Option<String>,
-    /// Cludden's Go-template `id` expression. We do not interpret it; render
-    /// emits it as a string constant.
-    pub id_expression: Option<String>,
+    /// Parsed form of cludden's `id` Go-template expression, compiled at
+    /// parse time against the workflow's input message descriptor. Each
+    /// segment is either a literal piece of the template or a reference to
+    /// a field on the input message. Render emits a private
+    /// `<wf>_id(input: &Input) -> String` function that walks the segments
+    /// via `format!`, so the substitution happens at codegen time — no
+    /// runtime template engine required.
+    pub id_expression: Option<Vec<IdTemplateSegment>>,
     pub id_reuse_policy: Option<IdReusePolicy>,
     pub execution_timeout: Option<Duration>,
     pub run_timeout: Option<Duration>,
@@ -146,6 +151,20 @@ impl ProtoType {
         }
         self.full_name.rsplit('.').next().unwrap_or(&self.full_name)
     }
+}
+
+/// One segment of a workflow's `id` template, resolved against the
+/// workflow input message's descriptor at parse time.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdTemplateSegment {
+    /// A literal piece of the template — emitted verbatim into the
+    /// generated `format!`.
+    Literal(String),
+    /// A reference to a field on the workflow input message. The string
+    /// is the **Rust** field name (snake_case), so generated code can
+    /// substitute `input.<field>` directly. Validated to exist on the
+    /// input descriptor at parse time.
+    Field(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

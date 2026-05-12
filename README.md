@@ -76,6 +76,17 @@ Generated clients speak `binary/protobuf` end-to-end. See
 [`WIRE-FORMAT.md`](./WIRE-FORMAT.md) for the contract; the sibling TS plugin
 keeps a byte-identical mirror.
 
+## Runtime API
+
+Generated code calls into a consumer-supplied `crate::temporal_runtime`
+module. Every function the plugin emits a call to, when it gets emitted,
+and the exact signature it expects are documented in
+[`docs/RUNTIME-API.md`](./docs/RUNTIME-API.md). The
+[`examples/job-queue-integration/`](./examples/job-queue-integration/)
+crate is a workspace member that exercises every emit branch and
+compiles end-to-end against a stubbed facade — use it as the starting
+template.
+
 ## Layout
 
 | Crate / file | Role |

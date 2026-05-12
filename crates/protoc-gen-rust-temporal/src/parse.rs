@@ -12,20 +12,21 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use prost::Message;
 use prost_reflect::{
     DescriptorPool, DynamicMessage, ExtensionDescriptor, MethodDescriptor, ServiceDescriptor, Value,
 };
 
 use crate::model::{
-    ActivityModel, IdReusePolicy, ProtoType, QueryModel, QueryRef, ServiceModel, SignalModel,
-    SignalRef, UpdateModel, UpdateRef, WorkflowModel,
+    ActivityModel, IdReusePolicy, IdTemplateSegment, ProtoType, QueryModel, QueryRef, ServiceModel,
+    SignalModel, SignalRef, UpdateModel, UpdateRef, WorkflowModel,
 };
 use crate::temporal::v1::{
     ActivityOptions, IdReusePolicy as ProtoPolicy, QueryOptions, ServiceOptions, SignalOptions,
     UpdateOptions, WorkflowOptions,
 };
+use heck::ToSnakeCase;
 
 const SERVICE_EXT: &str = "temporal.v1.service";
 const WORKFLOW_EXT: &str = "temporal.v1.workflow";
@@ -65,6 +66,24 @@ pub fn parse(
     pool: &DescriptorPool,
     files_to_generate: &HashSet<String>,
 ) -> Result<Vec<ServiceModel>> {
+    // Early-exit when none of the targets carry any services. This matters
+    // for buf v2 modules that include the vendored `temporal/v1/temporal.proto`
+    // alongside consumer protos: buf sends one CodeGeneratorRequest per
+    // target file, so the plugin gets invoked with the annotation schema
+    // itself as the target. That file declares the `temporal.v1.*`
+    // extensions but uses none of them, so loading `ExtensionSet` would
+    // fail when the request only contains the annotation schema and not
+    // a file that uses the extensions. Skipping the lookup keeps the
+    // plugin a no-op in that case, which is the right answer — there's
+    // nothing to render.
+    let has_any_services = pool
+        .files()
+        .filter(|f| files_to_generate.contains(f.name()))
+        .any(|f| f.services().next().is_some());
+    if !has_any_services {
+        return Ok(Vec::new());
+    }
+
     let ext = ExtensionSet::load(pool)?;
 
     let mut out = Vec::new();
@@ -100,7 +119,7 @@ fn parse_service(
     for method in service.methods() {
         match method_kind(&method, ext)? {
             MethodKind::Workflow(opts) => {
-                workflows.push(workflow_from(&method, *opts, &package, &service_name));
+                workflows.push(workflow_from(&method, *opts, &package, &service_name)?);
             }
             MethodKind::Signal(opts) => {
                 signals.push(signal_from(&method, opts));
@@ -237,7 +256,7 @@ fn workflow_from(
     opts: WorkflowOptions,
     package: &str,
     service_name: &str,
-) -> WorkflowModel {
+) -> Result<WorkflowModel> {
     let rpc_method = method.name().to_string();
     let registered_name = if opts.name.is_empty() {
         default_registered_name(package, service_name, &rpc_method)
@@ -245,13 +264,23 @@ fn workflow_from(
         opts.name
     };
 
-    WorkflowModel {
+    let id_expression = if opts.id.is_empty() {
+        None
+    } else {
+        Some(
+            parse_id_template(&opts.id, &method.input()).with_context(|| {
+                format!("parse (temporal.v1.workflow).id template on {service_name}.{rpc_method}")
+            })?,
+        )
+    };
+
+    Ok(WorkflowModel {
         rpc_method,
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
         task_queue: (!opts.task_queue.is_empty()).then_some(opts.task_queue),
-        id_expression: (!opts.id.is_empty()).then_some(opts.id),
+        id_expression,
         id_reuse_policy: id_reuse_policy_from_proto(opts.id_reuse_policy),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
@@ -281,7 +310,7 @@ fn workflow_from(
                 validate: u.validate,
             })
             .collect(),
-    }
+    })
 }
 
 fn signal_from(method: &MethodDescriptor, opts: SignalOptions) -> SignalModel {
@@ -374,4 +403,65 @@ fn duration_from_proto(d: prost_types::Duration) -> Option<Duration> {
     let secs = u64::try_from(d.seconds).ok()?;
     let nanos = u32::try_from(d.nanos).ok()?;
     Some(Duration::new(secs, nanos))
+}
+
+/// Parse a cludden-style id template into segments, resolving each
+/// `{{ .FieldName }}` reference against the workflow input descriptor.
+///
+/// Supports only the simple form `{{ .FieldName }}` (with optional
+/// whitespace inside the braces). More complex Go-template syntax
+/// (conditionals, functions, ranges) returns an error so users see the
+/// limitation up front rather than at runtime.
+fn parse_id_template(
+    template: &str,
+    input: &prost_reflect::MessageDescriptor,
+) -> Result<Vec<IdTemplateSegment>> {
+    let mut out = Vec::new();
+    let mut rest = template;
+    while let Some(open) = rest.find("{{") {
+        if open > 0 {
+            out.push(IdTemplateSegment::Literal(rest[..open].to_string()));
+        }
+        let after_open = &rest[open + 2..];
+        let close = after_open
+            .find("}}")
+            .ok_or_else(|| anyhow!("unterminated `{{{{` in id template {template:?}"))?;
+        let token = after_open[..close].trim();
+        let field_name = token
+            .strip_prefix('.')
+            .ok_or_else(|| {
+                anyhow!(
+                    "id template token {token:?} must start with `.` (only field references are supported; \
+                     conditionals / pipelines / functions are not implemented)"
+                )
+            })?
+            .trim();
+        if field_name.is_empty() {
+            anyhow::bail!("id template token has no field name after `.`");
+        }
+        if !field_name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            anyhow::bail!(
+                "id template token {field_name:?} contains unsupported characters \
+                 (only simple field references like `.Name` are supported)"
+            );
+        }
+        let rust_field = field_name.to_snake_case();
+        let known = input.fields().any(|f| f.name() == rust_field);
+        if !known {
+            anyhow::bail!(
+                "id template references `{field_name}` (looked up as `{rust_field}`) \
+                 but no such field exists on input message `{}`",
+                input.full_name()
+            );
+        }
+        out.push(IdTemplateSegment::Field(rust_field));
+        rest = &after_open[close + 2..];
+    }
+    if !rest.is_empty() {
+        out.push(IdTemplateSegment::Literal(rest.to_string()));
+    }
+    Ok(out)
 }

@@ -15,7 +15,7 @@ service MultiService {
 
   rpc Alpha(AlphaInput) returns (AlphaOutput) {
     option (temporal.v1.workflow) = {
-      id: "alpha-{{ .Name }}"
+      id: "alpha-{{ .Label }}"
     };
   }
 

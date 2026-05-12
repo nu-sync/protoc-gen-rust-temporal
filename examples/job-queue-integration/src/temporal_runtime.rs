@@ -54,17 +54,10 @@ pub fn attach_handle(_client: &TemporalClient, workflow_id: String) -> WorkflowH
 
 pub fn random_workflow_id() -> String {
     // Replace with a uuid::Uuid::new_v4().to_string() (or whatever id
-    // scheme you prefer). The PoC uses uuid v4.
+    // scheme you prefer). The PoC uses uuid v4. The plugin only calls
+    // this when a workflow has no proto-level `id` template; templates
+    // are materialised inline as `<wf>_id(...)` functions by the plugin.
     todo!("hook up uuid::Uuid::new_v4()")
-}
-
-pub fn eval_id_expression(_expr: &str) -> String {
-    // Cludden's id expressions are Go templates over the workflow input.
-    // The Rust plugin emits the raw template string; consumer-side
-    // expansion is up to you. Simplest path: treat the expression as a
-    // literal id and substitute `{{ .Name }}` / similar tokens against
-    // your input. The PoC implements a 30-LOC mini-renderer.
-    todo!("evaluate Go template against typed input")
 }
 
 #[allow(clippy::too_many_arguments)]

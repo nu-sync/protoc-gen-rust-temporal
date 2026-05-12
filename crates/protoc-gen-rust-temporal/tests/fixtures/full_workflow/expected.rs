@@ -33,6 +33,10 @@ pub mod full_v1_full_service_temporal {
     pub const RUN_WORKFLOW_NAME: &str = "full.v1.FullService/Run";
     pub const RUN_TASK_QUEUE: &str = "full";
 
+    fn run_id(input: &RunInput) -> String {
+        format!("run-{}", input.name)
+    }
+
     pub struct FullServiceClient {
         client: temporal_runtime::TemporalClient,
     }
@@ -53,7 +57,7 @@ pub mod full_v1_full_service_temporal {
             opts: RunStartOptions,
         ) -> Result<RunHandle> {
             let workflow_id = opts.workflow_id.unwrap_or_else(|| {
-                temporal_runtime::eval_id_expression("run-{{ .Name }}")
+                run_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
             let inner = temporal_runtime::start_workflow_proto(
@@ -148,7 +152,7 @@ pub mod full_v1_full_service_temporal {
         opts: RunStartOptions,
     ) -> Result<RunHandle> {
         let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {
-            temporal_runtime::eval_id_expression("run-{{ .Name }}")
+            run_id(&workflow_input)
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
         let inner = temporal_runtime::signal_with_start_workflow_proto(
@@ -176,7 +180,7 @@ pub mod full_v1_full_service_temporal {
         wait_policy: temporal_runtime::WaitPolicy,
     ) -> Result<(RunHandle, ReconfigureOutput)> {
         let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {
-            temporal_runtime::eval_id_expression("run-{{ .Name }}")
+            run_id(&workflow_input)
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
         let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<RunInput, ReconfigureInput, ReconfigureOutput>(

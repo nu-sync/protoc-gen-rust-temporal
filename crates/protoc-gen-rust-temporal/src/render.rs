@@ -21,7 +21,9 @@ use std::fmt::Write;
 
 use heck::{ToShoutySnakeCase, ToSnakeCase};
 
-use crate::model::{QueryModel, ServiceModel, SignalModel, UpdateModel, WorkflowModel};
+use crate::model::{
+    IdTemplateSegment, QueryModel, ServiceModel, SignalModel, UpdateModel, WorkflowModel,
+};
 
 /// Render the `<package>_<service>_temporal.rs` source for one service.
 pub fn render(svc: &ServiceModel) -> String {
@@ -46,6 +48,7 @@ pub fn render(svc: &ServiceModel) -> String {
 
     render_message_type_impls(&mut out, svc);
     render_constants(&mut out, svc);
+    render_id_fns(&mut out, svc);
     render_client_struct(&mut out, svc, &client_struct);
     for wf in &svc.workflows {
         render_start_options(&mut out, wf);
@@ -129,6 +132,100 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
     if !svc.workflows.is_empty() {
         let _ = writeln!(out);
     }
+}
+
+/// Emit one private `<wf>_id` function per workflow that has an `id`
+/// template, materialising the template into a `format!` against the
+/// input message's fields at codegen time. The start path (and the
+/// `<signal>_with_start` / `<update>_with_start` free functions) call
+/// this instead of a generic runtime template helper — there's no
+/// runtime template engine to maintain and the field lookups are
+/// statically type-checked.
+fn render_id_fns(out: &mut String, svc: &ServiceModel) {
+    let mut emitted_any = false;
+    for wf in &svc.workflows {
+        let Some(segments) = wf.id_expression.as_ref() else {
+            continue;
+        };
+        emitted_any = true;
+        let fn_name = format!("{}_id", wf.rpc_method.to_snake_case());
+        let (fmt, args) = compile_id_template(segments);
+
+        if wf.input_type.is_empty {
+            // Validation in parse.rs guarantees a Field segment cannot
+            // refer to a field on Empty, so `args` is empty here. The fn
+            // takes no input.
+            let _ = writeln!(out, "    fn {fn_name}() -> String {{");
+            if fmt.is_empty() {
+                let _ = writeln!(out, "        String::new()");
+            } else {
+                let _ = writeln!(out, "        \"{fmt}\".to_string()");
+            }
+            let _ = writeln!(out, "    }}");
+            let _ = writeln!(out);
+            continue;
+        }
+
+        let input_ty = wf.input_type.rust_name();
+        let _ = writeln!(out, "    fn {fn_name}(input: &{input_ty}) -> String {{");
+        if args.is_empty() {
+            let _ = writeln!(out, "        let _ = input;");
+            let _ = writeln!(out, "        \"{fmt}\".to_string()");
+        } else {
+            let _ = writeln!(out, "        format!(\"{fmt}\", {})", args.join(", "));
+        }
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
+    if emitted_any {
+        // No trailing blank — `render_client_struct` adds its own.
+    }
+}
+
+/// Pick the call site that produces a workflow id when the caller did
+/// not supply one. With a proto-declared `id` template we route through
+/// the codegen-emitted `<wf>_id(...)` function; without one we fall
+/// back to `temporal_runtime::random_workflow_id()`.
+///
+/// `in_self_method` is true inside `<Service>Client::<rpc>` (where the
+/// workflow input is named `input`) and false inside the
+/// `<signal>_with_start` / `<update>_with_start` free functions (where
+/// the workflow input is named `workflow_input`).
+fn id_fallback_call(wf: &WorkflowModel, in_self_method: bool) -> String {
+    if wf.id_expression.is_none() {
+        return "temporal_runtime::random_workflow_id()".to_string();
+    }
+    let fn_name = format!("{}_id", wf.rpc_method.to_snake_case());
+    if wf.input_type.is_empty {
+        // Validated in parse.rs: an Empty workflow input cannot host a
+        // Field segment, so the id fn takes no arguments.
+        return format!("{fn_name}()");
+    }
+    if in_self_method {
+        format!("{fn_name}(&input)")
+    } else {
+        format!("{fn_name}(&workflow_input)")
+    }
+}
+
+/// Walk template segments into a `format!` string + arg list. Literal `{`
+/// and `}` characters in the template are doubled so they survive the
+/// `format!` parse.
+fn compile_id_template(segments: &[IdTemplateSegment]) -> (String, Vec<String>) {
+    let mut fmt = String::new();
+    let mut args = Vec::new();
+    for seg in segments {
+        match seg {
+            IdTemplateSegment::Literal(s) => {
+                fmt.push_str(&s.replace('{', "{{").replace('}', "}}"));
+            }
+            IdTemplateSegment::Field(rust_name) => {
+                fmt.push_str("{}");
+                args.push(format!("input.{rust_name}"));
+            }
+        }
+    }
+    (fmt, args)
 }
 
 fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &str) {
@@ -225,14 +322,11 @@ fn render_start_body(
         out,
         "{ind}let workflow_id = opts.workflow_id.unwrap_or_else(|| {{"
     );
-    if let Some(expr) = &wf.id_expression {
-        let _ = writeln!(
-            out,
-            "{ind}    temporal_runtime::eval_id_expression(\"{expr}\")"
-        );
-    } else {
-        let _ = writeln!(out, "{ind}    temporal_runtime::random_workflow_id()");
-    }
+    let _ = writeln!(
+        out,
+        "{ind}    {}",
+        id_fallback_call(wf, /* in_self_method: */ true)
+    );
     let _ = writeln!(out, "{ind}}});");
 
     if let Some(tq) = effective_task_queue(svc, wf) {
@@ -563,14 +657,11 @@ fn render_signal_with_start_fn(
         out,
         "        let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {{"
     );
-    if let Some(expr) = &wf.id_expression {
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::eval_id_expression(\"{expr}\")"
-        );
-    } else {
-        let _ = writeln!(out, "            temporal_runtime::random_workflow_id()");
-    }
+    let _ = writeln!(
+        out,
+        "            {}",
+        id_fallback_call(wf, /* in_self_method: */ false)
+    );
     let _ = writeln!(out, "        }});");
     if let Some(tq) = effective_task_queue(svc, wf) {
         let _ = writeln!(
@@ -655,14 +746,11 @@ fn render_update_with_start_fn(
         out,
         "        let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {{"
     );
-    if let Some(expr) = &wf.id_expression {
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::eval_id_expression(\"{expr}\")"
-        );
-    } else {
-        let _ = writeln!(out, "            temporal_runtime::random_workflow_id()");
-    }
+    let _ = writeln!(
+        out,
+        "            {}",
+        id_fallback_call(wf, /* in_self_method: */ false)
+    );
     let _ = writeln!(out, "        }});");
     if let Some(tq) = effective_task_queue(svc, wf) {
         let _ = writeln!(

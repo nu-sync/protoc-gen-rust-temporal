@@ -1,6 +1,6 @@
 [package]
 name = "temporal-proto-runtime"
-version = "0.0.1"
+version = "0.1.0"
 description = "Runtime helpers for protoc-gen-rust-temporal generated clients (TypedProtoMessage wire-format glue)"
 edition.workspace = true
 rust-version.workspace = true
@@ -14,3 +14,12 @@ categories = ["asynchronous"]
 
 [dependencies]
 prost = { workspace = true }
+temporalio-common = { version = "0.4", optional = true }
+
+[features]
+default = []
+# Pulls in `temporalio-common` and emits the
+# `TemporalSerializable`/`TemporalDeserializable` impls for
+# `TypedProtoMessage<T>`. Enable this in consumer crates so the orphan
+# rule does not force them to redefine the wrapper locally.
+sdk = ["dep:temporalio-common"]

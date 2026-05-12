@@ -96,7 +96,15 @@ fn minimal_workflow_parses_and_validates() {
     assert_eq!(wf.registered_name, "jobs.v1.JobService/RunJob");
     assert_eq!(wf.input_type.full_name, "jobs.v1.JobInput");
     assert_eq!(wf.output_type.full_name, "jobs.v1.JobOutput");
-    assert_eq!(wf.id_expression.as_deref(), Some("{{ .Name }}"));
+    {
+        use protoc_gen_rust_temporal::model::IdTemplateSegment;
+        let segments = wf.id_expression.as_deref().expect("id template parsed");
+        assert_eq!(
+            segments,
+            &[IdTemplateSegment::Field("name".to_string())],
+            "minimal_workflow's `{{{{ .Name }}}}` template should compile to a single Field segment"
+        );
+    }
     assert!(wf.id_reuse_policy.is_none());
 
     assert_eq!(wf.attached_signals.len(), 1);
@@ -337,7 +345,8 @@ fn minimal_workflow_render_smoke() {
         "pub async fn get_status(&self) -> Result<JobStatusOutput>",
         "pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy)",
         "pub async fn cancel_job_with_start(",
-        "temporal_runtime::eval_id_expression(\"{{ .Name }}\")",
+        "fn run_job_id(input: &JobInput) -> String",
+        "run_job_id(&input)",
     ];
     for needle in must_contain {
         assert!(
@@ -350,6 +359,43 @@ fn minimal_workflow_render_smoke() {
     assert!(
         !source.contains("process_chunk"),
         "activity-only method leaked into rendered client surface:\n{source}"
+    );
+}
+
+/// Regression test for issue #1 (lazy ExtensionSet). buf v2 invokes the
+/// plugin once per target proto in a module. When the target is the
+/// vendored annotation schema itself — `temporal/v1/temporal.proto` —
+/// the plugin used to die during `ExtensionSet::load()` because the
+/// schema file declares the extensions but doesn't use them, and the
+/// CodeGeneratorRequest for that single-target invocation may not be
+/// shaped the way the extension lookup expects. Lazy-loading turns that
+/// scenario into a no-op (empty output, no error).
+#[test]
+fn annotation_schema_as_target_is_a_noop() {
+    let crate_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let annotations = crate_root.join(ANNOTATIONS_DIR);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let fds_path = tmp.path().join("out.fds");
+    let status = Command::new(protoc_binary())
+        .arg(format!("-I{}", annotations.display()))
+        .arg(format!("--descriptor_set_out={}", fds_path.display()))
+        .arg("--include_imports")
+        .arg("temporal/v1/temporal.proto")
+        .status()
+        .expect("invoke protoc");
+    assert!(status.success(), "protoc dump failed: {status}");
+
+    let bytes = std::fs::read(&fds_path).expect("read fds");
+    let mut pool = DescriptorPool::new();
+    pool.decode_file_descriptor_set(bytes.as_slice())
+        .expect("decode fds");
+
+    let files_to_generate: HashSet<String> =
+        std::iter::once("temporal/v1/temporal.proto".to_string()).collect();
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    assert!(
+        services.is_empty(),
+        "annotation schema target should produce no services"
     );
 }
 

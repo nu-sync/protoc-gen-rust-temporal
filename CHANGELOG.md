@@ -6,6 +6,52 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-05-12
+
+First polish pass driven by the job-queue migration (Phase 5 proper) —
+five concrete integration friction points addressed. All changes are
+additive; consumers on 0.0.1 can upgrade with one targeted edit
+(see "Migration" below).
+
+### Added
+- `temporal-proto-runtime` now has an `sdk` feature that pulls in
+  `temporalio-common = "0.4"` and ships `TemporalSerializable` +
+  `TemporalDeserializable` impls for `TypedProtoMessage<T>`. Consumers
+  enable this to avoid redefining the wrapper locally just to satisfy
+  the Rust orphan rule. (Issue 3)
+- `docs/RUNTIME-API.md` enumerates every function the plugin emits a
+  call to, when it gets emitted, and its signature. Pinned per plugin
+  version. (Issue 5)
+- Plugin emits a private `<rpc>_id(input: &Input) -> String` function
+  next to each workflow's start method when the proto declares an `id`
+  template. Substitution happens at codegen time; field references are
+  statically validated against the input message descriptor. (Issue 2)
+
+### Changed
+- Plugin no longer emits `temporal_runtime::eval_id_expression(...)`
+  calls. The runtime helper is gone from the documented facade; any
+  local implementation is dead code and can be deleted. (Issue 2)
+- Top-level plugin errors now include the target file set, so buf's
+  per-target invocation pattern (one CodeGeneratorRequest per target)
+  produces actionable stderr without `--debug`. (Issue 4)
+
+### Fixed
+- `ExtensionSet::load()` is now lazy. Buf v2 invokes the plugin once
+  per target in a module; if a module includes the vendored
+  `temporal/v1/temporal.proto` alongside consumer protos, the plugin
+  used to die on the annotation-schema target with `missing extension
+  definition`. Now it returns an empty `CodeGeneratorResponse` for
+  targets that carry no annotated services. (Issue 1)
+
+### Migration from 0.0.1
+
+If your consumer crate hand-rolled `eval_id_expression` to satisfy the
+old emit, delete the function (the plugin no longer calls it). If you
+defined a local newtype around `TypedProtoMessage<T>` because of the
+orphan rule, you can now drop it and depend on
+`temporal-proto-runtime = { version = "0.1", features = ["sdk"] }`
+instead.
+
 ## [0.0.1] — 2026-05-12
 
 First name-claiming release on crates.io. BSR submission follows the

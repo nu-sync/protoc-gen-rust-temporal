@@ -6,9 +6,14 @@
 //! converter encodes them as the `(encoding, messageType, data)` triple
 //! documented in `WIRE-FORMAT.md`.
 //!
-//! Phase 0 ships only the trait + wrapper + encoding constant. The
-//! `TemporalSerializable` / `TemporalDeserializable` impls against the
-//! Temporal Rust SDK land in Phase 2.
+//! # Feature flags
+//!
+//! * **default**: trait + wrapper + `ENCODING` constant only, no SDK dep.
+//! * **`sdk`**: pulls in `temporalio-common = "0.4"` and ships
+//!   `TemporalSerializable` + `TemporalDeserializable` impls for
+//!   [`TypedProtoMessage<T>`]. Consumer crates should enable this so the
+//!   Rust orphan rule doesn't force them to redefine the wrapper locally
+//!   just to implement those traits against `temporalio-common`.
 //!
 //! [`protoc-gen-rust-temporal`]: https://github.com/nu-sync/protoc-gen-rust-temporal
 
@@ -47,6 +52,54 @@ impl<T: TemporalProtoMessage> From<T> for TypedProtoMessage<T> {
 
 /// The encoding string written into / required from `metadata.encoding`.
 pub const ENCODING: &str = "binary/protobuf";
+
+#[cfg(feature = "sdk")]
+mod sdk_impls {
+    use super::{ENCODING, TemporalProtoMessage, TypedProtoMessage};
+    use std::collections::HashMap;
+    use temporalio_common::data_converters::{
+        PayloadConversionError, SerializationContext, TemporalDeserializable, TemporalSerializable,
+    };
+    use temporalio_common::protos::temporal::api::common::v1::Payload;
+
+    impl<T: TemporalProtoMessage> TemporalSerializable for TypedProtoMessage<T> {
+        fn to_payload(
+            &self,
+            _: &SerializationContext<'_>,
+        ) -> Result<Payload, PayloadConversionError> {
+            let mut metadata = HashMap::new();
+            metadata.insert("encoding".to_string(), ENCODING.as_bytes().to_vec());
+            metadata.insert(
+                "messageType".to_string(),
+                T::MESSAGE_TYPE.as_bytes().to_vec(),
+            );
+            Ok(Payload {
+                metadata,
+                data: prost::Message::encode_to_vec(&self.0),
+                external_payloads: vec![],
+            })
+        }
+    }
+
+    impl<T: TemporalProtoMessage> TemporalDeserializable for TypedProtoMessage<T> {
+        fn from_payload(
+            _: &SerializationContext<'_>,
+            p: Payload,
+        ) -> Result<Self, PayloadConversionError> {
+            let encoding = p.metadata.get("encoding").map(Vec::as_slice);
+            if encoding != Some(ENCODING.as_bytes()) {
+                return Err(PayloadConversionError::WrongEncoding);
+            }
+            let msg_type = p.metadata.get("messageType").map(Vec::as_slice);
+            if msg_type != Some(T::MESSAGE_TYPE.as_bytes()) {
+                return Err(PayloadConversionError::WrongEncoding);
+            }
+            T::decode(p.data.as_slice())
+                .map(TypedProtoMessage)
+                .map_err(|e| PayloadConversionError::EncodingError(Box::new(e)))
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -26,6 +26,10 @@ pub mod multi_v1_multi_service_temporal {
     pub const BETA_WORKFLOW_NAME: &str = "multi.v1.MultiService/Beta";
     pub const BETA_TASK_QUEUE: &str = "multi-beta";
 
+    fn alpha_id(input: &AlphaInput) -> String {
+        format!("alpha-{}", input.label)
+    }
+
     pub struct MultiServiceClient {
         client: temporal_runtime::TemporalClient,
     }
@@ -46,7 +50,7 @@ pub mod multi_v1_multi_service_temporal {
             opts: AlphaStartOptions,
         ) -> Result<AlphaHandle> {
             let workflow_id = opts.workflow_id.unwrap_or_else(|| {
-                temporal_runtime::eval_id_expression("alpha-{{ .Name }}")
+                alpha_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "multi".to_string());
             let inner = temporal_runtime::start_workflow_proto(

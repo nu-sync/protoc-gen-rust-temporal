@@ -30,6 +30,10 @@ pub mod jobs_v1_job_service_temporal {
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService/RunJob";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
 
+    fn run_job_id(input: &JobInput) -> String {
+        format!("{}", input.name)
+    }
+
     pub struct JobServiceClient {
         client: temporal_runtime::TemporalClient,
     }
@@ -50,7 +54,7 @@ pub mod jobs_v1_job_service_temporal {
             opts: RunJobStartOptions,
         ) -> Result<RunJobHandle> {
             let workflow_id = opts.workflow_id.unwrap_or_else(|| {
-                temporal_runtime::eval_id_expression("{{ .Name }}")
+                run_job_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "jobs".to_string());
             let inner = temporal_runtime::start_workflow_proto(
@@ -125,7 +129,7 @@ pub mod jobs_v1_job_service_temporal {
         opts: RunJobStartOptions,
     ) -> Result<RunJobHandle> {
         let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {
-            temporal_runtime::eval_id_expression("{{ .Name }}")
+            run_job_id(&workflow_input)
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "jobs".to_string());
         let inner = temporal_runtime::signal_with_start_workflow_proto(
