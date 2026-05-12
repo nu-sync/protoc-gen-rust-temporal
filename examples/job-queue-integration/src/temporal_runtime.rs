@@ -82,6 +82,23 @@ pub async fn start_workflow_proto<I: TemporalProtoMessage>(
     todo!("client.start_workflow_execution(...)")
 }
 
+/// Empty-input variant of [`start_workflow_proto`]. The plugin emits a call
+/// to this function when a workflow's input is `google.protobuf.Empty`,
+/// avoiding the need to express `()` as a `TemporalProtoMessage`.
+#[allow(clippy::too_many_arguments)]
+pub async fn start_workflow_proto_empty(
+    _client: &TemporalClient,
+    _workflow_name: &'static str,
+    _workflow_id: &str,
+    _task_queue: &str,
+    _id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    _execution_timeout: Option<Duration>,
+    _run_timeout: Option<Duration>,
+    _task_timeout: Option<Duration>,
+) -> Result<WorkflowHandle> {
+    todo!("client.start_workflow_execution(...) with no payload")
+}
+
 pub async fn wait_result_proto<O: TemporalProtoMessage>(_handle: &WorkflowHandle) -> Result<O> {
     todo!("handle.result().await")
 }

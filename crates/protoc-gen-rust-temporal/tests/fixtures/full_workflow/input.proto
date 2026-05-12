@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package full.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// Exercises every emit branch: a workflow with all four attached refs
+// (signal-with-start, query, update-with-start, plus a regular signal),
+// an activity (validate-only), and proto-level defaults for id-reuse-
+// policy + execution_timeout + run_timeout + task_timeout.
+service FullService {
+  rpc Run(RunInput) returns (RunOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue:        "full"
+      id:                "run-{{ .Name }}"
+      id_reuse_policy:   WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
+      execution_timeout: { seconds: 7200 }
+      run_timeout:       { seconds: 3600 }
+      task_timeout:      { seconds: 60 }
+      signal: [
+        { ref: "Cancel" },
+        { ref: "Bootstrap", start: true }
+      ]
+      query:  [{ ref: "Status" }]
+      update: [{ ref: "Reconfigure", start: true, validate: true }]
+    };
+  }
+
+  rpc Cancel(CancelInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Bootstrap(BootstrapInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc Reconfigure(ReconfigureInput) returns (ReconfigureOutput) {
+    option (temporal.v1.update) = { validate: true };
+  }
+
+  rpc DoChunk(ChunkInput) returns (ChunkOutput) {
+    option (temporal.v1.activity) = {};
+  }
+}
+
+message RunInput        { string name = 1; }
+message RunOutput       { string id = 1; }
+message CancelInput     { string reason = 1; }
+message BootstrapInput  { string seed = 1; }
+message StatusOutput    { string state = 1; }
+message ReconfigureInput  { int32 priority = 1; }
+message ReconfigureOutput { bool accepted = 1; }
+message ChunkInput      { bytes data = 1; }
+message ChunkOutput     { uint64 hash = 1; }

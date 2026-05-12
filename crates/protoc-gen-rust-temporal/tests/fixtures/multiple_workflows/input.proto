@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package multi.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// Two annotated workflows in one service. Exercises the case where the
+// emit path iterates over multiple workflows: each gets its own
+// constants, start options, handle struct, and registered_name.
+service MultiService {
+  option (temporal.v1.service) = {
+    task_queue: "multi"
+  };
+
+  rpc Alpha(AlphaInput) returns (AlphaOutput) {
+    option (temporal.v1.workflow) = {
+      id: "alpha-{{ .Name }}"
+    };
+  }
+
+  rpc Beta(BetaInput) returns (BetaOutput) {
+    option (temporal.v1.workflow) = {
+      // Workflow-level override of the service default.
+      task_queue: "multi-beta"
+      run_timeout: { seconds: 900 }
+    };
+  }
+
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+}
+
+message AlphaInput { string label = 1; }
+message AlphaOutput { string id = 1; }
+message BetaInput { int64 count = 1; }
+message BetaOutput { int64 result = 1; }

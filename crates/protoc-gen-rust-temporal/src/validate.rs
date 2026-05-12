@@ -14,6 +14,7 @@ pub fn validate(model: &ServiceModel) -> Result<()> {
     reject_rpc_collisions(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
+    validate_empty_with_start(model)?;
     Ok(())
 }
 
@@ -161,6 +162,68 @@ fn check_ref(
         model.service,
         wf.rpc_method,
     );
+}
+
+/// `signal_with_start` / `update_with_start` free functions take both the
+/// workflow input and the signal/update input. Emitting them generically
+/// over Empty would require a combinatorial set of runtime functions or
+/// a `TypedPayload` adapter we don't ship yet. Reject the combination
+/// up front with a clear error so users wrap empty messages in a no-field
+/// struct (the canonical proto workaround).
+fn validate_empty_with_start(model: &ServiceModel) -> Result<()> {
+    for wf in &model.workflows {
+        for sref in &wf.attached_signals {
+            if !sref.start {
+                continue;
+            }
+            let Some(sig) = model
+                .signals
+                .iter()
+                .find(|s| s.rpc_method == sref.rpc_method)
+            else {
+                continue; // unresolved ref — caught earlier
+            };
+            if wf.input_type.is_empty || sig.input_type.is_empty {
+                bail!(
+                    "{}.{}: signal `{}` is marked start:true but {} input is google.protobuf.Empty; the with_start emit path doesn't support Empty payloads. Wrap the empty side in a single-field message and retry.",
+                    model.service,
+                    wf.rpc_method,
+                    sig.rpc_method,
+                    if wf.input_type.is_empty {
+                        "the workflow's"
+                    } else {
+                        "the signal's"
+                    },
+                );
+            }
+        }
+        for uref in &wf.attached_updates {
+            if !uref.start {
+                continue;
+            }
+            let Some(u) = model
+                .updates
+                .iter()
+                .find(|u| u.rpc_method == uref.rpc_method)
+            else {
+                continue;
+            };
+            if wf.input_type.is_empty || u.input_type.is_empty {
+                bail!(
+                    "{}.{}: update `{}` is marked start:true but {} input is google.protobuf.Empty; the with_start emit path doesn't support Empty payloads. Wrap the empty side in a single-field message and retry.",
+                    model.service,
+                    wf.rpc_method,
+                    u.rpc_method,
+                    if wf.input_type.is_empty {
+                        "the workflow's"
+                    } else {
+                        "the update's"
+                    },
+                );
+            }
+        }
+    }
+    Ok(())
 }
 
 fn validate_signal_outputs(model: &ServiceModel) -> Result<()> {

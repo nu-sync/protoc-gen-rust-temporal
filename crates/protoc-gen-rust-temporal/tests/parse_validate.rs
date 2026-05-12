@@ -195,6 +195,52 @@ fn workflow_only_render_golden() {
 }
 
 #[test]
+fn multiple_workflows_render_golden() {
+    assert_golden("multiple_workflows");
+}
+
+#[test]
+fn full_workflow_render_golden() {
+    assert_golden("full_workflow");
+}
+
+#[test]
+fn empty_input_workflow_render_golden() {
+    assert_golden("empty_input_workflow");
+}
+
+#[test]
+fn multiple_workflows_parses_correctly() {
+    let services = parse_and_validate("multiple_workflows");
+    let svc = &services[0];
+    assert_eq!(svc.workflows.len(), 2);
+    assert_eq!(svc.workflows[0].rpc_method, "Alpha");
+    assert_eq!(svc.workflows[1].rpc_method, "Beta");
+    // Alpha falls back to service-default task_queue, Beta overrides.
+    assert_eq!(svc.workflows[0].task_queue, None);
+    assert_eq!(svc.workflows[1].task_queue.as_deref(), Some("multi-beta"));
+    assert_eq!(svc.default_task_queue.as_deref(), Some("multi"));
+}
+
+#[test]
+fn full_workflow_emits_both_with_start_paths() {
+    let services = parse_and_validate("full_workflow");
+    let source = render::render(&services[0]);
+    assert!(
+        source.contains("pub async fn bootstrap_with_start("),
+        "missing signal-with-start emission"
+    );
+    assert!(
+        source.contains("pub async fn reconfigure_with_start("),
+        "missing update-with-start emission"
+    );
+    // Regular signal (without start: true) must still emit the handle method
+    // but NOT a free function.
+    assert!(source.contains("pub async fn cancel(&self,"));
+    assert!(!source.contains("pub async fn cancel_with_start("));
+}
+
+#[test]
 fn workflow_only_parses_and_validates() {
     let services = parse_and_validate("workflow_only");
     assert_eq!(services.len(), 1);

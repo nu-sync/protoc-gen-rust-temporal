@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package empty.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// Workflow with `google.protobuf.Empty` as both input and output. Pins the
+// emit path for the no-arg / no-result corner case. Phase 2 special-cases
+// Empty on the handle methods (result -> wait_result_unit,
+// signal -> signal_unit, etc.) but the *start* path currently emits
+// `&()` for empty workflow inputs, which won't compile against a runtime
+// whose `start_workflow_proto` requires `I: TemporalProtoMessage`.
+// Capturing the golden makes future Phase 6 cleanup visible in diffs.
+service NopService {
+  rpc Tick(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      task_queue: "nop"
+    };
+  }
+}

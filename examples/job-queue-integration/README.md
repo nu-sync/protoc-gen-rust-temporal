@@ -85,6 +85,19 @@ pub async fn start_workflow_proto<I: TemporalProtoMessage>(
     task_timeout: Option<std::time::Duration>,
 ) -> anyhow::Result<WorkflowHandle>;
 
+// Empty-input variant — emitted for workflows whose input is
+// `google.protobuf.Empty`. Same as above without the payload arg.
+pub async fn start_workflow_proto_empty(
+    client: &TemporalClient,
+    workflow_name: &'static str,
+    workflow_id: &str,
+    task_queue: &str,
+    id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    execution_timeout: Option<std::time::Duration>,
+    run_timeout: Option<std::time::Duration>,
+    task_timeout: Option<std::time::Duration>,
+) -> anyhow::Result<WorkflowHandle>;
+
 pub async fn wait_result_proto<O: TemporalProtoMessage>(
     handle: &WorkflowHandle,
 ) -> anyhow::Result<O>;

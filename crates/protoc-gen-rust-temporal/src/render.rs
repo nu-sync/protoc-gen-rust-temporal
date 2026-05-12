@@ -190,20 +190,29 @@ fn render_start_body(
         );
     }
 
-    let input_expr = if wf.input_type.is_empty {
-        "&()"
+    if wf.input_type.is_empty {
+        // Empty workflow input — route to a separate runtime function that
+        // skips the payload arg. Avoids `&()` not impl'ing
+        // TemporalProtoMessage at the call site.
+        let _ = writeln!(
+            out,
+            "{ind}let inner = temporal_runtime::start_workflow_proto_empty("
+        );
+        let _ = writeln!(out, "{ind}    &self.client,");
+        let _ = writeln!(out, "{ind}    {const_name},");
+        let _ = writeln!(out, "{ind}    &workflow_id,");
+        let _ = writeln!(out, "{ind}    &task_queue,");
     } else {
-        "&input"
-    };
-    let _ = writeln!(
-        out,
-        "{ind}let inner = temporal_runtime::start_workflow_proto("
-    );
-    let _ = writeln!(out, "{ind}    &self.client,");
-    let _ = writeln!(out, "{ind}    {const_name},");
-    let _ = writeln!(out, "{ind}    &workflow_id,");
-    let _ = writeln!(out, "{ind}    &task_queue,");
-    let _ = writeln!(out, "{ind}    {input_expr},");
+        let _ = writeln!(
+            out,
+            "{ind}let inner = temporal_runtime::start_workflow_proto("
+        );
+        let _ = writeln!(out, "{ind}    &self.client,");
+        let _ = writeln!(out, "{ind}    {const_name},");
+        let _ = writeln!(out, "{ind}    &workflow_id,");
+        let _ = writeln!(out, "{ind}    &task_queue,");
+        let _ = writeln!(out, "{ind}    &input,");
+    }
     let _ = writeln!(out, "{ind}    opts.id_reuse_policy,");
     let _ = writeln!(out, "{ind}    opts.execution_timeout,");
     let _ = writeln!(out, "{ind}    opts.run_timeout,");
