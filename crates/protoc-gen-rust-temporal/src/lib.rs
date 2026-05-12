@@ -18,7 +18,7 @@ use prost_types::compiler::code_generator_response::File;
 
 pub mod model;
 pub mod parse;
-mod render;
+pub mod render;
 pub mod validate;
 
 /// Generated prost types for cludden's `temporal.v1.*` annotation schema and
@@ -47,9 +47,25 @@ pub fn run_with_pool(
     files_to_generate: &HashSet<String>,
 ) -> Result<Vec<File>> {
     let services = parse::parse(pool, files_to_generate)?;
+    let mut files = Vec::with_capacity(services.len());
     for service in &services {
         validate::validate(service)?;
+        let content = render::render(service);
+        let name = output_file_name(service);
+        files.push(File {
+            name: Some(name),
+            insertion_point: None,
+            content: Some(content),
+            generated_code_info: None,
+        });
     }
-    // Phase 2 wires `render` in here.
-    Ok(Vec::new())
+    Ok(files)
+}
+
+/// Output path for the generated module file. Matches cludden's convention:
+/// the source proto's directory, with `_temporal.rs` appended to the file
+/// stem so consumer build scripts can `include!` it deterministically.
+fn output_file_name(svc: &crate::model::ServiceModel) -> String {
+    let stem = svc.source_file.trim_end_matches(".proto");
+    format!("{stem}_temporal.rs")
 }
