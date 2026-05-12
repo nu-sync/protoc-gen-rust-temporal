@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package wf.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// Exercises the Phase 3.0 workflows=true emit branch. Workflow has
+// attached signal, query, and update refs; the emit should produce
+// per-rpc name consts at module level alongside the existing client
+// surface.
+service OrderService {
+  rpc Run(OrderInput) returns (OrderOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "orders"
+      id: "order-{{ .Id }}"
+      signal: [{ ref: "Cancel" }]
+      query:  [{ ref: "Status" }]
+      update: [{ ref: "Confirm" }]
+    };
+  }
+
+  rpc Cancel(CancelInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc Confirm(ConfirmInput) returns (ConfirmOutput) {
+    option (temporal.v1.update) = {};
+  }
+}
+
+message OrderInput   { string id = 1; }
+message OrderOutput  { string status = 1; }
+message CancelInput  { string reason = 1; }
+message StatusOutput { string state = 1; }
+message ConfirmInput { string note = 1; }
+message ConfirmOutput { bool ok = 1; }

@@ -63,6 +63,17 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
         render_activities_trait(&mut out, svc);
     }
 
+    // Phase 3.0 (Option C): per-rpc signal/query/update name consts. Only
+    // emitted when `workflows=true` AND the service has at least one
+    // signal/query/update rpc. Lets consumer-side `#[workflow]` setups
+    // reference generated names instead of string literals; trait emit
+    // deferred to Phase 3.1.
+    if options.workflows
+        && (!svc.signals.is_empty() || !svc.queries.is_empty() || !svc.updates.is_empty())
+    {
+        render_workflow_handler_name_consts(&mut out, svc);
+    }
+
     let _ = writeln!(out, "}}");
     out
 }
@@ -901,6 +912,59 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         );
     }
     let _ = writeln!(out, "    }}");
+}
+
+/// Phase 3.0 (Option C from the spike findings): per-rpc signal/query/update
+/// name consts. Emitted under the existing service module so a consumer's
+/// hand-rolled `#[workflow]` impl can reference `generated::CANCEL_SIGNAL_NAME`
+/// instead of the string `"Cancel"`. Doesn't emit a workflow trait — that's
+/// deferred to Phase 3.1.
+fn render_workflow_handler_name_consts(out: &mut String, svc: &ServiceModel) {
+    use heck::ToShoutySnakeCase;
+
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "    // ── Workflow handler names ──────────────────────────────"
+    );
+    let _ = writeln!(
+        out,
+        "    // Phase 3.0 (workflows=true): per-rpc registration name consts."
+    );
+    let _ = writeln!(
+        out,
+        "    // Reference these from your hand-rolled #[workflow] setup so"
+    );
+    let _ = writeln!(
+        out,
+        "    // signal/query/update names stay in sync with the proto."
+    );
+    let _ = writeln!(out);
+
+    for sig in &svc.signals {
+        let ident = format!("{}_SIGNAL_NAME", sig.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {ident}: &str = \"{}\";",
+            sig.registered_name
+        );
+    }
+    for q in &svc.queries {
+        let ident = format!("{}_QUERY_NAME", q.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {ident}: &str = \"{}\";",
+            q.registered_name
+        );
+    }
+    for u in &svc.updates {
+        let ident = format!("{}_UPDATE_NAME", u.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {ident}: &str = \"{}\";",
+            u.registered_name
+        );
+    }
 }
 
 #[cfg(test)]

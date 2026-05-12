@@ -52,6 +52,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `temporalio-sdk`'s `#[activity_definitions]` macro via a 15-LOC adapter
   documented in the bridge crate README.
 
+### Phase 3.0 (workflows — name consts only)
+
+- **Phase 3.0 emit — workflow handler name consts** (opt-in via
+  `--rust-temporal_opt=workflows=true`). Plugin generates per-rpc
+  `<METHOD>_SIGNAL_NAME`, `<METHOD>_QUERY_NAME`, `<METHOD>_UPDATE_NAME`
+  consts at module level so consumer-side `#[workflow]` setups can reference
+  generated names instead of string literals. No workflow trait emitted
+  yet — that's deferred to Phase 3.1 pending an adapter-shape prototype.
+- **Phase 3 spike findings** at
+  `docs/superpowers/specs/2026-05-12-phase-3-spike-findings.md`. The
+  workflow trait's `run(self, ctx, input)` shape doesn't transfer cleanly to
+  the SDK's `WorkflowContext<W>` borrowed-self model; an end-to-end adapter
+  prototype is needed before the trait shape can be committed.
+
 ### Phase 2 notes
 
 - The `<Service>Activities` trait is **not dyn-compatible** (uses async-fn-in-

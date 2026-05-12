@@ -13,6 +13,12 @@ pub struct RenderOptions {
     /// Emit the per-service `<Service>Activities` async trait + per-activity
     /// name consts when the service has activity-annotated methods.
     pub activities: bool,
+    /// Emit per-rpc signal/query/update name consts at module level so the
+    /// consumer's hand-rolled `#[workflow]` setup can reference them instead
+    /// of string literals. Phase 3.0 (Option C from the spike findings) ships
+    /// name consts only; the workflow trait emit is deferred to Phase 3.1
+    /// pending an adapter prototype against the SDK's `#[workflow]` macro.
+    pub workflows: bool,
 }
 
 /// Parse the protoc plugin parameter string.
@@ -29,6 +35,7 @@ pub fn parse_options(s: &str) -> Result<RenderOptions> {
         let value = value.trim();
         match key {
             "activities" => out.activities = parse_bool(key, value)?,
+            "workflows" => out.workflows = parse_bool(key, value)?,
             other => return Err(anyhow!("unknown plugin option `{other}`")),
         }
     }

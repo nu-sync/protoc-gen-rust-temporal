@@ -285,6 +285,46 @@ fn activities_emit_off_by_default() {
 }
 
 #[test]
+fn workflows_emit_render_golden() {
+    assert_golden("workflows_emit");
+}
+
+#[test]
+fn workflows_emit_renders_handler_name_consts() {
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    assert!(
+        opts.workflows,
+        "fixture options.txt should enable workflows"
+    );
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const CANCEL_SIGNAL_NAME: &str = \"Cancel\";"),
+        "missing Cancel signal name const: {source}"
+    );
+    assert!(
+        source.contains("pub const STATUS_QUERY_NAME: &str = \"Status\";"),
+        "missing Status query name const"
+    );
+    assert!(
+        source.contains("pub const CONFIRM_UPDATE_NAME: &str = \"Confirm\";"),
+        "missing Confirm update name const"
+    );
+}
+
+#[test]
+fn workflows_emit_off_by_default() {
+    let services = parse_and_validate("workflows_emit");
+    let source = render::render(&services[0], &Default::default());
+    // Workflow-level consts always emit (existing behavior).
+    assert!(source.contains("pub const RUN_WORKFLOW_NAME"));
+    // The new per-rpc handler-name consts only emit when workflows=true.
+    assert!(!source.contains("CANCEL_SIGNAL_NAME"));
+    assert!(!source.contains("STATUS_QUERY_NAME"));
+    assert!(!source.contains("CONFIRM_UPDATE_NAME"));
+}
+
+#[test]
 fn activity_only_emits_no_workflow_surface() {
     let services = parse_and_validate("activity_only");
     let svc = &services[0];

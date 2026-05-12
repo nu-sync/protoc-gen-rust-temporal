@@ -115,6 +115,26 @@ The plugin does NOT emit a `register_<service>_activities(...)` function in
 Phase 2 — the consumer-side adapter pattern handles registration. This is the
 trait-only emit per the [Phase 2 spike findings](../docs/superpowers/specs/2026-05-12-phase-2-spike-findings.md).
 
+## Phase 3.0 — Workflow handler name consts (opt-in via `workflows=true`)
+
+When invoked with `--rust-temporal_opt=workflows=true`, the plugin emits, per
+service with at least one signal / query / update rpc:
+
+| Symbol | Shape |
+|---|---|
+| `<METHOD>_SIGNAL_NAME` | `pub const &'static str` per signal-annotated rpc. Value is the cross-language registration name (defaults to the rpc method name). |
+| `<METHOD>_QUERY_NAME` | Same shape, for query-annotated rpcs. |
+| `<METHOD>_UPDATE_NAME` | Same shape, for update-annotated rpcs. |
+
+No workflow trait is emitted in Phase 3.0 — that's the Option C cut from
+the [Phase 3 spike findings](../docs/superpowers/specs/2026-05-12-phase-3-spike-findings.md).
+Consumers wire their hand-rolled `#[workflow]` setup to reference these consts
+instead of string literals, keeping registration names in sync with the proto
+without an adapter prototype yet.
+
+Trait emit lands in Phase 3.1 once the consume-self adapter shape is
+verified end-to-end against `temporalio-sdk`'s `#[workflow]` macro.
+
 ## Future direction (post-1.0)
 
 The current contract is structural — the compiler tells consumers what
