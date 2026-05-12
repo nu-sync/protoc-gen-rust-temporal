@@ -17,6 +17,7 @@ Sibling project: [`nu-sync/protoc-gen-ts-temporal`](../protoc-gen-ts-temporal). 
 - Emitting worker-side code (workflow definitions, activity implementations). v1 emits a **client only**. Worker code is hand-written using the `temporalio-sdk` crate.
 - Bundling a Temporal SDK. We depend on `temporalio-client` + `prost` at runtime.
 - Supporting JSON payloads. Generated clients speak `binary/protobuf` and reject anything else (see Wire Format).
+- **Bloblang `id` templates.** cludden's Go plugin compiles `WorkflowOptions.id` as [Bloblang](https://docs.redpanda.com/redpanda-connect/guides/bloblang/about/) (e.g. `${! name.or("anonymous") }`) and evaluates the expression *at workflow-start time* against the input message. The Rust plugin only accepts the [Go template](https://pkg.go.dev/text/template) subset cludden's own annotation comments use — `{{ .FieldName }}` references on the input proto — and materialises them into a private `<rpc>_id(input: &Input) -> String` function at codegen time. Non-Bloblang `{{ .X }}` templates round-trip identically between Go and Rust; Bloblang-only expressions are rejected by `parse_id_template` with a clear "only field references are supported" error so users see the limitation at protoc time rather than getting silently-wrong workflow ids at runtime. If full Bloblang parity becomes necessary post-1.0, the path is to pull `bloblang-rs` (or compile to a Rust closure during codegen) rather than ship a runtime evaluator.
 
 ## Reference implementation
 

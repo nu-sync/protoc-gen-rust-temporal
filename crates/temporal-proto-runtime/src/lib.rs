@@ -134,4 +134,161 @@ mod tests {
     fn message_type_constant_is_fully_qualified() {
         assert_eq!(Sample::MESSAGE_TYPE, "test.v1.Sample");
     }
+
+    // Regression guards for the wire-format decode contract from
+    // `WIRE-FORMAT.md`: any payload that fails to carry exactly the
+    // `(binary/protobuf, <expected-type>, …)` triple must be rejected.
+    // These tests exercise the `sdk`-feature `TemporalDeserializable`
+    // impl directly so a future refactor can't silently drop one of the
+    // four required mismatch checks (missing/wrong encoding, missing/
+    // wrong messageType).
+    #[cfg(feature = "sdk")]
+    mod sdk_decode {
+        use super::Sample;
+        use crate::{ENCODING, TemporalProtoMessage, TypedProtoMessage};
+        use std::collections::HashMap;
+        use temporalio_common::data_converters::{
+            PayloadConversionError, PayloadConverter, SerializationContext,
+            SerializationContextData, TemporalDeserializable,
+        };
+        use temporalio_common::protos::temporal::api::common::v1::Payload;
+
+        // `from_payload` ignores the context, but we still need a real
+        // value to pass — using the `None` data variant + `UseWrappers`
+        // converter avoids dragging the serde converter graph into a
+        // wire-format-only test.
+        fn ctx() -> (SerializationContextData, PayloadConverter) {
+            (
+                SerializationContextData::None,
+                PayloadConverter::UseWrappers,
+            )
+        }
+        fn ctx_borrow<'a>(
+            data: &'a SerializationContextData,
+            conv: &'a PayloadConverter,
+        ) -> SerializationContext<'a> {
+            SerializationContext {
+                data,
+                converter: conv,
+            }
+        }
+
+        fn payload(encoding: Option<&[u8]>, message_type: Option<&[u8]>, data: Vec<u8>) -> Payload {
+            let mut metadata = HashMap::new();
+            if let Some(e) = encoding {
+                metadata.insert("encoding".to_string(), e.to_vec());
+            }
+            if let Some(m) = message_type {
+                metadata.insert("messageType".to_string(), m.to_vec());
+            }
+            Payload {
+                metadata,
+                data,
+                external_payloads: vec![],
+            }
+        }
+
+        #[test]
+        fn rejects_missing_encoding() {
+            let p = payload(None, Some(Sample::MESSAGE_TYPE.as_bytes()), vec![]);
+            let err = {
+                let (d, c) = ctx();
+                <TypedProtoMessage<Sample> as TemporalDeserializable>::from_payload(
+                    &ctx_borrow(&d, &c),
+                    p,
+                )
+            }
+            .unwrap_err();
+            assert!(matches!(err, PayloadConversionError::WrongEncoding));
+        }
+
+        #[test]
+        fn rejects_wrong_encoding() {
+            let p = payload(
+                Some(b"json/protobuf"),
+                Some(Sample::MESSAGE_TYPE.as_bytes()),
+                vec![],
+            );
+            let err = {
+                let (d, c) = ctx();
+                <TypedProtoMessage<Sample> as TemporalDeserializable>::from_payload(
+                    &ctx_borrow(&d, &c),
+                    p,
+                )
+            }
+            .unwrap_err();
+            assert!(matches!(err, PayloadConversionError::WrongEncoding));
+        }
+
+        #[test]
+        fn rejects_missing_message_type() {
+            let p = payload(Some(ENCODING.as_bytes()), None, vec![]);
+            let err = {
+                let (d, c) = ctx();
+                <TypedProtoMessage<Sample> as TemporalDeserializable>::from_payload(
+                    &ctx_borrow(&d, &c),
+                    p,
+                )
+            }
+            .unwrap_err();
+            assert!(matches!(err, PayloadConversionError::WrongEncoding));
+        }
+
+        #[test]
+        fn rejects_wrong_message_type() {
+            let p = payload(Some(ENCODING.as_bytes()), Some(b"some.other.Type"), vec![]);
+            let err = {
+                let (d, c) = ctx();
+                <TypedProtoMessage<Sample> as TemporalDeserializable>::from_payload(
+                    &ctx_borrow(&d, &c),
+                    p,
+                )
+            }
+            .unwrap_err();
+            assert!(matches!(err, PayloadConversionError::WrongEncoding));
+        }
+
+        #[test]
+        fn accepts_matching_triple() {
+            let original = Sample { name: "hi".into() };
+            let bytes = prost::Message::encode_to_vec(&original);
+            let p = payload(
+                Some(ENCODING.as_bytes()),
+                Some(Sample::MESSAGE_TYPE.as_bytes()),
+                bytes,
+            );
+            let decoded = {
+                let (d, c) = ctx();
+                <TypedProtoMessage<Sample> as TemporalDeserializable>::from_payload(
+                    &ctx_borrow(&d, &c),
+                    p,
+                )
+            }
+            .expect("matching triple must decode");
+            assert_eq!(decoded.into_inner(), original);
+        }
+
+        #[test]
+        fn surfaces_prost_decode_errors_as_encoding_error() {
+            let p = payload(
+                Some(ENCODING.as_bytes()),
+                Some(Sample::MESSAGE_TYPE.as_bytes()),
+                // Truncated varint — invalid wire bytes for the `name`
+                // string tag; prost::Message::decode will error.
+                vec![0x0A, 0xFF],
+            );
+            let err = {
+                let (d, c) = ctx();
+                <TypedProtoMessage<Sample> as TemporalDeserializable>::from_payload(
+                    &ctx_borrow(&d, &c),
+                    p,
+                )
+            }
+            .unwrap_err();
+            assert!(
+                matches!(err, PayloadConversionError::EncodingError(_)),
+                "decode failure should surface as EncodingError, got: {err:?}"
+            );
+        }
+    }
 }

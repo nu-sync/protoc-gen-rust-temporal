@@ -74,6 +74,33 @@ service that has at least one workflow.
 |---|---|---|
 | `eval_id_expression(template: &str) -> String` | 0.1.0 | Plugin now materialises the `id` template into a private `<rpc>_id(input: &Input) -> String` function alongside the start method. Generated code calls `<rpc>_id(&input)` directly; the runtime no longer sees the template string. Consumers can delete any local `eval_id_expression` they had. |
 
+## `Empty`-input contract for `_empty` variants
+
+The plugin emits `start_workflow_proto_empty` / `signal_unit` /
+`query_proto_empty` / `update_proto_empty` / `wait_result_unit` whenever a
+workflow / signal / query / update has a `google.protobuf.Empty` input or
+output. Those variants exist purely so the generated call site doesn't need
+to express `()` as a `TemporalProtoMessage` — they do **not** mean "send no
+payload."
+
+A correct bridge implementation MUST encode the wire-format triple from
+[`WIRE-FORMAT.md`](../WIRE-FORMAT.md) on every Empty boundary:
+
+| Slot                | Value                                |
+|---------------------|--------------------------------------|
+| `metadata.encoding` | `"binary/protobuf"`                  |
+| `metadata.messageType` | `"google.protobuf.Empty"`         |
+| `data`              | `[]` (Empty has zero wire bytes)     |
+
+This is what cludden's Go SDK `ProtoPayloadConverter` produces for an
+`Empty` message and what mixed-language workflows expect to see on the
+wire. Sending a payload-less `RawValue` (i.e. `vec![]` with no `Payload`
+inside) looks like "no input" on the wire, which silently breaks
+Go ↔ Rust interop. The default bridge crate
+(`temporal-proto-runtime-bridge`) implements this — see
+`encode_empty_payload` and the
+`empty_payload_carries_the_full_triple` regression test.
+
 ## Note on `Empty` inputs and `_with_start`
 
 `signal_with_start` and `update_with_start` free functions take **both**

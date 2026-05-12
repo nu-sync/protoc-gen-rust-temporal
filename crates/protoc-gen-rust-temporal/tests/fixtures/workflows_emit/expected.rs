@@ -27,7 +27,7 @@ pub mod wf_v1_order_service_temporal {
         const MESSAGE_TYPE: &'static str = "wf.v1.StatusOutput";
     }
 
-    pub const RUN_WORKFLOW_NAME: &str = "wf.v1.OrderService/Run";
+    pub const RUN_WORKFLOW_NAME: &str = "wf.v1.OrderService.Run";
     pub const RUN_TASK_QUEUE: &str = "orders";
 
     fn run_id(input: &OrderInput) -> String {
@@ -47,7 +47,7 @@ pub mod wf_v1_order_service_temporal {
             &self.client
         }
 
-        /// Start a new `wf.v1.OrderService/Run` workflow.
+        /// Start a new `wf.v1.OrderService.Run` workflow.
         pub async fn run(
             &self,
             input: OrderInput,
@@ -57,21 +57,25 @@ pub mod wf_v1_order_service_temporal {
                 run_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "orders".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(RunHandle { inner })
         }
 
-        /// Attach to a running `wf.v1.OrderService/Run` workflow by id.
+        /// Attach to a running `wf.v1.OrderService.Run` workflow by id.
         pub fn run_handle(&self, workflow_id: impl Into<String>) -> RunHandle {
             RunHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
@@ -104,19 +108,19 @@ pub mod wf_v1_order_service_temporal {
             temporal_runtime::wait_result_proto::<OrderOutput>(&self.inner).await
         }
 
-        /// Send the `Cancel` signal.
+        /// Send the `wf.v1.OrderService.Cancel` signal.
         pub async fn cancel(&self, input: CancelInput) -> Result<()> {
-            temporal_runtime::signal_proto(&self.inner, "Cancel", &input).await
+            temporal_runtime::signal_proto(&self.inner, "wf.v1.OrderService.Cancel", &input).await
         }
 
-        /// Run the `Status` query.
+        /// Run the `wf.v1.OrderService.Status` query.
         pub async fn status(&self) -> Result<StatusOutput> {
-            temporal_runtime::query_proto_empty::<StatusOutput>(&self.inner, "Status").await
+            temporal_runtime::query_proto_empty::<StatusOutput>(&self.inner, "wf.v1.OrderService.Status").await
         }
 
-        /// Run the `Confirm` update.
+        /// Run the `wf.v1.OrderService.Confirm` update.
         pub async fn confirm(&self, input: ConfirmInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ConfirmOutput> {
-            temporal_runtime::update_proto::<ConfirmInput, ConfirmOutput>(&self.inner, "Confirm", &input, wait_policy).await
+            temporal_runtime::update_proto::<ConfirmInput, ConfirmOutput>(&self.inner, "wf.v1.OrderService.Confirm", &input, wait_policy).await
         }
 
     }
@@ -127,7 +131,7 @@ pub mod wf_v1_order_service_temporal {
     // Reference these from your hand-rolled #[workflow] setup so
     // signal/query/update names stay in sync with the proto.
 
-    pub const CANCEL_SIGNAL_NAME: &str = "Cancel";
-    pub const STATUS_QUERY_NAME: &str = "Status";
-    pub const CONFIRM_UPDATE_NAME: &str = "Confirm";
+    pub const CANCEL_SIGNAL_NAME: &str = "wf.v1.OrderService.Cancel";
+    pub const STATUS_QUERY_NAME: &str = "wf.v1.OrderService.Status";
+    pub const CONFIRM_UPDATE_NAME: &str = "wf.v1.OrderService.Confirm";
 }

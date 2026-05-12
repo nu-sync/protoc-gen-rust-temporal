@@ -369,6 +369,8 @@ fn render_start_body(
         );
     }
 
+    render_default_resolutions(out, wf, ind);
+
     if wf.input_type.is_empty {
         // Empty workflow input — route to a separate runtime function that
         // skips the payload arg. Avoids `&()` not impl'ing
@@ -392,11 +394,46 @@ fn render_start_body(
         let _ = writeln!(out, "{ind}    &task_queue,");
         let _ = writeln!(out, "{ind}    &input,");
     }
-    let _ = writeln!(out, "{ind}    opts.id_reuse_policy,");
-    let _ = writeln!(out, "{ind}    opts.execution_timeout,");
-    let _ = writeln!(out, "{ind}    opts.run_timeout,");
-    let _ = writeln!(out, "{ind}    opts.task_timeout,");
+    let _ = writeln!(out, "{ind}    id_reuse_policy,");
+    let _ = writeln!(out, "{ind}    execution_timeout,");
+    let _ = writeln!(out, "{ind}    run_timeout,");
+    let _ = writeln!(out, "{ind}    task_timeout,");
     let _ = writeln!(out, "{ind}).await?;");
+}
+
+/// Emit `let <field> = opts.<field>.or(Some(<default>));` for every
+/// `WorkflowOptions` field that has a schema-declared default, and a
+/// plain rebind for the rest. This folds the proto-level defaults into
+/// the start call so callers who leave a `StartOptions` field as `None`
+/// still get the workflow's declared default — `default_*()` helpers
+/// on `StartOptions` are no longer enough on their own because the start
+/// path used `opts.<field>` directly.
+fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
+    let id_reuse_default = wf.id_reuse_policy.map(|p| {
+        format!(
+            "temporal_runtime::WorkflowIdReusePolicy::{}",
+            p.rust_variant()
+        )
+    });
+    let resolutions: [(&'static str, Option<String>); 4] = [
+        ("id_reuse_policy", id_reuse_default),
+        (
+            "execution_timeout",
+            wf.execution_timeout.map(duration_literal),
+        ),
+        ("run_timeout", wf.run_timeout.map(duration_literal)),
+        ("task_timeout", wf.task_timeout.map(duration_literal)),
+    ];
+    for (field, default) in resolutions {
+        match default {
+            Some(value) => {
+                let _ = writeln!(out, "{ind}let {field} = opts.{field}.or(Some({value}));");
+            }
+            None => {
+                let _ = writeln!(out, "{ind}let {field} = opts.{field};");
+            }
+        }
+    }
 }
 
 fn render_start_options(out: &mut String, wf: &WorkflowModel) {
@@ -702,6 +739,7 @@ fn render_signal_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
+    render_default_resolutions(out, wf, "        ");
     let _ = writeln!(
         out,
         "        let inner = temporal_runtime::signal_with_start_workflow_proto("
@@ -713,10 +751,10 @@ fn render_signal_with_start_fn(
     let _ = writeln!(out, "            {workflow_input_expr},");
     let _ = writeln!(out, "            \"{}\",", sig.registered_name);
     let _ = writeln!(out, "            {signal_input_expr},");
-    let _ = writeln!(out, "            opts.id_reuse_policy,");
-    let _ = writeln!(out, "            opts.execution_timeout,");
-    let _ = writeln!(out, "            opts.run_timeout,");
-    let _ = writeln!(out, "            opts.task_timeout,");
+    let _ = writeln!(out, "            id_reuse_policy,");
+    let _ = writeln!(out, "            execution_timeout,");
+    let _ = writeln!(out, "            run_timeout,");
+    let _ = writeln!(out, "            task_timeout,");
     let _ = writeln!(out, "        ).await?;");
     let _ = writeln!(out, "        Ok({handle_struct} {{ inner }})");
     let _ = writeln!(out, "    }}");
@@ -791,6 +829,7 @@ fn render_update_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
+    render_default_resolutions(out, wf, "        ");
     // Three explicit generics: workflow input (W), update input (U),
     // update output (O). All three appear in distinct argument positions
     // so they could in principle be inferred, but spelling them out keeps
@@ -810,10 +849,10 @@ fn render_update_with_start_fn(
     let _ = writeln!(out, "            \"{}\",", u.registered_name);
     let _ = writeln!(out, "            {update_input_expr},");
     let _ = writeln!(out, "            wait_policy,");
-    let _ = writeln!(out, "            opts.id_reuse_policy,");
-    let _ = writeln!(out, "            opts.execution_timeout,");
-    let _ = writeln!(out, "            opts.run_timeout,");
-    let _ = writeln!(out, "            opts.task_timeout,");
+    let _ = writeln!(out, "            id_reuse_policy,");
+    let _ = writeln!(out, "            execution_timeout,");
+    let _ = writeln!(out, "            run_timeout,");
+    let _ = writeln!(out, "            task_timeout,");
     let _ = writeln!(out, "        ).await?;");
     let _ = writeln!(
         out,

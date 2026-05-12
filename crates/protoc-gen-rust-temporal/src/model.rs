@@ -32,7 +32,10 @@ pub struct WorkflowModel {
     /// Rpc method name as declared in proto (e.g. `"RunJob"`).
     pub rpc_method: String,
     /// Cross-language workflow registration name. Defaults to
-    /// `"<package>.<Service>/<rpc>"` when `WorkflowOptions.name` is empty.
+    /// `"<package>.<Service>.<Rpc>"` (the proto method's fully-qualified
+    /// name) when `WorkflowOptions.name` is empty, matching
+    /// `cludden/protoc-gen-go-temporal`'s `method.Desc.FullName()` so
+    /// Rust + Go workers register against the same Temporal name.
     pub registered_name: String,
     pub input_type: ProtoType,
     pub output_type: ProtoType,
@@ -83,7 +86,10 @@ pub struct UpdateRef {
 #[derive(Debug)]
 pub struct SignalModel {
     pub rpc_method: String,
-    /// Cross-language signal name. Defaults to `rpc_method`.
+    /// Cross-language signal name. Defaults to the proto method's
+    /// fully-qualified name `"<package>.<Service>.<Rpc>"` when
+    /// `SignalOptions.name` is empty, matching the Go plugin's
+    /// `string(method.Desc.FullName())` default.
     pub registered_name: String,
     pub input_type: ProtoType,
     /// Must be `google.protobuf.Empty` — validated.

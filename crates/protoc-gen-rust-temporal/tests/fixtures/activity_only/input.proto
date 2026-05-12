@@ -8,18 +8,18 @@ import "temporal/v1/temporal.proto";
 // is validate-only in v1, so the rendered module should contain just the
 // generated client scaffolding (with no workflow methods, no constants,
 // no handles).
+//
+// Note: `temporal.v1.activity` runtime options (task_queue, timeouts,
+// retry policy, wait_for_cancellation) are rejected by parse.rs because
+// v1 doesn't yet honour them — the fixture sticks to bare `{}` so it
+// stays representative of the *supported* activity-emit surface.
 service WorkerOnlyService {
   rpc ProcessChunk(ChunkInput) returns (ChunkOutput) {
-    option (temporal.v1.activity) = {
-      task_queue: "workers"
-      start_to_close_timeout: { seconds: 60 }
-    };
+    option (temporal.v1.activity) = {};
   }
 
   rpc Cleanup(CleanupInput) returns (CleanupOutput) {
-    option (temporal.v1.activity) = {
-      task_queue: "workers"
-    };
+    option (temporal.v1.activity) = {};
   }
 }
 

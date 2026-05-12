@@ -78,6 +78,16 @@ pub async fn start_workflow_proto<I: TemporalProtoMessage>(
 /// Empty-input variant of [`start_workflow_proto`]. The plugin emits a call
 /// to this function when a workflow's input is `google.protobuf.Empty`,
 /// avoiding the need to express `()` as a `TemporalProtoMessage`.
+///
+/// **Wire-format contract:** even though there is no `&I` payload arg,
+/// the bridge MUST encode an `(encoding="binary/protobuf",
+/// messageType="google.protobuf.Empty", data=[])` payload onto the
+/// outgoing `StartWorkflow` request. See `docs/RUNTIME-API.md` →
+/// "Empty-input contract" and `WIRE-FORMAT.md` for why a payload-less
+/// `RawValue` is not equivalent and silently breaks mixed-language
+/// (Rust + Go) interop. The default bridge crate
+/// (`temporal-proto-runtime-bridge`) gets this right out of the box;
+/// hand-rolled bridges must too.
 #[allow(clippy::too_many_arguments)]
 pub async fn start_workflow_proto_empty(
     _client: &TemporalClient,

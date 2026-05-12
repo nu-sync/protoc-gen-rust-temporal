@@ -15,7 +15,7 @@ pub mod solo_v1_solo_service_temporal {
         const MESSAGE_TYPE: &'static str = "solo.v1.WorkOutput";
     }
 
-    pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService/DoWork";
+    pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService.DoWork";
     pub const DO_WORK_TASK_QUEUE: &str = "solo-tq";
 
     pub struct SoloServiceClient {
@@ -31,7 +31,7 @@ pub mod solo_v1_solo_service_temporal {
             &self.client
         }
 
-        /// Start a new `solo.v1.SoloService/DoWork` workflow.
+        /// Start a new `solo.v1.SoloService.DoWork` workflow.
         pub async fn do_work(
             &self,
             input: WorkInput,
@@ -41,21 +41,25 @@ pub mod solo_v1_solo_service_temporal {
                 temporal_runtime::random_workflow_id()
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "solo-tq".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(3600)));
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 DO_WORK_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(DoWorkHandle { inner })
         }
 
-        /// Attach to a running `solo.v1.SoloService/DoWork` workflow by id.
+        /// Attach to a running `solo.v1.SoloService.DoWork` workflow by id.
         pub fn do_work_handle(&self, workflow_id: impl Into<String>) -> DoWorkHandle {
             DoWorkHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),

@@ -183,6 +183,33 @@ fn decode_proto_payload<T: TemporalProtoMessage>(
     T::decode(payload.data.as_slice())
 }
 
+/// Build the `(binary/protobuf, google.protobuf.Empty, data=[])` payload
+/// triple that `WIRE-FORMAT.md` mandates for every `google.protobuf.Empty`
+/// input.
+///
+/// **Do NOT replace this with `RawValue::new(vec![])`.** Sending a
+/// payload-less `RawValue` looks like "no input" on the wire, which the
+/// Go SDK's `ProtoPayloadConverter` does not produce for an `Empty`
+/// message — cludden's Go workers and clients always emit the Empty
+/// triple even when the message has no fields. Mixed-language workflows
+/// would silently fail to encode/decode otherwise.
+const EMPTY_MESSAGE_TYPE: &str = "google.protobuf.Empty";
+fn encode_empty_payload() -> Payload {
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("encoding".to_string(), ENCODING.as_bytes().to_vec());
+    metadata.insert(
+        "messageType".to_string(),
+        EMPTY_MESSAGE_TYPE.as_bytes().to_vec(),
+    );
+    Payload {
+        metadata,
+        // google.protobuf.Empty has no fields — wire-bytes are empty by
+        // construction, NOT because the payload itself is missing.
+        data: vec![],
+        external_payloads: vec![],
+    }
+}
+
 // ── Client construction ────────────────────────────────────────────────
 
 /// Connect to a Temporal frontend and produce a [`TemporalClient`].
@@ -281,7 +308,7 @@ pub async fn start_workflow_proto_empty(
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
 ) -> Result<WorkflowHandle> {
-    let raw = RawValue::new(vec![]);
+    let raw = RawValue::new(vec![encode_empty_payload()]);
     let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
         .maybe_execution_timeout(execution_timeout)
         .maybe_run_timeout(run_timeout)
@@ -353,7 +380,7 @@ where
 
 /// Send a signal whose input is `google.protobuf.Empty`.
 pub async fn signal_unit(handle: &WorkflowHandle, name: &str) -> Result<()> {
-    let raw = RawValue::new(vec![]);
+    let raw = RawValue::new(vec![encode_empty_payload()]);
     handle
         .untyped()
         .signal(
@@ -397,7 +424,7 @@ pub async fn query_proto_empty<O>(handle: &WorkflowHandle, name: &str) -> Result
 where
     O: TemporalProtoMessage,
 {
-    let raw_input = RawValue::new(vec![]);
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
     let raw_out: RawValue = handle
         .untyped()
         .query(
@@ -468,7 +495,7 @@ pub async fn update_proto_empty<O>(
 where
     O: TemporalProtoMessage,
 {
-    let raw_input = RawValue::new(vec![]);
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
     let update_handle = handle
         .untyped()
         .start_update(
@@ -751,6 +778,32 @@ mod tests {
 
     impl TemporalProtoMessage for Sample {
         const MESSAGE_TYPE: &'static str = "test.v1.Sample";
+    }
+
+    // Regression guard for the wire-format contract: every empty-input
+    // bridge helper MUST emit the `(binary/protobuf, google.protobuf.Empty,
+    // data=[])` payload triple — *not* an absent payload. A previous
+    // implementation passed `RawValue::new(vec![])` and silently dropped
+    // the metadata, which broke mixed-language interop with cludden's Go
+    // workers (they always emit the Empty triple).
+    #[test]
+    fn empty_payload_carries_the_full_triple() {
+        let payload = encode_empty_payload();
+        assert_eq!(
+            payload.metadata.get("encoding").map(Vec::as_slice),
+            Some(b"binary/protobuf".as_slice()),
+            "encoding metadata must be present"
+        );
+        assert_eq!(
+            payload.metadata.get("messageType").map(Vec::as_slice),
+            Some(b"google.protobuf.Empty".as_slice()),
+            "messageType must name google.protobuf.Empty"
+        );
+        assert!(
+            payload.data.is_empty(),
+            "Empty's serialized wire bytes are zero length by construction"
+        );
+        assert!(payload.external_payloads.is_empty());
     }
 
     #[test]
