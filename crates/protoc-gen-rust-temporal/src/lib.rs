@@ -17,6 +17,7 @@ use prost_reflect::DescriptorPool;
 use prost_types::compiler::code_generator_response::File;
 
 pub mod model;
+pub mod options;
 pub mod parse;
 pub mod render;
 pub mod validate;
