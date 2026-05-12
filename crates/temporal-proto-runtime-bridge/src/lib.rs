@@ -27,7 +27,8 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use temporalio_client::{
-    Client, UntypedWorkflowHandle, WorkflowGetResultOptions, WorkflowStartOptions,
+    Client, UntypedQuery, UntypedSignal, UntypedWorkflowHandle, WorkflowGetResultOptions,
+    WorkflowQueryOptions, WorkflowSignalOptions, WorkflowStartOptions,
 };
 use temporalio_common::UntypedWorkflow;
 use temporalio_common::data_converters::RawValue;
@@ -308,6 +309,90 @@ pub async fn wait_result_unit(handle: &WorkflowHandle) -> Result<()> {
         .await
         .context("await workflow result")?;
     Ok(())
+}
+
+// ── Signals ────────────────────────────────────────────────────────────
+
+/// Send a typed signal with proto input.
+pub async fn signal_proto<I>(handle: &WorkflowHandle, name: &str, input: &I) -> Result<()>
+where
+    I: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw = RawValue::new(vec![payload]);
+    handle
+        .untyped()
+        .signal(
+            UntypedSignal::<UntypedWorkflow>::new(name),
+            raw,
+            WorkflowSignalOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("send signal {name}"))?;
+    Ok(())
+}
+
+/// Send a signal whose input is `google.protobuf.Empty`.
+pub async fn signal_unit(handle: &WorkflowHandle, name: &str) -> Result<()> {
+    let raw = RawValue::new(vec![]);
+    handle
+        .untyped()
+        .signal(
+            UntypedSignal::<UntypedWorkflow>::new(name),
+            raw,
+            WorkflowSignalOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("send signal {name}"))?;
+    Ok(())
+}
+
+// ── Queries ────────────────────────────────────────────────────────────
+
+/// Run a query with proto input and decode the typed response.
+pub async fn query_proto<I, O>(handle: &WorkflowHandle, name: &str, input: &I) -> Result<O>
+where
+    I: TemporalProtoMessage,
+    O: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw_input = RawValue::new(vec![payload]);
+    let raw_out: RawValue = handle
+        .untyped()
+        .query(
+            UntypedQuery::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowQueryOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("run query {name}"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("query returned no payloads")?;
+    decode_proto_payload::<O>(payload).context("decode query output")
+}
+
+/// Run a query whose input is `google.protobuf.Empty`.
+pub async fn query_proto_empty<O>(handle: &WorkflowHandle, name: &str) -> Result<O>
+where
+    O: TemporalProtoMessage,
+{
+    let raw_input = RawValue::new(vec![]);
+    let raw_out: RawValue = handle
+        .untyped()
+        .query(
+            UntypedQuery::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowQueryOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("run query {name}"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("query returned no payloads")?;
+    decode_proto_payload::<O>(payload).context("decode query output")
 }
 
 #[cfg(test)]
