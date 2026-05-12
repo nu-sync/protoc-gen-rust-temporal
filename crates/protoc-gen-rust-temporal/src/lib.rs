@@ -16,10 +16,10 @@ use anyhow::Result;
 use prost_reflect::DescriptorPool;
 use prost_types::compiler::code_generator_response::File;
 
-mod model;
-mod parse;
+pub mod model;
+pub mod parse;
 mod render;
-mod validate;
+pub mod validate;
 
 /// Generated prost types for cludden's `temporal.v1.*` annotation schema and
 /// the transitively-referenced `temporal.api.enums.v1` enums. The parser uses
@@ -43,9 +43,13 @@ pub mod temporal {
 /// `files_to_generate` is the set of `.proto` file paths the plugin was asked
 /// to emit code for (mirrors `CodeGeneratorRequest::file_to_generate`).
 pub fn run_with_pool(
-    _pool: &DescriptorPool,
-    _files_to_generate: &HashSet<String>,
+    pool: &DescriptorPool,
+    files_to_generate: &HashSet<String>,
 ) -> Result<Vec<File>> {
-    // Phase 0: no emit. Phase 1 wires up parse + validate + render.
+    let services = parse::parse(pool, files_to_generate)?;
+    for service in &services {
+        validate::validate(service)?;
+    }
+    // Phase 2 wires `render` in here.
     Ok(Vec::new())
 }
