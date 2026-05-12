@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-12
+
+Documentation-led release marking Phase 3 completion. No code or
+runtime-API changes; consumers on 0.1.0 do not need to migrate.
+
 ### Added
 - **Phase 3 — cross-language wire-format audit landed.** Harness in
   `compat-tests/` encodes four fixtures (scalar, `google.protobuf.Empty`,

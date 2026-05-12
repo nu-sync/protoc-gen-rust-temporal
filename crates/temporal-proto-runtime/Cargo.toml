@@ -1,6 +1,6 @@
 [package]
 name = "temporal-proto-runtime"
-version = "0.1.0"
+version = "0.1.1"
 description = "Runtime helpers for protoc-gen-rust-temporal generated clients (TypedProtoMessage wire-format glue)"
 edition.workspace = true
 rust-version.workspace = true
