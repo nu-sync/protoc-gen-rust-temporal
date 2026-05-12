@@ -14,7 +14,7 @@
 
 version: v1
 name: buf.build/nu-sync/rust-temporal
-plugin_version: v0.0.0
+plugin_version: v0.0.1
 
 source_url: https://github.com/nu-sync/protoc-gen-rust-temporal
 description: |
