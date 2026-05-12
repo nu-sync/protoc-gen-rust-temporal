@@ -27,8 +27,9 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use temporalio_client::{
-    Client, UntypedQuery, UntypedSignal, UntypedWorkflowHandle, WorkflowGetResultOptions,
-    WorkflowQueryOptions, WorkflowSignalOptions, WorkflowStartOptions,
+    Client, UntypedQuery, UntypedSignal, UntypedUpdate, UntypedWorkflowHandle,
+    WorkflowGetResultOptions, WorkflowQueryOptions, WorkflowSignalOptions, WorkflowStartOptions,
+    WorkflowStartUpdateOptions, WorkflowUpdateWaitStage,
 };
 use temporalio_common::UntypedWorkflow;
 use temporalio_common::data_converters::RawValue;
@@ -395,6 +396,83 @@ where
     decode_proto_payload::<O>(payload).context("decode query output")
 }
 
+// ── Updates ────────────────────────────────────────────────────────────
+
+fn wait_stage_from(policy: WaitPolicy) -> WorkflowUpdateWaitStage {
+    match policy {
+        WaitPolicy::Admitted => WorkflowUpdateWaitStage::Admitted,
+        WaitPolicy::Accepted => WorkflowUpdateWaitStage::Accepted,
+        WaitPolicy::Completed => WorkflowUpdateWaitStage::Completed,
+    }
+}
+
+/// Send an update with proto input and wait for the result.
+pub async fn update_proto<I, O>(
+    handle: &WorkflowHandle,
+    name: &str,
+    input: &I,
+    wait_policy: WaitPolicy,
+) -> Result<O>
+where
+    I: TemporalProtoMessage,
+    O: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw_input = RawValue::new(vec![payload]);
+    let update_handle = handle
+        .untyped()
+        .start_update(
+            UntypedUpdate::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowStartUpdateOptions::builder()
+                .wait_for_stage(wait_stage_from(wait_policy))
+                .build(),
+        )
+        .await
+        .with_context(|| format!("start update {name}"))?;
+    let raw_out: RawValue = update_handle
+        .get_result()
+        .await
+        .with_context(|| format!("await update {name} result"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("update returned no payloads")?;
+    decode_proto_payload::<O>(payload).context("decode update output")
+}
+
+/// Send an update whose input is `google.protobuf.Empty`.
+pub async fn update_proto_empty<O>(
+    handle: &WorkflowHandle,
+    name: &str,
+    wait_policy: WaitPolicy,
+) -> Result<O>
+where
+    O: TemporalProtoMessage,
+{
+    let raw_input = RawValue::new(vec![]);
+    let update_handle = handle
+        .untyped()
+        .start_update(
+            UntypedUpdate::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowStartUpdateOptions::builder()
+                .wait_for_stage(wait_stage_from(wait_policy))
+                .build(),
+        )
+        .await
+        .with_context(|| format!("start update {name}"))?;
+    let raw_out: RawValue = update_handle
+        .get_result()
+        .await
+        .with_context(|| format!("await update {name} result"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("update returned no payloads")?;
+    decode_proto_payload::<O>(payload).context("decode update output")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -467,5 +545,22 @@ mod tests {
         for &i in &[8usize, 13, 18, 23] {
             assert_eq!(chars[i], '-', "expected hyphen at position {i} in {a}");
         }
+    }
+
+    #[test]
+    fn wait_stage_from_maps_to_sdk_stage() {
+        use temporalio_client::WorkflowUpdateWaitStage as Stage;
+        assert!(matches!(
+            wait_stage_from(WaitPolicy::Admitted),
+            Stage::Admitted
+        ));
+        assert!(matches!(
+            wait_stage_from(WaitPolicy::Accepted),
+            Stage::Accepted
+        ));
+        assert!(matches!(
+            wait_stage_from(WaitPolicy::Completed),
+            Stage::Completed
+        ));
     }
 }
