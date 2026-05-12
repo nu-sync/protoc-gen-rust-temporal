@@ -707,6 +707,31 @@ where
     ))
 }
 
+// ── Worker primitives (feature = "worker") ─────────────────────────────
+
+/// Re-exports of the SDK worker primitives used by consumers wiring the
+/// plugin-generated `<Service>Activities` trait to a Temporal worker.
+///
+/// **Stability:** these are direct re-exports of `temporalio-sdk 0.4` types.
+/// When the SDK reshapes between minor versions, the bridge crate's minor
+/// version bumps with it (per the design's SDK pinning rule). Consumer code
+/// that touches these types may need adjustment at SDK upgrade time; the
+/// plugin's emit is unaffected.
+#[cfg(feature = "worker")]
+pub mod worker {
+    pub use temporalio_common::ActivityDefinition;
+    pub use temporalio_sdk::Worker;
+    pub use temporalio_sdk::activities::{
+        ActivityContext, ActivityDefinitions, ActivityError, ActivityImplementer,
+    };
+}
+
+/// Top-level re-export so plugin-emitted code can resolve
+/// `crate::temporal_runtime::ActivityContext` without thinking about the
+/// worker submodule. Required by Phase 2 `activities=true` emit.
+#[cfg(feature = "worker")]
+pub use worker::ActivityContext;
+
 #[cfg(test)]
 mod tests {
     use super::*;

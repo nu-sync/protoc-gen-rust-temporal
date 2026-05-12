@@ -18,8 +18,17 @@ prost = { workspace = true }
 temporal-proto-runtime = { path = "../temporal-proto-runtime", version = "0.1", features = ["sdk"] }
 temporalio-client = { workspace = true }
 temporalio-common = { workspace = true }
+temporalio-sdk = { workspace = true, optional = true }
 url = { workspace = true }
 uuid = { workspace = true }
+
+[features]
+default = []
+# Worker-side primitives for consumers writing activity/workflow workers
+# against the generated <Service>Activities / <Workflow> traits. Pulls in
+# temporalio-sdk = "=0.4.0". The plugin's client-side emit does NOT depend
+# on this feature.
+worker = ["dep:temporalio-sdk"]
 
 [dev-dependencies]
 tokio = { workspace = true }

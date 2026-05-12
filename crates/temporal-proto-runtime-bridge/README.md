@@ -31,6 +31,69 @@ facade — for tests, vendored SDKs, or custom transport. The
 [`examples/job-queue-integration`] crate ships a `todo!()`-bodied stub that's
 the canonical override reference.
 
+## Worker side (Phase 2+, opt-in)
+
+The plugin's worker emit (activities, workflows) gives you a typed trait per
+service. Wiring that trait to a Temporal `Worker` is currently a
+~15-LOC consumer-owned adapter against `temporalio-sdk`'s
+`#[activity_definitions]` macro. Enable the bridge crate's `worker`
+feature to get the SDK types re-exported alongside the client surface:
+
+```toml
+[dependencies]
+temporal-proto-runtime-bridge = { version = "0.1", features = ["worker"] }
+```
+
+Adapter pattern (for a service with `Process(ChunkInput) -> ChunkOutput`):
+
+```rust,ignore
+use std::sync::Arc;
+use anyhow::Result;
+use temporal_runtime::ActivityContext;
+use temporal_runtime::worker::Worker;
+
+// 1. Impl the plugin-generated trait on your state struct.
+pub struct MyImpl { /* shared deps here */ }
+
+impl crate::generated::ChunkServiceActivities for MyImpl {
+    fn process(
+        &self,
+        ctx: ActivityContext,
+        input: ChunkInput,
+    ) -> impl std::future::Future<Output = Result<ChunkOutput>> + Send {
+        async move {
+            // your activity body
+            Ok(ChunkOutput { hash: 42 })
+        }
+    }
+    // …one per activity in the trait…
+}
+
+// 2. Adapt via the SDK macro. This generates ActivityDefinition +
+//    ExecutableActivity impls per method, tied to `MyImpl`.
+#[temporalio_macros::activity_definitions]
+impl MyImpl {
+    #[activity(name = crate::generated::PROCESS_ACTIVITY_NAME)]
+    async fn process_adapter(
+        self: Arc<Self>,
+        ctx: ActivityContext,
+        input: ChunkInput,
+    ) -> Result<ChunkOutput> {
+        crate::generated::ChunkServiceActivities::process(&*self, ctx, input).await
+    }
+}
+
+// 3. Register on the worker.
+fn register(worker: &mut Worker, impl_: Arc<MyImpl>) {
+    worker.register_activities(impl_);
+}
+```
+
+Why the adapter exists: see `docs/superpowers/specs/2026-05-12-phase-2-spike-findings.md`.
+The SDK's static-dispatch activity registration needs per-impl marker types
+that the plugin can't generate at codegen time (the user's concrete type
+isn't visible). The adapter is the documented 15-LOC bridge.
+
 [`protoc-gen-rust-temporal`]: https://github.com/nu-sync/protoc-gen-rust-temporal
 [`docs/RUNTIME-API.md`]: ../../docs/RUNTIME-API.md
 [`examples/job-queue-integration`]: ../../examples/job-queue-integration
