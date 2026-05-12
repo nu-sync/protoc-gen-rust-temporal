@@ -239,6 +239,48 @@ fn activity_only_render_golden() {
 }
 
 #[test]
+fn activities_emit_render_golden() {
+    assert_golden("activities_emit");
+}
+
+#[test]
+fn activities_emit_renders_trait_and_consts() {
+    let services = parse_and_validate("activities_emit");
+    let opts = load_fixture_options("activities_emit");
+    assert!(opts.activities, "fixture options.txt should enable activities");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub trait ChunkServiceActivities: Send + Sync + 'static"),
+        "missing activities trait declaration: {source}"
+    );
+    assert!(
+        source.contains("pub const PROCESS_ACTIVITY_NAME"),
+        "missing Process name const"
+    );
+    assert!(
+        source.contains("pub const HEARTBEAT_ACTIVITY_NAME"),
+        "missing Heartbeat name const"
+    );
+    assert!(
+        source.contains("fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput)"),
+        "Process trait method signature wrong: {source}"
+    );
+    assert!(
+        source.contains("fn heartbeat(&self, ctx: temporal_runtime::ActivityContext, input: ())"),
+        "Heartbeat (Empty input) trait method signature wrong: {source}"
+    );
+}
+
+#[test]
+fn activities_emit_off_by_default() {
+    let services = parse_and_validate("activities_emit");
+    // No options.txt-driven flag, no activities trait.
+    let source = render::render(&services[0], &Default::default());
+    assert!(!source.contains("pub trait ChunkServiceActivities"));
+    assert!(!source.contains("_ACTIVITY_NAME"));
+}
+
+#[test]
 fn activity_only_emits_no_workflow_surface() {
     let services = parse_and_validate("activity_only");
     let svc = &services[0];

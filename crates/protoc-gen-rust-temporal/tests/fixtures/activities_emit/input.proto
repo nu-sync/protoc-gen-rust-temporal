@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package acts.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// Exercises the Phase 2 activities=true emit branch. Two activities
+// with different input/output shapes (one Empty input) on a service
+// that also has a workflow, to confirm activities + client emit
+// coexist in the same generated module.
+service ChunkService {
+  rpc RunBatch(BatchInput) returns (BatchOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "chunks"
+      id: "batch-{{ .Name }}"
+    };
+  }
+
+  rpc Process(ChunkInput) returns (ChunkOutput) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc Heartbeat(google.protobuf.Empty) returns (HeartbeatOutput) {
+    option (temporal.v1.activity) = {};
+  }
+}
+
+message BatchInput      { string name = 1; }
+message BatchOutput     { uint32 chunks_done = 1; }
+message ChunkInput      { bytes data = 1; }
+message ChunkOutput     { uint64 hash = 1; }
+message HeartbeatOutput { uint64 timestamp_ms = 1; }

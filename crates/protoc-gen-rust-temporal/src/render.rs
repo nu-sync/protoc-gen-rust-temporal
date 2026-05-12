@@ -26,7 +26,7 @@ use crate::model::{
 };
 
 /// Render the `<package>_<service>_temporal.rs` source for one service.
-pub fn render(svc: &ServiceModel, _options: &crate::options::RenderOptions) -> String {
+pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> String {
     let mut out = String::new();
     let mod_name = mod_name(svc);
     let proto_mod = proto_module_path(&svc.package);
@@ -55,6 +55,13 @@ pub fn render(svc: &ServiceModel, _options: &crate::options::RenderOptions) -> S
         render_handle(&mut out, svc, wf);
     }
     render_with_start_functions(&mut out, svc);
+
+    // Phase 2: activities trait + name consts. Only emitted when both the
+    // `activities=true` plugin option is set AND the service has at least
+    // one activity-annotated method.
+    if options.activities && !svc.activities.is_empty() {
+        render_activities_trait(&mut out, svc);
+    }
 
     let _ = writeln!(out, "}}");
     out
@@ -830,6 +837,70 @@ fn proto_module_path(package: &str) -> String {
         p.push_str(seg);
     }
     p
+}
+
+/// Phase 2: emit the per-service `<Service>Activities` async trait + per-
+/// activity name consts. Only invoked when `activities=true` AND the service
+/// has activity-annotated methods.
+///
+/// Trait method signature uses `impl Future<Output = Result<O>> + Send` rather
+/// than `async fn` so the `Send` bound is explicit (the consumer's adapter to
+/// `temporalio-sdk`'s `#[activity_definitions]` macro needs a Send future to
+/// satisfy `tokio::task::spawn`-style boundaries).
+fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
+    use heck::{ToShoutySnakeCase, ToSnakeCase};
+
+    let trait_name = format!("{}Activities", svc.service);
+
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "    // ── Activities ────────────────────────────────────────────"
+    );
+    let _ = writeln!(
+        out,
+        "    // Phase 2 (activities=true): typed trait + name consts. Wire to"
+    );
+    let _ = writeln!(
+        out,
+        "    // your worker via temporalio-sdk's #[activity_definitions] macro;"
+    );
+    let _ = writeln!(
+        out,
+        "    // see temporal-proto-runtime-bridge README for the adapter pattern."
+    );
+    let _ = writeln!(out);
+
+    for act in &svc.activities {
+        let const_ident = format!("{}_ACTIVITY_NAME", act.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {const_ident}: &str = \"{}\";",
+            act.registered_name
+        );
+    }
+
+    let _ = writeln!(out);
+
+    let _ = writeln!(out, "    pub trait {trait_name}: Send + Sync + 'static {{");
+    for act in &svc.activities {
+        let method_name = act.rpc_method.to_snake_case();
+        let input_ty = if act.input_type.is_empty {
+            "()".to_string()
+        } else {
+            act.input_type.rust_name().to_string()
+        };
+        let output_ty = if act.output_type.is_empty {
+            "()".to_string()
+        } else {
+            act.output_type.rust_name().to_string()
+        };
+        let _ = writeln!(
+            out,
+            "        fn {method_name}(&self, ctx: temporal_runtime::ActivityContext, input: {input_ty}) -> impl ::std::future::Future<Output = Result<{output_ty}>> + Send;"
+        );
+    }
+    let _ = writeln!(out, "    }}");
 }
 
 #[cfg(test)]
