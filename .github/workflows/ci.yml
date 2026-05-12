@@ -29,6 +29,10 @@ jobs:
         with:
           version: "27.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -41,6 +45,10 @@ jobs:
         with:
           version: "27.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --all-targets
 
@@ -55,6 +63,10 @@ jobs:
         with:
           version: "27.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo +1.88 build --workspace --all-targets
 
@@ -62,7 +74,9 @@ jobs:
     # Phase 1 exit criterion: prove the bridge crate is wire-compatible
     # with the plugin's emit. Builds examples/job-queue-integration with
     # --features bridge and clippy-cleans it. Default workspace builds
-    # remain SDK-free — this is the dedicated bridge gate.
+    # remain SDK-free — this is the dedicated bridge gate. Doesn't need
+    # buf because the example crate doesn't depend on the plugin (so the
+    # plugin's BSR-fetching build.rs never runs in this job).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
