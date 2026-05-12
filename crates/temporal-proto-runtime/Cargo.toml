@@ -1,0 +1,16 @@
+[package]
+name = "temporal-proto-runtime"
+version = "0.0.0"
+description = "Runtime helpers for protoc-gen-rust-temporal generated clients (TypedProtoMessage wire-format glue)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["temporal", "protobuf", "workflow"]
+categories = ["asynchronous"]
+
+[dependencies]
+prost = { workspace = true }

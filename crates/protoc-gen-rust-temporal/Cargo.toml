@@ -1,0 +1,30 @@
+[package]
+name = "protoc-gen-rust-temporal"
+version = "0.0.0"
+description = "protoc plugin that emits a typed Rust Temporal client from temporal.v1.* annotated services"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["temporal", "protobuf", "protoc", "codegen", "workflow"]
+categories = ["development-tools", "asynchronous"]
+
+[[bin]]
+name = "protoc-gen-rust-temporal"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+prost-reflect = { workspace = true }
+heck = { workspace = true }
+
+[build-dependencies]
+prost-build = { workspace = true }

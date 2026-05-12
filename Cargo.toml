@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/protoc-gen-rust-temporal",
+    "crates/temporal-proto-runtime",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/nu-sync/protoc-gen-rust-temporal"
+homepage = "https://github.com/nu-sync/protoc-gen-rust-temporal"
+authors = ["nu-sync contributors"]
+
+[workspace.dependencies]
+anyhow = "1"
+prost = "0.13"
+prost-types = "0.13"
+prost-reflect = "0.14"
+prost-build = "0.13"
+heck = "0.5"
