@@ -17,14 +17,27 @@ the [main SPEC](../../SPEC.md) migrates job-queue onto.
 job-queue-integration/
 ├── Cargo.toml
 ├── buf.gen.yaml
-├── build.rs                 # invokes `buf generate` for the plugin (optional)
 ├── proto/
 │   └── jobs/v1/
-│       └── jobs.proto       # cludden-annotated service
+│       └── jobs.proto                 # cludden-annotated service
 └── src/
-    ├── lib.rs               # `include!`s the plugin output + re-exports the runtime facade
-    ├── jobs/v1/mod.rs       # prost output for jobs.v1.* messages
-    └── temporal_runtime.rs  # consumer-supplied bridge — see below
+    ├── lib.rs                          # `include!`s the plugin output + re-exports the runtime facade
+    ├── temporal_runtime.rs             # consumer-supplied bridge — see below
+    └── gen/jobs/v1/jobs_temporal.rs    # checked-in plugin output (reference snapshot)
+```
+
+The `src/gen/jobs/v1/jobs_temporal.rs` file is **the actual output** of
+`protoc-gen-rust-temporal` against the example's `jobs.proto`. It is
+checked in as a documentation artifact so you can read what the plugin
+emits without running it. Regenerate with:
+
+```bash
+protoc \
+  --plugin=protoc-gen-rust-temporal=$(pwd)/target/debug/protoc-gen-rust-temporal \
+  -I examples/job-queue-integration/proto \
+  -I crates/protoc-gen-rust-temporal/proto \
+  --rust-temporal_out=examples/job-queue-integration/src/gen \
+  jobs/v1/jobs.proto
 ```
 
 ## buf.gen.yaml shape
