@@ -8,7 +8,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.0.1] — 2026-05-12
 
-First name-claiming release on crates.io and BSR.
+First name-claiming release on crates.io. BSR submission follows the
+new [curated-plugin path](docs/bsr-publish.md) (PR to `bufbuild/plugins`,
+not CLI push — the modern buf CLI no longer ships `buf alpha plugin
+push`).
 
 ### Added
 - Phase 4 scaffolding: `Dockerfile` for the BSR remote plugin,

@@ -8,10 +8,7 @@
 //!
 //! Phase 0 ships only the trait + wrapper + encoding constant. The
 //! `TemporalSerializable` / `TemporalDeserializable` impls against the
-//! Temporal Rust SDK land in Phase 2, gated behind a `sdk` cargo feature —
-//! the SDK pulls in `temporalio-sdk-core` which requires Rust ≥1.88, while
-//! this crate's MSRV is 1.85 so the trait + wrapper remain usable in
-//! lower-MSRV consumers (e.g. for offline encoding tests).
+//! Temporal Rust SDK land in Phase 2.
 //!
 //! [`protoc-gen-rust-temporal`]: https://github.com/nu-sync/protoc-gen-rust-temporal
 

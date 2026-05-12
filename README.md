@@ -34,21 +34,27 @@ mirroring the proto. The intended sibling is
 so one annotated proto produces Go, TS, and Rust clients with zero proto
 changes.
 
-## Quickstart (Phase 4)
+## Quickstart
+
+Install from crates.io:
+
+```bash
+cargo install protoc-gen-rust-temporal
+```
+
+Then point `buf.gen.yaml` at the local binary:
 
 ```yaml
 # buf.gen.yaml
 version: v2
 plugins:
-  - remote: buf.build/nu-sync/rust-temporal
+  - local: protoc-gen-rust-temporal
     out: src/gen
 ```
 
-Or install locally:
-
-```bash
-cargo install protoc-gen-rust-temporal
-```
+The BSR remote-plugin form (`remote: buf.build/nu-sync/rust-temporal`)
+will land once the [curated-plugin PR](docs/bsr-publish.md) is merged
+into `bufbuild/plugins`.
 
 ```yaml
 # buf.gen.yaml

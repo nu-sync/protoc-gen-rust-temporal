@@ -9,7 +9,7 @@ members = [
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 license = "MIT"
 repository = "https://github.com/nu-sync/protoc-gen-rust-temporal"
 homepage = "https://github.com/nu-sync/protoc-gen-rust-temporal"

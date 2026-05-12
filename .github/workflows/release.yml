@@ -122,20 +122,12 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish -p protoc-gen-rust-temporal --allow-dirty
 
-  bsr-push:
-    name: bsr remote plugin
-    needs: build
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref_name, '-') }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: bufbuild/buf-setup-action@v1
-        with:
-          buf_user: ${{ secrets.BSR_USER }}
-          buf_api_token: ${{ secrets.BSR_TOKEN }}
-      # `buf push` reads buf.plugin.yaml and the Dockerfile at the repo root.
-      - name: buf plugin push
-        env:
-          BUF_TOKEN: ${{ secrets.BSR_TOKEN }}
-        run: buf alpha plugin push --visibility public
+  # BSR remote-plugin distribution: removed.
+  #
+  # Modern buf (≥1.50) retired `buf alpha plugin push`. Self-hosted codegen
+  # plugins on BSR are no longer reachable via CLI — the official path is
+  # to submit a PR to https://github.com/bufbuild/plugins under
+  # `plugins/community/nu-sync/protoc-gen-rust-temporal/v<version>/` with
+  # the repo's Dockerfile + buf.plugin.yaml. The Buf team reviews, merges,
+  # builds the image, and hosts it as `buf.build/nu-sync/rust-temporal`.
+  # See docs/bsr-publish.md for the curated-plugin submission checklist.
