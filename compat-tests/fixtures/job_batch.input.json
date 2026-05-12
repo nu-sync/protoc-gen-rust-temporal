@@ -1,0 +1,8 @@
+{
+  "message_type": "jobs.v1.JobBatch",
+  "fields": {
+    "batch_id": "batch-42",
+    "input": { "name": "demo" },
+    "priority": 7
+  }
+}

@@ -6,10 +6,29 @@ syntax = "proto3";
 
 package jobs.v1;
 
+// Go output path for the audit's Go arm. Ignored by every other language.
+option go_package = "github.com/nu-sync/protoc-gen-rust-temporal/compat-tests/go/gen/jobs/v1;jobsv1";
+
 message JobInput {
   string name = 1;
 }
 
 message JobOutput {
   string id = 1;
+}
+
+// Nested-message fixture: a batch wraps an input plus scalar metadata.
+// Exercises field-number ordering across mixed scalar / message fields and
+// the prost-vs-Go encoding of an embedded sub-message.
+message JobBatch {
+  string batch_id = 1;
+  JobInput input = 2;
+  int32 priority = 3;
+}
+
+// Repeated-field fixture: a list of inputs. Exercises packed/unpacked wire
+// encoding of a repeated message field (proto3: repeated messages are always
+// length-delimited and non-packed).
+message JobList {
+  repeated JobInput items = 1;
 }

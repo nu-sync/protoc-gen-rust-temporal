@@ -1,15 +1,14 @@
 // compat-tests/go is the Go arm of the wire-format audit described in
 // ../README.md. It walks fixtures/*.input.json, reconstructs the typed
-// message via protoreflect, runs it through cludden's runtime converter,
-// and writes <fixture>.go.payload.json next to the input.
+// message, runs it through Temporal's standard ProtoPayloadConverter (which
+// is what cludden/protoc-gen-go-temporal's generated clients use to encode
+// workflow inputs), and writes <fixture>.go.payload.json next to the input.
 //
-// This file is committed as a *template*: the import of cludden's runtime
-// resolves only after `go mod init github.com/nu-sync/protoc-gen-rust-temporal/compat-tests/go`
-// (gated on the nu-sync org existing) and `go get
-// github.com/cludden/protoc-gen-go-temporal/pkg/temporalv1`.
-//
-//go:build audit
-// +build audit
+// We hit the Temporal SDK converter directly rather than importing cludden's
+// runtime because cludden's plugin does not override the converter chain —
+// its codec package (pkg/codec) is a codec-server adapter for the Temporal
+// UI, not the worker-side encoder. Auditing converter.NewProtoPayloadConverter
+// audits cludden's wire format.
 
 package main
 
@@ -19,25 +18,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
-	// Resolves once the module is wired up. See README for the bootstrap steps.
-	// "github.com/cludden/protoc-gen-go-temporal/pkg/runtime"
+	jobsv1 "github.com/nu-sync/protoc-gen-rust-temporal/compat-tests/go/gen/jobs/v1"
+	"go.temporal.io/sdk/converter"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
-	commonpb "go.temporal.io/api/common/v1"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type fixture struct {
-	MessageType string                 `json:"message_type"`
-	Fields      map[string]interface{} `json:"fields"`
+	MessageType string          `json:"message_type"`
+	Fields      json.RawMessage `json:"fields"`
 }
 
 type wirePayload struct {
 	Metadata map[string]string `json:"metadata"`
-	Data     string            `json:"data"` // base64
+	Data     string            `json:"data"`
 }
+
+// Force registration of the fixture types in the global proto registry.
+var _ = (*jobsv1.JobInput)(nil)
+var _ = (*emptypb.Empty)(nil)
 
 func main() {
 	if len(os.Args) < 2 || os.Args[1] != "generate" {
@@ -49,6 +54,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	sort.Strings(matches)
 	for _, in := range matches {
 		out := strings.TrimSuffix(in, ".input.json") + ".go.payload.json"
 		if err := process(in, out); err != nil {
@@ -58,6 +64,8 @@ func main() {
 		fmt.Printf("wrote %s\n", out)
 	}
 }
+
+var protoConv = converter.NewProtoPayloadConverter()
 
 func process(in, out string) error {
 	raw, err := os.ReadFile(in)
@@ -69,43 +77,44 @@ func process(in, out string) error {
 		return err
 	}
 
-	mt, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(f.MessageType))
-	if err != nil {
-		return fmt.Errorf("unknown message type %q: %w", f.MessageType, err)
-	}
-	msg := mt.New().Interface()
-	fieldsJSON, _ := json.Marshal(f.Fields)
-	if err := json.Unmarshal(fieldsJSON, msg); err != nil {
-		return fmt.Errorf("decode fields: %w", err)
-	}
-
-	wire, err := proto.Marshal(msg)
+	msg, err := newMessage(f.MessageType)
 	if err != nil {
 		return err
 	}
-
-	// The actual cludden converter call would look like:
-	//   payload, err := runtime.DefaultConverter.ToPayload(msg)
-	// We open-code the expected triple so the audit verifies our
-	// expectation about cludden's shape — if the converter diverges from
-	// this triple, the round-trip diff will surface it loudly.
-	p := &commonpb.Payload{
-		Metadata: map[string][]byte{
-			"encoding":    []byte("binary/protobuf"),
-			"messageType": []byte(f.MessageType),
-		},
-		Data: wire,
+	// protojson handles proto3 conventions (snake_case field names, empty
+	// defaults, nested messages) more faithfully than encoding/json. Treat
+	// an empty fields object as a zero-value message.
+	if len(f.Fields) > 0 && string(f.Fields) != "{}" && string(f.Fields) != "null" {
+		if err := protojson.Unmarshal(f.Fields, msg); err != nil {
+			return fmt.Errorf("protojson decode %s: %w", f.MessageType, err)
+		}
 	}
 
-	return writePayload(out, p)
+	payload, err := protoConv.ToPayload(msg)
+	if err != nil {
+		return fmt.Errorf("ToPayload %s: %w", f.MessageType, err)
+	}
+
+	return writePayload(out, payload)
 }
 
-func writePayload(path string, p *commonpb.Payload) error {
-	wire := wirePayload{
-		Metadata: make(map[string]string, len(p.Metadata)),
-		Data:     base64.StdEncoding.EncodeToString(p.Data),
+func newMessage(fqn string) (proto.Message, error) {
+	mt, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(fqn))
+	if err != nil {
+		return nil, fmt.Errorf("unknown message type %q: %w", fqn, err)
 	}
-	for k, v := range p.Metadata {
+	return mt.New().Interface(), nil
+}
+
+func writePayload(path string, p interface {
+	GetData() []byte
+	GetMetadata() map[string][]byte
+}) error {
+	wire := wirePayload{
+		Metadata: make(map[string]string),
+		Data:     base64.StdEncoding.EncodeToString(p.GetData()),
+	}
+	for k, v := range p.GetMetadata() {
 		wire.Metadata[k] = string(v)
 	}
 	out, err := json.MarshalIndent(wire, "", "  ")

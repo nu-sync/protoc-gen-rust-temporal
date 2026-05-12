@@ -57,3 +57,51 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo +1.88 build --workspace --all-targets
+
+  compat-audit:
+    # Cross-language wire-format audit. Runs both the Rust and Go arms of
+    # compat-tests/ and asserts the per-fixture Payload JSON diffs are empty.
+    # If this fails, our generated clients no longer speak the same triple as
+    # cludden/protoc-gen-go-temporal — interop is broken until it's resolved.
+    # See WIRE-FORMAT.md "Compatibility audit" for the contract being checked.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Install protoc-gen-go
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@v2
+      - name: Generate Go protobuf types
+        working-directory: compat-tests/go
+        run: |
+          mkdir -p gen
+          protoc --proto_path=../rust/proto \
+                 --go_out=gen \
+                 --go_opt=paths=source_relative \
+                 jobs/v1/jobs.proto
+      - name: Rust arm
+        run: cargo run -p compat-tests-rust -- generate
+      - name: Go arm
+        working-directory: compat-tests/go
+        run: go run . generate
+      - name: Diff payloads
+        run: |
+          set -e
+          status=0
+          for f in compat-tests/fixtures/*.rust.payload.json; do
+            g="${f%.rust.payload.json}.go.payload.json"
+            if ! diff -u "$f" "$g"; then
+              status=1
+            fi
+          done
+          exit $status

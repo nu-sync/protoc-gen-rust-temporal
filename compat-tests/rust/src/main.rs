@@ -25,6 +25,12 @@ impl TemporalProtoMessage for jobs_v1::JobInput {
 impl TemporalProtoMessage for jobs_v1::JobOutput {
     const MESSAGE_TYPE: &'static str = "jobs.v1.JobOutput";
 }
+impl TemporalProtoMessage for jobs_v1::JobBatch {
+    const MESSAGE_TYPE: &'static str = "jobs.v1.JobBatch";
+}
+impl TemporalProtoMessage for jobs_v1::JobList {
+    const MESSAGE_TYPE: &'static str = "jobs.v1.JobList";
+}
 
 #[derive(Deserialize)]
 struct Fixture {
@@ -93,6 +99,14 @@ fn encode_fixture(fx: &Fixture) -> Result<Vec<u8>> {
             let msg: jobs_v1::JobOutput = decode_fields(&fx.fields)?;
             Ok(msg.encode_to_vec())
         }
+        "jobs.v1.JobBatch" => {
+            let msg: jobs_v1::JobBatch = decode_fields(&fx.fields)?;
+            Ok(msg.encode_to_vec())
+        }
+        "jobs.v1.JobList" => {
+            let msg: jobs_v1::JobList = decode_fields(&fx.fields)?;
+            Ok(msg.encode_to_vec())
+        }
         "google.protobuf.Empty" => Ok(Vec::new()),
         other => bail!(
             "unknown fixture message_type {other:?}. Add an arm in compat-tests/rust/src/main.rs."
@@ -108,7 +122,7 @@ fn decode_fields<T: for<'de> Deserialize<'de>>(value: &serde_json::Value) -> Res
 // prost-build invocation doesn't add serde derives, so we re-implement
 // Deserialize for the two fixture types by hand. They're small.
 mod _serde_impls {
-    use super::jobs_v1::{JobInput, JobOutput};
+    use super::jobs_v1::{JobBatch, JobInput, JobList, JobOutput};
     use serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -121,6 +135,20 @@ mod _serde_impls {
         #[serde(default)]
         id: String,
     }
+    #[derive(Deserialize)]
+    struct JobBatchJson {
+        #[serde(default)]
+        batch_id: String,
+        #[serde(default)]
+        input: Option<JobInput>,
+        #[serde(default)]
+        priority: i32,
+    }
+    #[derive(Deserialize)]
+    struct JobListJson {
+        #[serde(default)]
+        items: Vec<JobInput>,
+    }
 
     impl<'de> serde::Deserialize<'de> for JobInput {
         fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -132,6 +160,22 @@ mod _serde_impls {
         fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
             let j = JobOutputJson::deserialize(d)?;
             Ok(JobOutput { id: j.id })
+        }
+    }
+    impl<'de> serde::Deserialize<'de> for JobBatch {
+        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let j = JobBatchJson::deserialize(d)?;
+            Ok(JobBatch {
+                batch_id: j.batch_id,
+                input: j.input,
+                priority: j.priority,
+            })
+        }
+    }
+    impl<'de> serde::Deserialize<'de> for JobList {
+        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let j = JobListJson::deserialize(d)?;
+            Ok(JobList { items: j.items })
         }
     }
 }

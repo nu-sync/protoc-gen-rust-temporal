@@ -75,7 +75,7 @@ data                = raw proto wire bytes
 - Missing `messageType` → decode fails. We never fall through to the SDK's JSON default.
 - Empty inputs use `google.protobuf.Empty` rather than null payloads — uniform decode path.
 
-**Compatibility check pending:** verify cludden's Go runtime emits the same triple. If it does, a Go client written against cludden's plugin can drive a Rust worker registered against ours and vice versa.
+**Compatibility audited (2026-05-12):** `compat-tests/` confirms cludden's Go runtime emits the same triple against `cludden/protoc-gen-go-temporal@v1.22.1` — a Go client written against cludden's plugin can drive a Rust worker registered against ours and vice versa. See `WIRE-FORMAT.md` for the result and the CI guard.
 
 ## Generated Rust surface (sketch)
 
@@ -244,9 +244,9 @@ Each phase ends with green CI and a tagged release.
 - Optionally factor `TypedProtoMessage<T>` into the `temporal-proto-runtime` helper crate.
 - Golden fixtures rebless.
 
-**Phase 3 — Wire-format audit**
-- Cross-test our emitted converter against cludden's Go runtime. Output: a `compat-tests/` directory with round-trip fixtures (proto value → Go-encoded bytes → Rust decode → assert equal, and vice versa).
-- Pin `WIRE-FORMAT.md`. If divergence found, document the choice and the upstream conversation explicitly.
+**Phase 3 — Wire-format audit** (completed 2026-05-12)
+- Cross-tested our emitted converter against `cludden/protoc-gen-go-temporal@v1.22.1` via `compat-tests/`. Four fixtures (scalar, `google.protobuf.Empty`, nested message, repeated message) produced byte-identical Payloads from both arms.
+- `WIRE-FORMAT.md` pinned at v1. `compat-audit` CI job regression-protects the result.
 
 **Phase 4 — Distribution**
 - crates.io publish + GitHub Release with prebuilt binaries (`cargo-dist` or hand-rolled).

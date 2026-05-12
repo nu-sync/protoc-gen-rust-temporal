@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Phase 3 — cross-language wire-format audit landed.** Harness in
+  `compat-tests/` encodes four fixtures (scalar, `google.protobuf.Empty`,
+  nested message, repeated message) from both Rust (`prost` +
+  `TypedProtoMessage`) and Go (`go.temporal.io/sdk/converter.ProtoPayloadConverter`
+  at the version `cludden/protoc-gen-go-temporal@v1.22.1` targets). All four
+  pairs diff byte-identical. CI job `compat-audit` regression-protects the
+  result. `WIRE-FORMAT.md` is updated from "pending audit" to "v1, audited
+  on 2026-05-12."
+
 ## [0.1.0] — 2026-05-12
 
 First polish pass driven by the job-queue migration (Phase 5 proper) —

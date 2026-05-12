@@ -1,0 +1,10 @@
+{
+  "message_type": "jobs.v1.JobList",
+  "fields": {
+    "items": [
+      { "name": "alpha" },
+      { "name": "beta" },
+      { "name": "" }
+    ]
+  }
+}
