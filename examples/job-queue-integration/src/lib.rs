@@ -29,7 +29,14 @@
 //! # Ok(()) }
 //! ```
 
+// Default build: stub temporal_runtime.rs with `todo!()` bodies — keeps the
+// workspace SDK-free in CI. With `--features bridge`, swap to the real
+// bridge crate; the plugin's generated emit calls `crate::temporal_runtime::*`
+// either way, so this single re-export is the only knob.
+#[cfg(not(feature = "bridge"))]
 pub mod temporal_runtime;
+#[cfg(feature = "bridge")]
+pub use temporal_proto_runtime_bridge as temporal_runtime;
 
 pub mod jobs {
     pub mod v1 {

@@ -105,6 +105,13 @@ verify-published:
     (cd "$work/example" && cargo build)
     echo "example builds against published temporal-proto-runtime"
 
+# Build the example against the bridge crate, proving the plugin's generated
+# emit + the bridge's facade impl are wire-compatible end-to-end. Phase 1
+# exit criterion (per docs/superpowers/specs/2026-05-12-cludden-parity-design.md).
+verify-bridge:
+    cargo check -p job-queue-integration-example --features bridge
+    cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
+
 # Remove build artifacts for the example only.
 clean:
     cargo clean -p job-queue-integration-example
