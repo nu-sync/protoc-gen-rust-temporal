@@ -24,6 +24,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install clippy
         run: rustup component add clippy
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -31,6 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --all-targets
 
@@ -40,5 +50,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install MSRV toolchain
         run: rustup toolchain install 1.85 --profile minimal
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo +1.85 build --workspace --all-targets
