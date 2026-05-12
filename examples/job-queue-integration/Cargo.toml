@@ -31,6 +31,9 @@ default = []
 # real SDK calls — used by `just verify-bridge` to prove the bridge is wire-
 # compatible with the plugin's generated emit.
 bridge = ["dep:temporal-proto-runtime-bridge"]
+# Phase 2: also pull the bridge's `worker` feature so we exercise the
+# SDK-worker re-exports through the example's dep tree. Implies `bridge`.
+worker = ["bridge", "temporal-proto-runtime-bridge/worker"]
 
 [build-dependencies]
 prost-build = { workspace = true }
