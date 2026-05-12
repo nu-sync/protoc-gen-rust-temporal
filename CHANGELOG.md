@@ -9,9 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - Phase 4 scaffolding: `Dockerfile` for the BSR remote plugin,
   `buf.plugin.yaml` manifest, GitHub Actions release workflow building
-  prebuilt binaries for `{x86_64,aarch64}-unknown-linux-gnu`,
-  `{x86_64,aarch64}-apple-darwin`, and `x86_64-pc-windows-msvc`, plus
-  publish hooks for crates.io and the BSR.
+  prebuilt binaries for `{x86_64,aarch64}-unknown-linux-gnu`, plus
+  publish hooks for crates.io and the BSR. macOS / Windows targets are
+  parked until downstream demand justifies the runner cost.
 
 ### Changed
 - _none_

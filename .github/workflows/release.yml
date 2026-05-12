@@ -17,6 +17,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # Linux-only matrix for now — macOS and Windows runners are several
+      # times more expensive per minute and aren't load-bearing for the
+      # BSR Remote Plugin (which is Linux-only by definition) or for the
+      # crates.io publish. Add darwin / windows entries back once the
+      # Linux build is stable and downstream demand justifies the cost.
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
@@ -27,15 +32,6 @@ jobs:
             archive: tar.gz
             linker: aarch64-linux-gnu-gcc
             cross_apt: gcc-aarch64-linux-gnu
-          - target: x86_64-apple-darwin
-            os: macos-13
-            archive: tar.gz
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            archive: tar.gz
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            archive: zip
     steps:
       - uses: actions/checkout@v4
 
@@ -72,20 +68,11 @@ jobs:
           version="${GITHUB_REF_NAME}"
           name="protoc-gen-rust-temporal-${version}-${{ matrix.target }}"
           mkdir -p "dist/$name"
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            cp "target/${{ matrix.target }}/release/protoc-gen-rust-temporal.exe" "dist/$name/"
-          else
-            cp "target/${{ matrix.target }}/release/protoc-gen-rust-temporal" "dist/$name/"
-          fi
+          cp "target/${{ matrix.target }}/release/protoc-gen-rust-temporal" "dist/$name/"
           cp README.md LICENSE WIRE-FORMAT.md "dist/$name/"
           cd dist
-          if [[ "${{ matrix.archive }}" == "zip" ]]; then
-            7z a "$name.zip" "$name"
-            echo "asset=dist/$name.zip" >> "$GITHUB_OUTPUT"
-          else
-            tar -czf "$name.tar.gz" "$name"
-            echo "asset=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
-          fi
+          tar -czf "$name.tar.gz" "$name"
+          echo "asset=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
