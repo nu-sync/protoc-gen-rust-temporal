@@ -76,6 +76,12 @@ pub struct WorkflowModel {
     /// (`name`, `usage`, `aliases`) are still not honoured — `ignore` is the
     /// only one threaded through today.
     pub cli_ignore: bool,
+    /// `WorkflowOptions.enable_eager_start`: ask the server for eager
+    /// workflow execution (the request can be satisfied by a local worker
+    /// if one has slots, cutting first-task latency). NOTE the upstream
+    /// SDK field name is `enable_eager_workflow_start`; we follow the SDK
+    /// naming inside generated code so it lines up with the bridge call.
+    pub enable_eager_workflow_start: bool,
     pub attached_signals: Vec<SignalRef>,
     pub attached_queries: Vec<QueryRef>,
     pub attached_updates: Vec<UpdateRef>,

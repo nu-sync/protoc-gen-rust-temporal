@@ -60,8 +60,8 @@ service that has at least one workflow.
 |---|---|---|---|
 | `attach_handle` | every workflow (used by `<rpc>_handle`) | `fn(client: &TemporalClient, workflow_id: String) -> WorkflowHandle` | 0.1.0 |
 | `random_workflow_id` | a workflow with **no** proto-level `id` template | `fn() -> String` | 0.1.0 |
-| `start_workflow_proto<I>` | workflow start, **non-Empty** input | `async fn(client, workflow_name: &'static str, workflow_id: &str, task_queue: &str, input: &I, id_reuse_policy: Option<WorkflowIdReusePolicy>, execution_timeout: Option<Duration>, run_timeout: Option<Duration>, task_timeout: Option<Duration>) -> Result<WorkflowHandle>` where `I: TemporalProtoMessage` | 0.1.0 |
-| `start_workflow_proto_empty` | workflow start, **Empty** input | same as above without the `input` arg or `I` generic | 0.1.0 |
+| `start_workflow_proto<I>` | workflow start, **non-Empty** input | `async fn(client, workflow_name: &'static str, workflow_id: &str, task_queue: &str, input: &I, id_reuse_policy: Option<WorkflowIdReusePolicy>, execution_timeout: Option<Duration>, run_timeout: Option<Duration>, task_timeout: Option<Duration>, enable_eager_workflow_start: bool) -> Result<WorkflowHandle>` where `I: TemporalProtoMessage` | 0.1.0; `enable_eager_workflow_start` arg added 0.1.2 |
+| `start_workflow_proto_empty` | workflow start, **Empty** input | same as above without the `input` arg or `I` generic | 0.1.0; `enable_eager_workflow_start` arg added 0.1.2 |
 | `wait_result_proto<O>` | workflow handle `result()`, **non-Empty** output | `async fn(&WorkflowHandle) -> Result<O>` where `O: TemporalProtoMessage` | 0.1.0 |
 | `wait_result_unit` | workflow handle `result()`, **Empty** output | `async fn(&WorkflowHandle) -> Result<()>` | 0.1.0 |
 | `signal_proto<I>` | `handle.<signal>()` for signals with **non-Empty** input | `async fn(&WorkflowHandle, signal_name: &str, input: &I) -> Result<()>` | 0.1.0 |

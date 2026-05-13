@@ -333,6 +333,7 @@ fn workflow_from(
         reject_unsupported_workflow_cli_options(cli, service_name, &rpc_method)?;
     }
     let cli_ignore = opts.cli.as_ref().is_some_and(|c| c.ignore);
+    let enable_eager_workflow_start = opts.enable_eager_start;
     Ok(WorkflowModel {
         rpc_method,
         registered_name,
@@ -346,6 +347,7 @@ fn workflow_from(
         task_timeout: opts.task_timeout.and_then(duration_from_proto),
         aliases: opts.aliases,
         cli_ignore,
+        enable_eager_workflow_start,
         attached_signals: opts
             .signal
             .into_iter()
@@ -486,9 +488,6 @@ fn reject_unsupported_workflow_options(
     }
     if opts.wait_for_cancellation {
         unsupported.push("wait_for_cancellation");
-    }
-    if opts.enable_eager_start {
-        unsupported.push("enable_eager_start");
     }
     if opts.versioning_behavior != 0 {
         unsupported.push("versioning_behavior");

@@ -421,6 +421,7 @@ fn render_start_body(
     let _ = writeln!(out, "{ind}    execution_timeout,");
     let _ = writeln!(out, "{ind}    run_timeout,");
     let _ = writeln!(out, "{ind}    task_timeout,");
+    let _ = writeln!(out, "{ind}    enable_eager_workflow_start,");
     let _ = writeln!(out, "{ind}).await?;");
 }
 
@@ -457,6 +458,17 @@ fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
             }
         }
     }
+    // Eager start has a `bool` upstream default, so we resolve to a bare
+    // bool (not Option) and bake the proto-declared default in directly.
+    let eager_default = if wf.enable_eager_workflow_start {
+        "true"
+    } else {
+        "false"
+    };
+    let _ = writeln!(
+        out,
+        "{ind}let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or({eager_default});",
+    );
 }
 
 fn render_start_options(out: &mut String, wf: &WorkflowModel) {
@@ -472,6 +484,13 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(out, "        pub execution_timeout: Option<Duration>,");
     let _ = writeln!(out, "        pub run_timeout: Option<Duration>,");
     let _ = writeln!(out, "        pub task_timeout: Option<Duration>,");
+    // `WorkflowOptions.enable_eager_start` resolves to this field when the
+    // call site leaves it `None`. `false` is the upstream default in
+    // `temporalio-client 0.4`'s `WorkflowStartOptions`.
+    let _ = writeln!(
+        out,
+        "        pub enable_eager_workflow_start: Option<bool>,"
+    );
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 

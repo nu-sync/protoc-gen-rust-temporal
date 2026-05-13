@@ -42,7 +42,7 @@ issue or add the row. The diagnostic-coverage test
 | `parent_close_policy` | rejected | R5. |
 | `workflow_id_conflict_policy` | rejected | R5. |
 | `wait_for_cancellation` | rejected | R5. |
-| `enable_eager_start` | rejected | R5. |
+| `enable_eager_start` | supported | Plumbed through to `WorkflowStartOptions.enable_eager_workflow_start`. The generated `<Workflow>StartOptions` exposes `enable_eager_workflow_start: Option<bool>` so call sites can override the proto-declared default. |
 | `versioning_behavior` | rejected | R5. |
 | `patches` | rejected | R8. |
 | `namespace` | rejected | Deprecated in the schema; same rationale as `ServiceOptions.namespace`. |

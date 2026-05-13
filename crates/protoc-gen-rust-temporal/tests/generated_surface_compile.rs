@@ -307,6 +307,7 @@ pub mod temporal_runtime {
         _execution_timeout: Option<std::time::Duration>,
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
+        _enable_eager_workflow_start: bool,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }
@@ -320,6 +321,7 @@ pub mod temporal_runtime {
         _execution_timeout: Option<std::time::Duration>,
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
+        _enable_eager_workflow_start: bool,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }

@@ -130,6 +130,14 @@ Progress:
   field named in a `reject_unsupported_*` list appears in the doc so the
   table cannot drift from the rejection rules. `CLAUDE.md` now requires
   reading it before adding or relaxing a rejection.
+- 2026-05-13 (first R5 option): `WorkflowOptions.enable_eager_start` is now
+  honoured — moves from rejected to supported, plumbed through to
+  `WorkflowStartOptions.enable_eager_workflow_start` in the bridge.
+  `<Workflow>StartOptions` gains `enable_eager_workflow_start: Option<bool>`
+  so callers can override the proto-declared default. Bridge signatures for
+  `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
+  the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
+  positive path and the false baseline; example regenerated.
 - 2026-05-13 (R6 down-payment): `WorkflowOptions.cli.ignore` is now honoured.
   Setting `cli: { ignore: true }` filters the workflow out of the `cli=true`
   scaffold (no `Start<Wf>`/`Attach<Wf>` subcommand variant or Args struct
@@ -330,7 +338,7 @@ toward majority parity.
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
 | Activity calls from workflows | Not generated. | R3 |
 | Client cancel/terminate/top-level operations | Not generated. | R4 |
-| Workflow retry/search/versioning options | Rejected or not emitted depending on field. | R5 |
+| Workflow retry/search/versioning options | Most still rejected; `enable_eager_start` shipped 2026-05-13. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |
 | Update ids/default wait stage | Not fully emitted. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |

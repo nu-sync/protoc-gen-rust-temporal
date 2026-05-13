@@ -280,6 +280,7 @@ pub async fn start_workflow_proto<I>(
     execution_timeout: Option<Duration>,
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
+    enable_eager_workflow_start: bool,
 ) -> Result<WorkflowHandle>
 where
     I: TemporalProtoMessage,
@@ -289,7 +290,8 @@ where
     let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
         .maybe_execution_timeout(execution_timeout)
         .maybe_run_timeout(run_timeout)
-        .maybe_task_timeout(task_timeout);
+        .maybe_task_timeout(task_timeout)
+        .enable_eager_workflow_start(enable_eager_workflow_start);
     // bon builders use typestate — id_reuse_policy has #[builder(default)],
     // so we only call the setter when present.
     let options = match id_reuse_policy {
@@ -323,12 +325,14 @@ pub async fn start_workflow_proto_empty(
     execution_timeout: Option<Duration>,
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
+    enable_eager_workflow_start: bool,
 ) -> Result<WorkflowHandle> {
     let raw = RawValue::new(vec![encode_empty_payload()]);
     let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
         .maybe_execution_timeout(execution_timeout)
         .maybe_run_timeout(run_timeout)
-        .maybe_task_timeout(task_timeout);
+        .maybe_task_timeout(task_timeout)
+        .enable_eager_workflow_start(enable_eager_workflow_start);
     let options = match id_reuse_policy {
         Some(p) => base.id_reuse_policy(p.into()).build(),
         None => base.build(),

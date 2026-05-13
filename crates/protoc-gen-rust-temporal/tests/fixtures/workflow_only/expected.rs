@@ -45,6 +45,7 @@ pub mod solo_v1_solo_service_temporal {
             let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(3600)));
             let run_timeout = opts.run_timeout;
             let task_timeout = opts.task_timeout;
+            let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 DO_WORK_WORKFLOW_NAME,
@@ -55,6 +56,7 @@ pub mod solo_v1_solo_service_temporal {
                 execution_timeout,
                 run_timeout,
                 task_timeout,
+                enable_eager_workflow_start,
             ).await?;
             Ok(DoWorkHandle { inner })
         }
@@ -76,6 +78,7 @@ pub mod solo_v1_solo_service_temporal {
         pub execution_timeout: Option<Duration>,
         pub run_timeout: Option<Duration>,
         pub task_timeout: Option<Duration>,
+        pub enable_eager_workflow_start: Option<bool>,
     }
 
     impl DoWorkStartOptions {

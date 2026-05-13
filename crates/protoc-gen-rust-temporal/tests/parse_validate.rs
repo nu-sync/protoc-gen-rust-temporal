@@ -1014,7 +1014,7 @@ fn workflow_with_multiple_unsupported_fields_lists_all() {
               task_queue:           "tq"
               search_attributes:    "string.foo = \"bar\""
               wait_for_cancellation: true
-              enable_eager_start:    true
+              versioning_behavior:   VERSIONING_BEHAVIOR_PINNED
             };
           }
         }
@@ -1028,7 +1028,7 @@ fn workflow_with_multiple_unsupported_fields_lists_all() {
     for field in [
         "search_attributes",
         "wait_for_cancellation",
-        "enable_eager_start",
+        "versioning_behavior",
     ] {
         assert!(
             err.contains(field),
@@ -1495,6 +1495,74 @@ fn unsupported_field_support_status_table() {
             case.label,
         );
     }
+}
+
+/// `WorkflowOptions.enable_eager_start` is the first runtime-affecting
+/// workflow option to graduate from "rejected" to "supported". It plumbs
+/// straight through to the bridge's `WorkflowStartOptions.enable_eager_workflow_start`
+/// so the server can satisfy the start request from a local worker.
+/// The generated code must:
+///  1. Carry an `enable_eager_workflow_start: Option<bool>` on StartOptions.
+///  2. Resolve the caller's override against the proto-declared default.
+///  3. Forward the resolved bool to `start_workflow_proto`.
+#[test]
+fn enable_eager_start_flows_into_start_options() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package eager.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:         "tq"
+              enable_eager_start:  true
+            };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    assert!(
+        svc.workflows[0].enable_eager_workflow_start,
+        "model must carry the proto-declared default"
+    );
+
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains("pub enable_eager_workflow_start: Option<bool>,"),
+        "StartOptions must expose the field for caller overrides: {source}"
+    );
+    assert!(
+        source.contains(
+            "let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(true);"
+        ),
+        "start path must fold the proto default in (true here): {source}"
+    );
+    assert!(
+        source.contains("enable_eager_workflow_start,"),
+        "resolved value must be passed to the runtime bridge call: {source}"
+    );
+}
+
+#[test]
+fn enable_eager_start_defaults_to_false_when_proto_omits_it() {
+    let services = parse_and_validate("minimal_workflow");
+    assert!(
+        !services[0].workflows[0].enable_eager_workflow_start,
+        "absent proto field must produce model `false`, matching the SDK default"
+    );
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);"
+        ),
+        "start path should baseline to false: {source}"
+    );
 }
 
 /// `docs/SUPPORT-STATUS.md` is the published index of every annotation

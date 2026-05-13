@@ -57,6 +57,7 @@ pub mod multi_v1_multi_service_temporal {
             let execution_timeout = opts.execution_timeout;
             let run_timeout = opts.run_timeout;
             let task_timeout = opts.task_timeout;
+            let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 ALPHA_WORKFLOW_NAME,
@@ -67,6 +68,7 @@ pub mod multi_v1_multi_service_temporal {
                 execution_timeout,
                 run_timeout,
                 task_timeout,
+                enable_eager_workflow_start,
             ).await?;
             Ok(AlphaHandle { inner })
         }
@@ -92,6 +94,7 @@ pub mod multi_v1_multi_service_temporal {
             let execution_timeout = opts.execution_timeout;
             let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(900)));
             let task_timeout = opts.task_timeout;
+            let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 BETA_WORKFLOW_NAME,
@@ -102,6 +105,7 @@ pub mod multi_v1_multi_service_temporal {
                 execution_timeout,
                 run_timeout,
                 task_timeout,
+                enable_eager_workflow_start,
             ).await?;
             Ok(BetaHandle { inner })
         }
@@ -123,6 +127,7 @@ pub mod multi_v1_multi_service_temporal {
         pub execution_timeout: Option<Duration>,
         pub run_timeout: Option<Duration>,
         pub task_timeout: Option<Duration>,
+        pub enable_eager_workflow_start: Option<bool>,
     }
 
     pub struct AlphaHandle {
@@ -149,6 +154,7 @@ pub mod multi_v1_multi_service_temporal {
         pub execution_timeout: Option<Duration>,
         pub run_timeout: Option<Duration>,
         pub task_timeout: Option<Duration>,
+        pub enable_eager_workflow_start: Option<bool>,
     }
 
     impl BetaStartOptions {

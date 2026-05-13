@@ -63,6 +63,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
             let execution_timeout = opts.execution_timeout;
             let run_timeout = opts.run_timeout;
             let task_timeout = opts.task_timeout;
+            let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_WORKFLOW_NAME,
@@ -73,6 +74,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
                 execution_timeout,
                 run_timeout,
                 task_timeout,
+                enable_eager_workflow_start,
             ).await?;
             Ok(RunHandle { inner })
         }
@@ -94,6 +96,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub execution_timeout: Option<Duration>,
         pub run_timeout: Option<Duration>,
         pub task_timeout: Option<Duration>,
+        pub enable_eager_workflow_start: Option<bool>,
     }
 
     pub struct RunHandle {
