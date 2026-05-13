@@ -1620,6 +1620,84 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn workflow_alias_collision_across_workflows_fails_validation() {
+    // Two workflows on the same service can't share a Temporal name —
+    // would register both under the same name and route to either at
+    // runtime. Either alias-vs-alias overlap or alias-vs-registered_name
+    // overlap must be refused.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wf_alias_cross.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              aliases:    ["shared"]
+            };
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              aliases:    ["shared"]
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("cross-workflow alias collision must be rejected by validate")
+        .to_string();
+    assert!(
+        err.contains("alias `shared`") && err.contains("Alpha") && err.contains("Beta"),
+        "expected cross-workflow alias-collision diagnostic naming both workflows + alias, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_alias_collides_with_other_workflows_registered_name_fails_validation() {
+    // An alias on workflow B that equals workflow A's `registered_name`
+    // is the same duplicate-registration footgun.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wf_alias_vs_name.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              name:       "fixed-name"
+            };
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              aliases:    ["fixed-name"]
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("alias-vs-other-name collision must be rejected by validate")
+        .to_string();
+    assert!(
+        err.contains("alias `fixed-name`") && err.contains("Beta") && err.contains("Alpha"),
+        "expected alias-vs-name diagnostic naming both workflows + value, got: {err}"
+    );
+}
+
+#[test]
 fn workflow_alias_collision_with_registered_name_fails_at_parse() {
     // Catch a real bug: a workflow alias that equals the workflow's
     // own registered name would attempt to register the same workflow

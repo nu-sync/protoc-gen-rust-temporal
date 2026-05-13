@@ -12,9 +12,53 @@ use crate::model::ServiceModel;
 
 pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) -> Result<()> {
     reject_rpc_collisions(model)?;
+    reject_workflow_alias_collisions_across_workflows(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
+    Ok(())
+}
+
+/// Reject when two workflows on the same service register under the
+/// same Temporal name via overlapping `aliases` — or when an alias on
+/// one workflow collides with another workflow's `registered_name`.
+/// Either case attempts duplicate registration at runtime, so refuse
+/// at codegen. Self-collisions and intra-list duplicates are caught
+/// earlier in parse (`workflow_from`).
+fn reject_workflow_alias_collisions_across_workflows(model: &ServiceModel) -> Result<()> {
+    // Map every Temporal-registered name (registered_name + each alias)
+    // back to the workflow that registers it. First insertion wins; the
+    // second insertion is the collision.
+    let mut owners: HashMap<&str, (&str, &'static str)> = HashMap::new();
+    for wf in &model.workflows {
+        if let Some((prior_owner, prior_kind)) = owners.insert(
+            wf.registered_name.as_str(),
+            (wf.rpc_method.as_str(), "name"),
+        ) {
+            // Two workflows declared the same `registered_name` (either
+            // both omitted `name` and snake-case'd into the same default,
+            // or set the same explicit `name`).
+            bail!(
+                "workflow alias collision in `{service}`: both `{owner_a}` and `{owner_b}` register the Temporal name `{name}` as their {prior_kind}; rename one workflow or remove the duplicate",
+                service = model.service,
+                owner_a = prior_owner,
+                owner_b = wf.rpc_method,
+                name = wf.registered_name,
+            );
+        }
+        for alias in &wf.aliases {
+            if let Some((prior_owner, prior_kind)) =
+                owners.insert(alias.as_str(), (wf.rpc_method.as_str(), "alias"))
+            {
+                bail!(
+                    "workflow alias collision in `{service}`: alias `{alias}` on `{owner_b}` collides with the {prior_kind} of `{owner_a}`; aliases must be unique across all workflows on the service",
+                    service = model.service,
+                    owner_a = prior_owner,
+                    owner_b = wf.rpc_method,
+                );
+            }
+        }
+    }
     Ok(())
 }
 

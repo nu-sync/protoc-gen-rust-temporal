@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — cross-workflow alias collision validation):
+  extends the per-workflow alias-collision parse check (previous
+  commit) to a service-wide validation pass: two workflows on the
+  same service cannot register the same Temporal name via overlapping
+  `aliases` or via an alias colliding with another workflow's
+  `registered_name`. Either case attempts duplicate registration at
+  runtime, so refuse at codegen. New `reject_workflow_alias_collisions_
+  across_workflows` runs in `validate.rs` after the per-workflow parse
+  check; diagnostics name both offending workflows + the colliding
+  literal. Two new positive parse_validate tests pin both collision
+  shapes (alias-vs-alias and alias-vs-other-name). 129 parse_validate
+  tests total. No bridge signature change; no fixture goldens touched.
 - 2026-05-13 (R1 — workflow alias collision validation):
   `(temporal.v1.workflow).aliases` now rejects two real footguns at
   parse: (1) an alias that equals the workflow's own `registered_name`
