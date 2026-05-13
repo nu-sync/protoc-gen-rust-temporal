@@ -130,6 +130,13 @@ Progress:
   field named in a `reject_unsupported_*` list appears in the doc so the
   table cannot drift from the rejection rules. `CLAUDE.md` now requires
   reading it before adding or relaxing a rejection.
+- 2026-05-13 (R6 down-payment): `WorkflowOptions.cli.ignore` is now honoured.
+  Setting `cli: { ignore: true }` filters the workflow out of the `cli=true`
+  scaffold (no `Start<Wf>`/`Attach<Wf>` subcommand variant or Args struct
+  emitted), and the whole CLI module is suppressed when every workflow opts
+  out. Sibling `cli.name`/`cli.usage`/`cli.aliases` move from silent-drop to
+  rejected so users can't expect them to take effect. Fixture `cli_ignore`,
+  three new tests, drift test absorbs four new rows.
 
 Deliverables:
 

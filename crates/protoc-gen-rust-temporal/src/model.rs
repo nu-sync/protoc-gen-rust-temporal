@@ -71,6 +71,11 @@ pub struct WorkflowModel {
     pub task_timeout: Option<Duration>,
     /// Additional names this workflow is also registered under.
     pub aliases: Vec<String>,
+    /// `WorkflowOptions.cli.ignore`: omit this workflow from the generated
+    /// CLI scaffold when `cli=true`. Other fields under `WorkflowOptions.cli`
+    /// (`name`, `usage`, `aliases`) are still not honoured — `ignore` is the
+    /// only one threaded through today.
+    pub cli_ignore: bool,
     pub attached_signals: Vec<SignalRef>,
     pub attached_queries: Vec<QueryRef>,
     pub attached_updates: Vec<UpdateRef>,

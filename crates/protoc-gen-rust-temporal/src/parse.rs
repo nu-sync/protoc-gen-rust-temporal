@@ -329,6 +329,10 @@ fn workflow_from(
         )
     };
 
+    if let Some(cli) = opts.cli.as_ref() {
+        reject_unsupported_workflow_cli_options(cli, service_name, &rpc_method)?;
+    }
+    let cli_ignore = opts.cli.as_ref().is_some_and(|c| c.ignore);
     Ok(WorkflowModel {
         rpc_method,
         registered_name,
@@ -341,6 +345,7 @@ fn workflow_from(
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
         task_timeout: opts.task_timeout.and_then(duration_from_proto),
         aliases: opts.aliases,
+        cli_ignore,
         attached_signals: opts
             .signal
             .into_iter()
@@ -572,6 +577,36 @@ fn reject_unsupported_workflow_update_ref(
         ));
     }
     Ok(())
+}
+
+/// `WorkflowOptions.cli` is the per-workflow CLI override block. Today the
+/// only field threaded into emit is `ignore` (filters the workflow out of
+/// the `cli=true` scaffold). The other fields — `name`, `usage`, and
+/// `aliases` — would change the generated command's user-facing surface
+/// but are not yet plumbed through, so honouring `ignore` silently while
+/// dropping them would surprise users. Reject the silent-drop cases.
+fn reject_unsupported_workflow_cli_options(
+    cli: &crate::temporal::v1::CliCommandOptions,
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    let mut unsupported: Vec<&'static str> = Vec::new();
+    if !cli.name.is_empty() {
+        unsupported.push("cli.name");
+    }
+    if !cli.usage.is_empty() {
+        unsupported.push("cli.usage");
+    }
+    if !cli.aliases.is_empty() {
+        unsupported.push("cli.aliases");
+    }
+    if unsupported.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "{service}.{rpc}: (temporal.v1.workflow).cli sets field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+        unsupported.join(", "),
+    ))
 }
 
 /// Sibling of [`reject_unsupported_workflow_update_ref`] for `signal` refs

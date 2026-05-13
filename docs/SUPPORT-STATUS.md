@@ -46,7 +46,10 @@ issue or add the row. The diagnostic-coverage test
 | `versioning_behavior` | rejected | R5. |
 | `patches` | rejected | R8. |
 | `namespace` | rejected | Deprecated in the schema; same rationale as `ServiceOptions.namespace`. |
-| `cli` | intentionally ignored when `cli=false`; partially read by the CLI scaffold when `cli=true` | R6 will widen the use of these fields. |
+| `cli.ignore` | supported | Filters the workflow out of the `cli=true` scaffold. Other `cli.*` fields are rejected — see below. |
+| `cli.name` | rejected | R6. Would change the subcommand name. |
+| `cli.usage` | rejected | R6. Would change the subcommand help text. |
+| `cli.aliases` | rejected | R6. Would add subcommand aliases. |
 
 ### WorkflowOptions.Signal[] (nested)
 

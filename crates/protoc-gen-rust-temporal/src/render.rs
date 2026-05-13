@@ -77,8 +77,11 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
     // file scope (sibling to the service module) so the consumer can drop
     // `<service>_cli::Cli::parse()` into a main.rs without an inner-mod
     // import dance. Only emitted when `cli=true` AND the service has at
-    // least one workflow rpc.
-    if options.cli && !svc.workflows.is_empty() {
+    // least one workflow rpc whose `(temporal.v1.workflow).cli.ignore` flag
+    // is unset — workflows opting out keep the CLI scaffold from referencing
+    // workflows the consumer doesn't want exposed.
+    let has_visible_cli_workflow = svc.workflows.iter().any(|wf| !wf.cli_ignore);
+    if options.cli && has_visible_cli_workflow {
         render_cli_module(&mut out, svc);
     }
 
@@ -1267,7 +1270,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
 
     let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Subcommand)]");
     let _ = writeln!(out, "    pub enum Command {{");
-    for wf in &svc.workflows {
+    for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();
         let _ = writeln!(
             out,
@@ -1285,7 +1288,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
-    for wf in &svc.workflows {
+    for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();
         let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Start{pascal}Args {{");

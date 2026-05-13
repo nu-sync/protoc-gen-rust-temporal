@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package cli.v1;
+
+import "temporal/v1/temporal.proto";
+
+// Exercises `(temporal.v1.workflow).cli.ignore`. One workflow opts in to
+// the CLI scaffold, the other opts out — the generated `Command` enum must
+// list only the opted-in one. Mirrors Go's behaviour where `cli.ignore`
+// suppresses the workflow from the generated command surface.
+service ReportService {
+  rpc Generate(GenerateInput) returns (GenerateOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "reports"
+      id: "gen-{{ .Name }}"
+    };
+  }
+
+  rpc Internal(InternalInput) returns (InternalOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "reports"
+      cli: { ignore: true }
+    };
+  }
+}
+
+message GenerateInput   { string name = 1; }
+message GenerateOutput  { string report_id = 1; }
+message InternalInput   { string note = 1; }
+message InternalOutput  { bool ok = 1; }

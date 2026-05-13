@@ -616,6 +616,108 @@ fn cli_emit_render_golden() {
 }
 
 #[test]
+fn cli_ignore_render_golden() {
+    assert_golden("cli_ignore");
+}
+
+#[test]
+fn cli_ignore_filters_workflows_from_command_enum() {
+    let services = parse_and_validate("cli_ignore");
+    let opts = load_fixture_options("cli_ignore");
+    assert!(opts.cli);
+    let source = render::render(&services[0], &opts);
+
+    // The non-ignored workflow must drive a StartGenerate/AttachGenerate
+    // subcommand pair…
+    assert!(
+        source.contains("StartGenerate(StartGenerateArgs)"),
+        "non-ignored workflow must appear in Command enum: {source}"
+    );
+    assert!(
+        source.contains("AttachGenerate(AttachGenerateArgs)"),
+        "non-ignored workflow must appear in Command enum"
+    );
+    // …and the ignored workflow must NOT appear anywhere in the CLI
+    // module — neither as a subcommand variant nor as an Args struct.
+    assert!(
+        !source.contains("StartInternal"),
+        "cli.ignore workflow must be filtered out of the CLI: {source}"
+    );
+    assert!(
+        !source.contains("AttachInternal"),
+        "cli.ignore workflow must be filtered out of the CLI: {source}"
+    );
+    assert!(
+        !source.contains("pub struct StartInternalArgs"),
+        "ignored workflow must not produce an Args struct"
+    );
+}
+
+#[test]
+fn cli_scaffold_suppressed_when_every_workflow_ignored() {
+    // If every workflow is ignored, emitting the CLI module would produce a
+    // clap Subcommand enum with no variants — clap fails to derive that.
+    // Suppress the entire scaffold instead.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package cli_off.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { ignore: true }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        !source.contains("pub mod svc_cli"),
+        "fully-ignored services must not emit a CLI module at all: {source}"
+    );
+}
+
+#[test]
+fn workflow_cli_name_is_rejected() {
+    // Honouring cli.ignore while silently dropping cli.name would surprise
+    // users who expect `cli: { name: "foo" }` to change the subcommand name.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "custom" }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("cli.name") && err.contains("does not yet honour"),
+        "expected cli.name diagnostic, got: {err}"
+    );
+}
+
+#[test]
 fn cli_emit_renders_clap_subcommands() {
     let services = parse_and_validate("cli_emit");
     let opts = load_fixture_options("cli_emit");
