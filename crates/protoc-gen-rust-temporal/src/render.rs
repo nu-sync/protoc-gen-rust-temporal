@@ -2465,7 +2465,7 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(
             out,
-            "                    if args.wait {{ let _ = handle.result().await?; }}"
+            "                    if args.wait {{ let out = handle.result().await?; ::std::println!(\"result={{:?}}\", out); }}"
         );
         let _ = writeln!(out, "                }}");
         // Attach<Wf>
@@ -2480,7 +2480,7 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(
             out,
-            "                    if args.wait {{ let _ = handle.result().await?; }}"
+            "                    if args.wait {{ let out = handle.result().await?; ::std::println!(\"result={{:?}}\", out); }}"
         );
         let _ = writeln!(out, "                }}");
 

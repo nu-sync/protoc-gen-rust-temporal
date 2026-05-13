@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `--wait` prints the typed workflow result):
+  the generated CLI's `Start<Wf>` and `Attach<Wf>` variants previously
+  discarded the workflow result when `--wait` was set (`let _ =
+  handle.result().await?;`). They now bind it and debug-print
+  (`result={:?}`), matching the print pattern queries / updates / start
+  attach the typed output to. This is the smallest UX-correctness fix
+  left — waiting and then silently discarding was a footgun for users
+  driving long-running workflows from the shell. The existing
+  `cli_emit_renders_run_with_dispatch` test's `--wait` assertion was
+  tightened to check for the typed print. `cli_emit` and `cli_ignore`
+  golden fixtures reblessed. No bridge signature change.
 - 2026-05-13 (R6 — `update-<name>` CLI subcommands per update rpc):
   every `(temporal.v1.update)` rpc on a service now gains a clap
   `Update<Name>(Update<Name>Args)` variant in the `cli=true` scaffold.

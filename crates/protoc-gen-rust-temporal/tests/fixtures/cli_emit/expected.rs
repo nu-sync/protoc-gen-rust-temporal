@@ -284,12 +284,12 @@ pub mod report_service_cli {
                     let opts = super::cli_v1_report_service_temporal::GenerateStartOptions { workflow_id: args.workflow_id, ..::std::default::Default::default() };
                     let handle = client.generate(input, opts).await?;
                     ::std::println!("started {}: workflow_id={}", super::cli_v1_report_service_temporal::GENERATE_WORKFLOW_NAME, handle.workflow_id());
-                    if args.wait { let _ = handle.result().await?; }
+                    if args.wait { let out = handle.result().await?; ::std::println!("result={:?}", out); }
                 }
                 Command::AttachGenerate(args) => {
                     let handle = client.generate_handle(args.workflow_id.clone());
                     ::std::println!("attached: workflow_id={}", args.workflow_id);
-                    if args.wait { let _ = handle.result().await?; }
+                    if args.wait { let out = handle.result().await?; ::std::println!("result={:?}", out); }
                 }
                 Command::CancelGenerate(args) => {
                     let handle = client.generate_handle(args.workflow_id.clone());
@@ -308,12 +308,12 @@ pub mod report_service_cli {
                     let opts = super::cli_v1_report_service_temporal::AggregateStartOptions { workflow_id: args.workflow_id, ..::std::default::Default::default() };
                     let handle = client.aggregate(input, opts).await?;
                     ::std::println!("started {}: workflow_id={}", super::cli_v1_report_service_temporal::AGGREGATE_WORKFLOW_NAME, handle.workflow_id());
-                    if args.wait { let _ = handle.result().await?; }
+                    if args.wait { let out = handle.result().await?; ::std::println!("result={:?}", out); }
                 }
                 Command::AttachAggregate(args) => {
                     let handle = client.aggregate_handle(args.workflow_id.clone());
                     ::std::println!("attached: workflow_id={}", args.workflow_id);
-                    if args.wait { let _ = handle.result().await?; }
+                    if args.wait { let out = handle.result().await?; ::std::println!("result={:?}", out); }
                 }
                 Command::CancelAggregate(args) => {
                     let handle = client.aggregate_handle(args.workflow_id.clone());

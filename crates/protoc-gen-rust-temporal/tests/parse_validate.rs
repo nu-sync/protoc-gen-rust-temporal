@@ -1520,8 +1520,10 @@ fn cli_emit_renders_run_with_dispatch() {
         "must forward to <Service>Client::<rpc>(input, opts): {source}"
     );
     assert!(
-        source.contains("if args.wait { let _ = handle.result().await?; }"),
-        "must wait on result when --wait was passed: {source}"
+        source.contains(
+            "if args.wait { let out = handle.result().await?; ::std::println!(\"result={:?}\", out); }"
+        ),
+        "must wait on result when --wait was passed and print the typed output: {source}"
     );
 }
 
