@@ -1,0 +1,397 @@
+syntax = "proto3";
+
+package temporal.v1;
+
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/duration.proto";
+import "temporal/api/enums/v1/workflow.proto";
+
+option go_package = "github.com/cludden/protoc-gen-go-temporal/gen/temporal/v1";
+
+extend google.protobuf.ServiceOptions {
+  optional ServiceOptions service = 7233;
+  optional CLIOptions cli = 7234;
+}
+
+extend google.protobuf.MethodOptions {
+  optional ActivityOptions activity = 7234;
+  optional CommandOptions command = 7238 [deprecated = true];
+  optional QueryOptions query = 7235;
+  optional SignalOptions signal = 7236;
+  optional UpdateOptions update = 7237;
+  optional WorkflowOptions workflow = 7233;
+}
+
+extend google.protobuf.FieldOptions {
+  optional FieldOptions field = 7233;
+}
+
+// ActivityOptions identifies an rpc method as a Temporal activity definition, and describes
+// available activity configuration options
+message ActivityOptions {
+  // Fully-qualified activity name
+  string name = 7;
+
+  // Override default task queue for activity
+  string task_queue = 1;
+
+  // Total time that a workflow is willing to wait for Activity to complete
+  google.protobuf.Duration schedule_to_close_timeout = 2;
+
+  // Time that the Activity Task can stay in the Task Queue before it is picked up by
+  // a Worker
+  google.protobuf.Duration schedule_to_start_timeout = 3;
+
+  // Maximum time of a single Activity execution attempt
+  google.protobuf.Duration start_to_close_timeout = 4;
+
+  // Heartbeat interval. Activity must call Activity.RecordHeartbeat(ctx, "my-heartbeat")
+  google.protobuf.Duration heartbeat_timeout = 5;
+
+  // WaitForCancellation - Whether to wait for canceled activity to be completed
+  // (activity can be failed, completed, cancel accepted)
+  bool wait_for_cancellation = 8;
+
+  // Specifies how to retry an Activity if an error occurs
+  RetryPolicy retry_policy = 6;
+}
+
+message CLIOptions {
+  bool ignore = 1;
+  string name = 2;
+  string usage = 3;
+  repeated string aliases = 4;
+}
+
+message CLICommandOptions {
+  bool ignore = 1;
+  string name = 2;
+  string usage = 3;
+  repeated string aliases = 4;
+}
+
+message CLIFlagOptions {
+  string name = 2;
+  string usage = 3;
+  repeated string aliases = 4;
+}
+
+message CommandOptions {
+  bool ignore = 1;
+}
+
+message FieldOptions {
+  CLIFlagOptions cli = 1;
+}
+
+// IDReusePolicy defines how new runs of a workflow with a particular ID may or
+// may not be allowed. Note that it is *never* valid to have two actively
+// running instances of the same workflow id.
+enum IDReusePolicy {
+  WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED = 0;
+  // Allow starting a workflow execution using the same workflow id.
+  WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE = 1;
+  // Allow starting a workflow execution using the same workflow id, only when the last
+  // execution's final state is one of [terminated, cancelled, timed out, failed].
+  WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY = 2;
+  // Do not permit re-use of the workflow id for this workflow. Future start workflow requests
+  // could potentially change the policy, allowing re-use of the workflow id.
+  WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE = 3;
+  // If a workflow is running using the same workflow ID, terminate it and start a new one.
+  // If no running workflow, then the behavior is the same as ALLOW_DUPLICATE
+  WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING = 4;
+}
+
+//Defines how child workflows will react to their parent completing
+enum ParentClosePolicy {
+  PARENT_CLOSE_POLICY_UNSPECIFIED = 0;
+  // The child workflow will also terminate
+  PARENT_CLOSE_POLICY_TERMINATE = 1;
+  // The child workflow will do nothing
+  PARENT_CLOSE_POLICY_ABANDON = 2;
+  // Cancellation will be requested of the child workflow
+  PARENT_CLOSE_POLICY_REQUEST_CANCEL = 3;
+}
+
+// Patch describes how a nondeterministic fix/feature introduced to generated
+// code is implemented. By default, all patches are introduced in PVM_ENABLED
+// mode. Once rollout of updated code has been completed and old workflows have
+// closed and retention window passed (or certain that replay is no longer a risk),
+// the prior code can be removed by switching to PVM_MARKER or removed entirely
+// with PVM_REMOVED. Patch code can also be disabled explicitly using PVM_DISABLED.
+message Patch {
+  Version version = 1;
+  Mode mode = 2;
+
+  // enumerates all defined patch versions
+  enum Version {
+    PV_UNSPECIFIED = 0;
+    // wraps expression evaluation in local activities within workflow contexts
+    // details: https://cludden.github.io/protoc-gen-go-temporal/docs/guides/fix-versions#fix_version_64_expression_evaluation_local_activity
+    PV_64 = 1;
+  }
+
+  // enumerates all supported patch configurations
+  enum Mode {
+    // both patch and prior code present behind workflow versioning
+    PVM_ENABLED = 0;
+    // only patch code present, workflow version marker present
+    PVM_MARKER = 1;
+    // only patch code present, workflow version marker removed
+    PVM_REMOVED = 2;
+    // only prior code present, no patch code or workflow version marker introduced
+    PVM_DISABLED = 3;
+  }
+}
+
+// QueryOptions identifies an rpc method as a Temporal query definition, and describes
+// available query configuration options
+message QueryOptions {
+  // cli command overrides
+  CLICommandOptions cli = 4;
+
+  // Fully-qualified query name
+  string name = 1;
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 2;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
+}
+
+// RetryPolicy describes configuration for activity or child workflow retries
+message RetryPolicy {
+  google.protobuf.Duration initial_interval = 1;
+  double backoff_coefficient = 2;
+  google.protobuf.Duration max_interval = 3;
+  int32 max_attempts = 4;
+  repeated string non_retryable_error_types = 5;
+}
+
+// ServiceOptions provides options that can be used to define common configuration
+// shared by all methods
+message ServiceOptions {
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
+
+  // Default namespace for child workflows, activities
+  string namespace = 2 [deprecated = true];
+
+  // Default task queue for all workflows, activities
+  string task_queue = 1;
+}
+
+// SignalOptions identifies an rpc method as a Temporal singal definition, and describes
+// available signal configuration options
+message SignalOptions {
+  // cli command overrides
+  CLICommandOptions cli = 4;
+
+  // Fully-qualified signal name
+  string name = 1;
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 2;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 3;
+}
+
+// UpdateOptions identifies an rpc method as a Temporal update definition, and describes
+// available update configuration options
+message UpdateOptions {
+  // cli command overrides
+  CLICommandOptions cli = 8;
+
+  // ID expression
+  string id = 1;
+
+  // Fully-qualified update name
+  string name = 4;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 6;
+
+  // Include validation hook
+  bool validate = 2;
+
+  // Default wait policy if not specified
+  WaitPolicy wait_for_stage = 7;
+
+  WaitPolicy wait_policy = 3 [deprecated = true];
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 5;
+}
+
+// WaitPolicy used to indicate to the server how long the client wishes to wait for a return
+// value from an UpdateWorkflow RPC
+enum WaitPolicy {
+  WAIT_POLICY_UNSPECIFIED = 0;
+  WAIT_POLICY_ADMITTED = 1;
+  WAIT_POLICY_ACCEPTED = 2;
+  WAIT_POLICY_COMPLETED = 3;
+}
+
+// WorkflowOptions identifies an rpc method as a Temporal workflow definition, and describes
+// available workflow configuration options
+message WorkflowOptions {
+  // cli command overrides
+  CLICommandOptions cli = 19;
+
+  // Fully-qualified workflow name
+  string name = 14;
+
+  // List of additional names to register the workflow under. This can be used to migrate
+  // to new naming conventions without breaking workflow history or existing clients.
+  repeated string aliases = 17;
+
+  // Queries supported by this workflow
+  repeated Query query = 1;
+
+  // Signals supported by this workflow
+  repeated Signal signal = 2;
+
+  // Updates supported by this workflow
+  repeated Update update = 3;
+
+  // Request eager execution for this workflow, if a local worker is available.
+  bool enable_eager_start = 23;
+
+  // The timeout for duration of workflow execution.
+  // It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
+  // of a single workflow run.
+  google.protobuf.Duration execution_timeout = 4;
+
+  // Id expression
+  string id = 5;
+
+  // Whether server allow reuse of workflow ID
+  IDReusePolicy id_reuse_policy = 6;
+
+  // Specifies default namespace for child workflows
+  string namespace = 7 [deprecated = true];
+
+  // Specifies a default parent close policy for child workflows
+  ParentClosePolicy parent_close_policy = 8;
+
+  // Configure patches, by default, patches are introduced in enabled mode
+  repeated Patch patches = 18;
+
+  // Specifies how to retry an Workflow if an error occurs
+  RetryPolicy retry_policy = 9;
+
+  // The timeout for duration of a single workflow run.
+  google.protobuf.Duration run_timeout = 10;
+
+  // Bloblang mapping defining default workflow search attributes
+  string search_attributes = 15;
+
+  // Override service task queue
+  string task_queue = 11;
+
+  // The timeout for processing workflow task from the time the worker
+  // pulled this task. If a workflow task is lost, it is retried after this timeout.
+  // The resolution is seconds.
+  google.protobuf.Duration task_timeout = 12;
+
+  // Bloblang mapping defining default workflow typed search attributes. The mapping should be a map of
+  // search attribute types to a map of search attribute keys to values.
+  // Example:
+  // string.foo = "bar"
+  // string.baz = "qux"
+  // float64.min = 123.0
+  // int64.max = 456
+  // time.created_at = now()
+  // bool.is_active = true
+  // keyword.name = "John Doe"
+  // keyword_list.tags = ["foo", "bar"]
+  string typed_search_attributes = 22;
+
+  // Provides a Versioning Behavior to workflows of this type.
+  temporal.api.enums.v1.VersioningBehavior versioning_behavior = 21;
+
+  // WaitForCancellation specifies whether to wait for canceled child workflow to be ended
+  // (child workflow can be ended as: completed/failed/timedout/terminated/canceled)
+  bool wait_for_cancellation = 13;
+
+  // Default workflow id conflict policy for start workflow with options
+  temporal.api.enums.v1.WorkflowIdConflictPolicy workflow_id_conflict_policy = 20;
+
+  // XNS can be used to configure default activity options for xns workflow executions
+  XNSActivityOptions xns = 16;
+
+  // Query identifies a query supported by the worklow
+  message Query {
+    // Query name
+    string ref = 1;
+
+    // XNS can be used to configure default activity options for xns workflow executions
+    XNSActivityOptions xns = 2;
+  }
+
+  // Signal identifies a signal supported by the workflow
+  message Signal {
+    CLICommandOptions cli = 4;
+
+    // Signal name
+    string ref = 1;
+
+    // Include convenience method for signal with start
+    bool start = 2;
+
+    // XNS can be used to configure default activity options for xns workflow executions
+    XNSActivityOptions xns = 3;
+  }
+
+  // Update identifies an update supported by the workflow
+  message Update {
+    CLICommandOptions cli = 4;
+
+    // Update name
+    string ref = 1;
+
+    // Include convenience method for update with start
+    bool start = 3;
+
+    // Include convenience method for update with start and validation
+    optional bool validate = 6;
+
+    // Default workflow id conflict policy for update with start
+    temporal.api.enums.v1.WorkflowIdConflictPolicy workflow_id_conflict_policy = 5;
+
+    // XNS can be used to configure default activity options for xns workflow executions
+    XNSActivityOptions xns = 2;
+  }
+}
+
+message XNSActivityOptions {
+  // Fully-qualified xns activity name
+  string name = 7;
+
+  // Override default task queue for activity
+  string task_queue = 1;
+
+  // Total time that a workflow is willing to wait for Activity to complete
+  google.protobuf.Duration schedule_to_close_timeout = 2;
+
+  // Time that the Activity Task can stay in the Task Queue before it is picked up by
+  // a Worker
+  google.protobuf.Duration schedule_to_start_timeout = 3;
+
+  // Maximum time of a single Activity execution attempt
+  google.protobuf.Duration start_to_close_timeout = 4;
+
+  // HeartbeatInterval configures the default heartbeat interval
+  google.protobuf.Duration heartbeat_interval = 8;
+
+  // Heartbeat timeout. Activity must call Activity.RecordHeartbeat(ctx, "my-heartbeat")
+  google.protobuf.Duration heartbeat_timeout = 5;
+
+  // Specifies how to retry an Activity if an error occurs
+  RetryPolicy retry_policy = 6;
+
+  // Specifies how activity cancellation is propagated for xns activities that support it
+  ParentClosePolicy parent_close_policy = 9;
+}

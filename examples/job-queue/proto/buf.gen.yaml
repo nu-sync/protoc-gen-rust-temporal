@@ -1,0 +1,16 @@
+version: v2
+clean: true
+plugins:
+  # Prost messages → jobs-proto/src/gen/
+  - local: protoc-gen-prost
+    out: ../crates/jobs-proto/src/gen
+    opt:
+      - bytes=bytes::Bytes
+      - file_descriptor_set
+  # Typed Temporal client → jobs-proto/src/gen/
+  # `just gen` builds the repo-local binary and prepends target/debug to PATH.
+  - local: protoc-gen-rust-temporal
+    out: ../crates/jobs-proto/src/gen
+    opt:
+      - activities=true
+      - workflows=true

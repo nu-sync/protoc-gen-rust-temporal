@@ -1,0 +1,25 @@
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# buf
+proto/gen/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# editors
+.idea/
+.vscode/
+.zed/
+*.swp
+
+# OS
+.DS_Store
+
+# Claude Code session state
+.claude/
+.dev-pids/
+.dev-logs/

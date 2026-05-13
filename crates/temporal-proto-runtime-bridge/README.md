@@ -27,9 +27,9 @@ shape does not change, so consumers bump the bridge crate version and recompile.
 ## Override
 
 Drop the `pub use` line and write your own `mod temporal_runtime;` against the
-facade — for tests, vendored SDKs, or custom transport. The
-[`examples/job-queue-integration`] crate ships a `todo!()`-bodied stub that's
-the canonical override reference.
+facade documented in [`docs/RUNTIME-API.md`] — for tests, vendored SDKs, or
+custom transport. The [`examples/job-queue`] crate shows the default bridge
+used by a generated client, worker, HTTP API, and CLI.
 
 ## Worker side (Phase 2+, opt-in)
 
@@ -96,4 +96,4 @@ isn't visible). The adapter is the documented 15-LOC bridge.
 
 [`protoc-gen-rust-temporal`]: https://github.com/nu-sync/protoc-gen-rust-temporal
 [`docs/RUNTIME-API.md`]: ../../docs/RUNTIME-API.md
-[`examples/job-queue-integration`]: ../../examples/job-queue-integration
+[`examples/job-queue`]: ../../examples/job-queue

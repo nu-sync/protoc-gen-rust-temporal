@@ -84,10 +84,8 @@ Generated code calls into a consumer-supplied `crate::temporal_runtime`
 module. Every function the plugin emits a call to, when it gets emitted,
 and the exact signature it expects are documented in
 [`docs/RUNTIME-API.md`](./docs/RUNTIME-API.md). The
-[`examples/job-queue-integration/`](./examples/job-queue-integration/)
-crate is a workspace member that exercises every emit branch and
-compiles end-to-end against a stubbed facade — use it as the starting
-template.
+[`examples/job-queue/`](./examples/job-queue/) workspace example shows the
+default bridge wired into a real worker, HTTP API, and CLI.
 
 ## Consumer wiring (default)
 
@@ -118,6 +116,7 @@ against the facade documented in [`docs/RUNTIME-API.md`](./docs/RUNTIME-API.md).
 | `crates/protoc-gen-rust-temporal/` | The plugin binary + library. |
 | `crates/temporal-proto-runtime/` | `TypedProtoMessage<T>` runtime helper used by generated code. |
 | `crates/temporal-proto-runtime-bridge/` | Default `temporal_runtime` facade impl backed by `temporalio-client 0.4`. |
+| `examples/job-queue/` | Primary end-to-end example: generated client, worker, HTTP API, and CLI. |
 | `proto/temporal/v1/temporal.proto` | Vendored copy of cludden's annotation schema. |
 | `SPEC.md` | Design spec + phased delivery plan. |
 | `WIRE-FORMAT.md` | Pinned wire-format contract. |

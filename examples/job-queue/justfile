@@ -1,0 +1,98 @@
+set shell := ["bash", "-cu"]
+set positional-arguments
+
+workspace_root := justfile_directory() + "/../.."
+plugin_bin := workspace_root + "/target/debug/protoc-gen-rust-temporal"
+example_packages := "-p jobs-proto -p job-worker -p job-api -p jobctl"
+
+# Default = list recipes.
+default:
+    @just --list
+
+# ── infra ──────────────────────────────────────────────────────────────
+
+# Start Temporal dev server.
+up:
+    uv run --script scripts/dev.py temporal
+
+# Stop managed dev processes.
+down:
+    uv run --script scripts/dev.py down
+
+# Tail managed dev logs. Use `just logs temporal`, `just logs worker`, or `just logs api`.
+logs SERVICE="all":
+    uv run --script scripts/dev.py logs {{SERVICE}}
+
+# ── codegen ────────────────────────────────────────────────────────────
+
+# Build the local protoc-gen-rust-temporal binary used by buf generate.
+[private]
+plugin-build:
+    cargo build -p protoc-gen-rust-temporal
+
+# Run buf generate against the local plugin binary.
+gen: plugin-build
+    @command -v protoc-gen-prost >/dev/null || (echo "install protoc-gen-prost: cargo install protoc-gen-prost" >&2 && exit 1)
+    cd proto && PATH="{{workspace_root}}/target/debug:$PATH" buf generate
+
+# Wipe generated sources.
+gen-clean:
+    rm -rf crates/jobs-proto/src/gen
+
+# ── build / check ──────────────────────────────────────────────────────
+
+build:
+    cargo build {{example_packages}}
+
+check:
+    cargo check {{example_packages}} --all-targets
+
+# Clippy (deny warnings).
+lint:
+    cargo clippy {{example_packages}} --all-targets -- -D warnings
+
+fmt:
+    cargo fmt {{example_packages}}
+
+# ── test ───────────────────────────────────────────────────────────────
+
+# Unit tests across the workspace.
+test:
+    cargo test {{example_packages}} --all-features
+
+# ── run with hot-reload ────────────────────────────────────────────────
+
+_ensure-cargo-watch:
+    @command -v cargo-watch >/dev/null || cargo install cargo-watch --locked
+
+# Run the worker with hot-reload.
+worker: _ensure-cargo-watch
+    RUST_LOG=info,job_worker=debug cargo watch -q -c -x 'run -p job-worker'
+
+# Run the HTTP API with hot-reload.
+api: _ensure-cargo-watch
+    RUST_LOG=info,job_api=debug cargo watch -q -c -x 'run -p job-api'
+
+# Run the CLI once with provided args, e.g. `just cli -- submit --name x --command "echo hi"`.
+cli *ARGS:
+    @if [[ "${1:-}" == "--" ]]; then shift; fi; cargo run -q -p jobctl -- "$@"
+
+# Build + clippy (-D warnings) + tests — the canonical "is everything green?" check.
+verify: build lint test
+    @echo "✓ build + clippy + tests all green"
+
+# ── full dev stack via uv ──────────────────────────────────────────────
+
+# Orchestrate everything (Temporal CLI + worker + api) via Python+uv.
+dev:
+    uv run --script scripts/dev.py up
+
+# End-to-end test runner.
+demo:
+    bash scripts/e2e.sh
+
+# ── housekeeping ───────────────────────────────────────────────────────
+
+clean:
+    cargo clean
+    rm -rf crates/jobs-proto/src/gen

@@ -34,8 +34,8 @@
 | `crates/temporal-proto-runtime-bridge/Cargo.toml` | Modify | Add optional `temporalio-sdk` dep + `worker` feature. |
 | `crates/temporal-proto-runtime-bridge/src/lib.rs` | Modify | New `#[cfg(feature = "worker")] pub mod worker { ... }` re-exporting the SDK worker primitives. |
 | `crates/temporal-proto-runtime-bridge/README.md` | Modify | Document the `worker` feature + the adapter pattern snippet. |
-| `examples/job-queue-integration/Cargo.toml` | Modify | Add `worker` feature that flips on the bridge's `worker` feature. |
-| `examples/job-queue-integration/justfile` | Modify | `verify-bridge` step runs both feature combos. |
+| `examples/job-queue/Cargo.toml` | Modify | Add `worker` feature that flips on the bridge's `worker` feature. |
+| `examples/job-queue/justfile` | Modify | `verify-bridge` step runs both feature combos. |
 | `.github/workflows/ci.yml` | Modify | `verify-bridge` job runs the new feature combo. |
 | `CHANGELOG.md` | Modify | `[Unreleased]` entry for Phase 2 emit + bridge worker feature. |
 | `docs/RUNTIME-API.md` | Modify | New "Activities (Phase 2)" section documenting the trait emit shape. |
@@ -772,13 +772,13 @@ EOF
 ## Task 5: Example crate worker feature + CI
 
 **Files:**
-- Modify: `examples/job-queue-integration/Cargo.toml`
-- Modify: `examples/job-queue-integration/justfile`
+- Modify: `examples/job-queue/Cargo.toml`
+- Modify: `examples/job-queue/justfile`
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Wire the bridge's `worker` feature in the example**
 
-In `examples/job-queue-integration/Cargo.toml`, change the `[features]` block to:
+In `examples/job-queue/Cargo.toml`, change the `[features]` block to:
 
 ```toml
 [features]
@@ -789,17 +789,17 @@ worker = ["bridge", "temporal-proto-runtime-bridge/worker"]
 
 - [ ] **Step 2: Extend the `verify-bridge` recipe**
 
-In `examples/job-queue-integration/justfile`, replace the `verify-bridge` recipe with:
+In `examples/job-queue/justfile`, replace the `verify-bridge` recipe with:
 
 ```just
 # Build the example against the bridge crate, proving the plugin's generated
 # emit + the bridge's facade impl are wire-compatible end-to-end. Phase 1
 # exit criterion. Phase 2 also exercises the worker feature.
 verify-bridge:
-    cargo check -p job-queue-integration-example --features bridge
-    cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
-    cargo check -p job-queue-integration-example --features worker
-    cargo clippy -p job-queue-integration-example --features worker --all-targets -- -D warnings
+    cargo check -p jobs-proto --features bridge
+    cargo clippy -p jobs-proto --features bridge --all-targets -- -D warnings
+    cargo check -p jobs-proto --features worker
+    cargo clippy -p jobs-proto --features worker --all-targets -- -D warnings
 ```
 
 - [ ] **Step 3: Update CI to exercise worker feature**
@@ -809,16 +809,16 @@ In `.github/workflows/ci.yml`, replace the `verify-bridge` job's last step:
 ```yaml
       - name: Verify example against bridge
         run: |
-          cargo check -p job-queue-integration-example --features bridge
-          cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
-          cargo check -p job-queue-integration-example --features worker
-          cargo clippy -p job-queue-integration-example --features worker --all-targets -- -D warnings
+          cargo check -p jobs-proto --features bridge
+          cargo clippy -p jobs-proto --features bridge --all-targets -- -D warnings
+          cargo check -p jobs-proto --features worker
+          cargo clippy -p jobs-proto --features worker --all-targets -- -D warnings
 ```
 
 - [ ] **Step 4: Run verify-bridge locally**
 
 ```bash
-cd /Users/wcygan/Development/protoc-gen-rust-temporal/examples/job-queue-integration && just verify-bridge
+cd /Users/wcygan/Development/protoc-gen-rust-temporal/examples/job-queue && just verify-bridge
 ```
 
 Expected: all four cargo check/clippy invocations PASS.
@@ -826,7 +826,7 @@ Expected: all four cargo check/clippy invocations PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add examples/job-queue-integration/ .github/workflows/ci.yml
+git add examples/job-queue/ .github/workflows/ci.yml
 git commit -m "$(cat <<'EOF'
 example/ci: exercise bridge worker feature
 
@@ -918,7 +918,7 @@ cd /Users/wcygan/Development/protoc-gen-rust-temporal && \
   cargo fmt --all -- --check && \
   cargo clippy --workspace --all-targets -- -D warnings && \
   cargo test --workspace --all-targets && \
-  (cd examples/job-queue-integration && just verify-bridge)
+  (cd examples/job-queue && just verify-bridge)
 ```
 
 Expected: all four PASS.

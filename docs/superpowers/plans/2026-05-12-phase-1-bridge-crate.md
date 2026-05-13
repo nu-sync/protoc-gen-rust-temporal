@@ -6,7 +6,7 @@
 
 **Goal:** Ship `temporal-proto-runtime-bridge 0.1.0`, a concrete implementation of every function documented in `docs/RUNTIME-API.md`, backed by `temporalio-client 0.4`. Consumers swap one line — `pub use temporal_proto_runtime_bridge as temporal_runtime;` — and the plugin's generated code runs against the real SDK.
 
-**Architecture:** New workspace member `crates/temporal-proto-runtime-bridge/`. Single `src/lib.rs` exposing free functions + a `TemporalClient` newtype around `Arc<temporalio_client::Client>` and a `WorkflowHandle` that stores client + workflow id (and re-derives an `UntypedWorkflowHandle` per call, matching the PoC's verified pattern). Internally maps the bridge's `WorkflowIdReusePolicy` / `WaitPolicy` to the SDK's prost enums; never re-exports SDK types in the public API. The in-tree `examples/job-queue-integration` keeps its `todo!()` stub by default, and a new `bridge` cargo feature replaces it with `pub use temporal_proto_runtime_bridge as temporal_runtime;` for the `just verify-bridge` recipe.
+**Architecture:** New workspace member `crates/temporal-proto-runtime-bridge/`. Single `src/lib.rs` exposing free functions + a `TemporalClient` newtype around `Arc<temporalio_client::Client>` and a `WorkflowHandle` that stores client + workflow id (and re-derives an `UntypedWorkflowHandle` per call, matching the PoC's verified pattern). Internally maps the bridge's `WorkflowIdReusePolicy` / `WaitPolicy` to the SDK's prost enums; never re-exports SDK types in the public API. The in-tree `examples/job-queue` keeps its `todo!()` stub by default, and a new `bridge` cargo feature replaces it with `pub use temporal_proto_runtime_bridge as temporal_runtime;` for the `just verify-bridge` recipe.
 
 **Tech stack:** Rust 2024 edition, MSRV 1.88, `temporalio-client = "=0.4.0"` (exact-patch pin per design), `temporalio-common = "=0.4.0"`, `prost 0.13`, `anyhow 1` (matches the facade's `Result<T>` shape), `uuid 1` (for `random_workflow_id`), `url 2` (for `connect` helper).
 
@@ -20,9 +20,9 @@
 | `crates/temporal-proto-runtime-bridge/Cargo.toml` | Create | New crate manifest. Pins `temporalio-client = "=0.4.0"` (exact patch). |
 | `crates/temporal-proto-runtime-bridge/README.md` | Create | Crate-level docs: one-line integration example, SDK pinning rationale, override pattern. |
 | `crates/temporal-proto-runtime-bridge/src/lib.rs` | Create | The whole crate surface: types, payload helpers, 14 facade functions, doc examples, deterministic unit tests. |
-| `examples/job-queue-integration/Cargo.toml` | Modify | Add optional `temporal-proto-runtime-bridge` dep + `bridge` feature. |
-| `examples/job-queue-integration/src/lib.rs` | Modify | Cfg-gate the stub `pub mod temporal_runtime;` against the `bridge` feature. |
-| `examples/job-queue-integration/justfile` | Modify | Add `verify-bridge` recipe. |
+| `examples/job-queue/Cargo.toml` | Modify | Add optional `temporal-proto-runtime-bridge` dep + `bridge` feature. |
+| `examples/job-queue/src/lib.rs` | Modify | Cfg-gate the stub `pub mod temporal_runtime;` against the `bridge` feature. |
+| `examples/job-queue/justfile` | Modify | Add `verify-bridge` recipe. |
 | `.github/workflows/ci.yml` | Modify | Add a `verify-bridge` job step (cargo check on the example with `--features bridge`). |
 | `docs/RUNTIME-API.md` | Modify | Add a paragraph at the top pointing to the new bridge crate as the default impl; keep all 0.1.0 signatures unchanged. |
 | `CHANGELOG.md` | Modify | Add an `[Unreleased]` entry for the new crate. |
@@ -53,7 +53,7 @@ members = [
     "crates/temporal-proto-runtime",
     "crates/temporal-proto-runtime-bridge",
     "compat-tests/rust",
-    "examples/job-queue-integration",
+    "examples/job-queue",
 ]
 
 [workspace.package]
@@ -180,12 +180,12 @@ shape does not change, so consumers bump the bridge crate version and recompile.
 
 Drop the `pub use` line and write your own `mod temporal_runtime;` against the
 facade — for tests, vendored SDKs, or custom transport. The
-[`examples/job-queue-integration`] crate ships a `todo!()`-bodied stub that's
+[`examples/job-queue`] crate ships a `todo!()`-bodied stub that's
 the canonical override reference.
 
 [`protoc-gen-rust-temporal`]: https://github.com/nu-sync/protoc-gen-rust-temporal
 [`docs/RUNTIME-API.md`]: ../../docs/RUNTIME-API.md
-[`examples/job-queue-integration`]: ../../examples/job-queue-integration
+[`examples/job-queue`]: ../../examples/job-queue
 ```
 
 - [ ] **Step 5: Verify the skeleton compiles**
@@ -1215,16 +1215,16 @@ EOF
 
 ## Task 7: Wire the bridge into the example crate
 
-Phase 1's exit criterion is "the example compiles end-to-end against the bridge crate." We add a `bridge` cargo feature on `examples/job-queue-integration` that swaps the `pub mod temporal_runtime;` stub for `pub use temporal_proto_runtime_bridge as temporal_runtime;`, plus a `just verify-bridge` recipe that runs `cargo check --features bridge`.
+Phase 1's exit criterion is "the example compiles end-to-end against the bridge crate." We add a `bridge` cargo feature on `examples/job-queue` that swaps the `pub mod temporal_runtime;` stub for `pub use temporal_proto_runtime_bridge as temporal_runtime;`, plus a `just verify-bridge` recipe that runs `cargo check --features bridge`.
 
 **Files:**
-- Modify: `examples/job-queue-integration/Cargo.toml`
-- Modify: `examples/job-queue-integration/src/lib.rs`
-- Modify: `examples/job-queue-integration/justfile`
+- Modify: `examples/job-queue/Cargo.toml`
+- Modify: `examples/job-queue/src/lib.rs`
+- Modify: `examples/job-queue/justfile`
 
-- [ ] **Step 1: Add the optional dep + feature in `examples/job-queue-integration/Cargo.toml`**
+- [ ] **Step 1: Add the optional dep + feature in `examples/job-queue/Cargo.toml`**
 
-Edit `examples/job-queue-integration/Cargo.toml`. Add:
+Edit `examples/job-queue/Cargo.toml`. Add:
 
 ```toml
 [dependencies]
@@ -1251,7 +1251,7 @@ Important: replace the entire `[dependencies]` block; the existing keys are pres
 
 - [ ] **Step 2: Cfg-gate the temporal_runtime mod in `lib.rs`**
 
-Edit `/Users/wcygan/Development/protoc-gen-rust-temporal/examples/job-queue-integration/src/lib.rs`. Replace:
+Edit `/Users/wcygan/Development/protoc-gen-rust-temporal/examples/job-queue/src/lib.rs`. Replace:
 
 ```rust
 pub mod temporal_runtime;
@@ -1272,21 +1272,21 @@ pub use temporal_proto_runtime_bridge as temporal_runtime;
 
 - [ ] **Step 3: Add the `verify-bridge` justfile recipe**
 
-Edit `/Users/wcygan/Development/protoc-gen-rust-temporal/examples/job-queue-integration/justfile`. Append:
+Edit `/Users/wcygan/Development/protoc-gen-rust-temporal/examples/job-queue/justfile`. Append:
 
 ```just
 # Build the example against the bridge crate, proving the plugin's generated
 # emit + the bridge's facade impl are wire-compatible end-to-end. Phase 1
 # exit criterion (per docs/superpowers/specs/2026-05-12-cludden-parity-design.md).
 verify-bridge:
-    cargo check -p job-queue-integration-example --features bridge
-    cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
+    cargo check -p jobs-proto --features bridge
+    cargo clippy -p jobs-proto --features bridge --all-targets -- -D warnings
 ```
 
 - [ ] **Step 4: Run the recipe**
 
 ```bash
-cd examples/job-queue-integration && just verify-bridge
+cd examples/job-queue && just verify-bridge
 ```
 
 Expected: PASS. The plugin's generated code (`src/gen/jobs/v1/jobs_temporal.rs`) compiles against `crate::temporal_runtime::*` resolved through the bridge crate. Any signature drift between the bridge crate and what the plugin emits fails here loudly — that's the design.
@@ -1304,7 +1304,7 @@ Expected: PASS. The bridge feature is opt-in, so the workspace's default build p
 - [ ] **Step 6: Commit**
 
 ```bash
-git add examples/job-queue-integration/Cargo.toml examples/job-queue-integration/src/lib.rs examples/job-queue-integration/justfile
+git add examples/job-queue/Cargo.toml examples/job-queue/src/lib.rs examples/job-queue/justfile
 git commit -m "$(cat <<'EOF'
 example: bridge feature + just verify-bridge
 
@@ -1332,7 +1332,7 @@ Edit `.github/workflows/ci.yml`. Add a new `verify-bridge` job (right after the 
 ```yaml
   verify-bridge:
     # Phase 1 exit criterion: prove the bridge crate is wire-compatible
-    # with the plugin's emit. Builds examples/job-queue-integration with
+    # with the plugin's emit. Builds examples/job-queue with
     # --features bridge and clippy-cleans it. Default workspace builds
     # remain SDK-free — this is the dedicated bridge gate.
     runs-on: ubuntu-latest
@@ -1349,10 +1349,10 @@ Edit `.github/workflows/ci.yml`. Add a new `verify-bridge` job (right after the 
       - name: Bridge crate tests
         run: cargo test -p temporal-proto-runtime-bridge
       - name: Verify example against bridge
-        working-directory: examples/job-queue-integration
+        working-directory: examples/job-queue
         run: |
-          cargo check -p job-queue-integration-example --features bridge
-          cargo clippy -p job-queue-integration-example --features bridge --all-targets -- -D warnings
+          cargo check -p jobs-proto --features bridge
+          cargo clippy -p jobs-proto --features bridge --all-targets -- -D warnings
 ```
 
 - [ ] **Step 2: Validate the YAML locally**
@@ -1404,7 +1404,7 @@ Edit `/Users/wcygan/Development/protoc-gen-rust-temporal/CHANGELOG.md`. Replace 
   `lib.rs` and the generated code runs against the real SDK. See the design
   doc at `docs/superpowers/specs/2026-05-12-cludden-parity-design.md` Phase 1
   for the architectural rationale.
-- New `examples/job-queue-integration` cargo feature `bridge` that swaps the
+- New `examples/job-queue` cargo feature `bridge` that swaps the
   stub `temporal_runtime.rs` for the bridge crate; `just verify-bridge`
   exercises end-to-end compilation. CI gates this on every PR via the new
   `verify-bridge` job.
@@ -1459,7 +1459,7 @@ ships a concrete impl of every function documented below, backed by
 `temporalio-client 0.4`. Add it as a dep and `pub use temporal_proto_runtime_bridge as temporal_runtime;`
 in your `lib.rs` to wire the plugin's generated code to the real SDK
 without writing the facade yourself. The stub at
-`examples/job-queue-integration/src/temporal_runtime.rs` stays the
+`examples/job-queue/src/temporal_runtime.rs` stays the
 canonical override reference for power users.
 ```
 
@@ -1492,7 +1492,7 @@ cd /Users/wcygan/Development/protoc-gen-rust-temporal && \
   cargo fmt --all -- --check && \
   cargo clippy --workspace --all-targets -- -D warnings && \
   cargo test --workspace --all-targets && \
-  (cd examples/job-queue-integration && just verify-bridge)
+  (cd examples/job-queue && just verify-bridge)
 ```
 
 Expected: all four PASS. If `cargo fmt --check` fires, run `cargo fmt --all` and stage the result before continuing.
@@ -1561,7 +1561,7 @@ This task is the design's Phase 1 exit criterion. Don't mark Phase 1 complete in
 
 - [x] **Spec coverage.** Phase 1's three deliverables from the design are all covered:
   - Bridge crate publishing the current RUNTIME-API surface → Tasks 1–6.
-  - `just verify-bridge` recipe on `examples/job-queue-integration` → Task 7.
+  - `just verify-bridge` recipe on `examples/job-queue` → Task 7.
   - PoC exit criterion → Task 10 (out-of-tree, explicitly optional).
 - [x] **Placeholder scan.** No "TBD", no "handle edge cases", no "similar to Task N", no "fill in details". Each step has either a concrete edit, a verified command, or a precise navigation pointer (e.g. `cargo doc` lookup if the SDK proto path drifts).
 - [x] **Type consistency.** `WorkflowHandle { client, workflow_id, run_id }` is constructed identically in every task that builds one (Tasks 3 / 6). `WorkflowIdReusePolicy` / `WaitPolicy` enum variant names match between bridge enum (Task 2), `From` impls (Task 2), and call sites (Tasks 3 / 5 / 6). `decode_proto_payload<O>` signature used uniformly across wait_result / query / update.
