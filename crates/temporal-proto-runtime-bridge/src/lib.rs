@@ -397,6 +397,46 @@ pub fn encode_search_attribute_int(value: i64) -> Payload {
     }
 }
 
+/// Encode an IEEE-754 double search attribute. Mirrors the shape of
+/// the int / string / bool encoders. `json/plain`-encoded JSON number.
+/// NaN and infinities are rejected at the encoder boundary because
+/// neither value has a valid JSON literal form — silent serialisation
+/// to non-JSON tokens would round-trip differently across languages.
+pub fn encode_search_attribute_double(value: f64) -> Result<Payload> {
+    if !value.is_finite() {
+        anyhow::bail!(
+            "encode_search_attribute_double: value {value} is not finite (NaN / infinity has no JSON literal)",
+        );
+    }
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+    // `{:?}` preserves the decimal point on whole-number doubles
+    // (`1.0`, not `1`) so the wire shape stays unambiguously a JSON
+    // number rather than slipping toward int-looking output.
+    Ok(Payload {
+        metadata,
+        data: format!("{value:?}").into_bytes(),
+        external_payloads: vec![],
+    })
+}
+
+/// Decode a `double` search-attribute `Payload` written by
+/// [`encode_search_attribute_double`].
+pub fn decode_search_attribute_double(payload: &Payload) -> Result<f64> {
+    let data = check_json_plain(payload, "double")?;
+    let s = std::str::from_utf8(data)
+        .context("decode_search_attribute_double: data is not valid UTF-8")?;
+    let v: f64 = s
+        .parse()
+        .with_context(|| format!("decode_search_attribute_double: not an f64 literal: {s:?}"))?;
+    if !v.is_finite() {
+        anyhow::bail!(
+            "decode_search_attribute_double: decoded value {v} is not finite — payload may be corrupt",
+        );
+    }
+    Ok(v)
+}
+
 /// R7 slice-2 building block — encode a boolean search attribute.
 pub fn encode_search_attribute_bool(value: bool) -> Payload {
     let mut metadata = std::collections::HashMap::new();
@@ -1514,6 +1554,55 @@ mod tests {
             let decoded = decode_search_attribute_int(&p).expect("decode must succeed");
             assert_eq!(decoded, original);
         }
+    }
+
+    #[test]
+    fn search_attribute_double_roundtrips_through_encode() {
+        for original in [
+            0.0_f64,
+            1.0,
+            -1.0,
+            1.5,
+            -0.25,
+            std::f64::consts::PI,
+            1e10,
+            1e-10,
+        ] {
+            let p = encode_search_attribute_double(original).expect("finite double must encode");
+            let decoded =
+                decode_search_attribute_double(&p).expect("round-trip decode must succeed");
+            assert_eq!(decoded, original, "round-trip drift on {original:?}");
+        }
+        // Whole-number doubles must keep the decimal point so the
+        // wire shape stays JSON-number, not JSON-int.
+        let p = encode_search_attribute_double(1.0).expect("finite double must encode");
+        assert_eq!(p.data, b"1.0".to_vec());
+    }
+
+    #[test]
+    fn search_attribute_double_rejects_nan_and_infinity() {
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let err = encode_search_attribute_double(bad).unwrap_err().to_string();
+            assert!(
+                err.contains("not finite"),
+                "encoder must refuse NaN / infinity: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn search_attribute_double_decode_rejects_non_numeric_data() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+        let bad = Payload {
+            metadata,
+            data: b"nope".to_vec(),
+            external_payloads: vec![],
+        };
+        let err = decode_search_attribute_double(&bad)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not an f64 literal"), "diagnostic: {err}");
     }
 
     #[test]

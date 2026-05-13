@@ -138,6 +138,21 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (bridge — `encode_search_attribute_double` + decoder):
+  rounds out the search-attribute encoder set (string / int / bool /
+  now double). NaN and infinities refused at the encoder boundary
+  (neither has a valid JSON literal — silent serialisation would
+  drift across languages). Whole-number doubles emit with the
+  decimal point preserved (`1.0`, not `1`) so the wire shape stays
+  an unambiguous JSON number. Decoder validates `json/plain`
+  encoding and refuses non-finite decoded values as a corruption
+  guard. Plugin doesn't call them yet — the Bloblang slice 2 parser
+  still only recognises string / int / bool literals (would need a
+  `SearchAttributeLiteral::Double` variant + lexer extension to wire
+  through). Three new bridge unit tests pin round-trip including
+  whole-number formatting, NaN/infinity rejection, and non-numeric
+  decode rejection. 26 bridge tests. Bridge bumped to 0.1.6 in
+  `docs/RUNTIME-API.md`.
 - 2026-05-13 (bridge — `encode_proto_payload` / `decode_proto_payload` made public):
   the two bridge helpers that build and validate `binary/protobuf`
   payloads against `WIRE-FORMAT.md` were previously `fn`-private,
