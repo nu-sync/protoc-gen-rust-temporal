@@ -117,6 +117,11 @@ Progress:
   fully-qualified syntax (target contains `.`) and points users at R1. Test
   `cross_service_ref_is_rejected_with_clear_diagnostic` locks the diagnostic
   in. Full resolution against the descriptor pool remains R1 work.
+- 2026-05-13: closed four previously-silent drops — `WorkflowOptions.patches`,
+  `WorkflowOptions.namespace` (deprecated), `ServiceOptions.patches`, and
+  `ServiceOptions.namespace` now refuse at parse with the standard "does not
+  yet honour" diagnostic. `reject_unsupported_service_options` is the new
+  service-level rejection sink. Support-status table grew by four rows.
 
 Deliverables:
 

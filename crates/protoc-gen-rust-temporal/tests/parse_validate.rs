@@ -1307,6 +1307,68 @@ fn unsupported_field_support_status_table() {
             "#,
             expect_field: "retry_policy",
         },
+        Case {
+            label: "WorkflowOptions.patches",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    patches: [{ version: PV_64, mode: PVM_ENABLED }]
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "patches",
+        },
+        Case {
+            label: "WorkflowOptions.namespace",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    namespace: "legacy"
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "namespace",
+        },
+        Case {
+            label: "ServiceOptions.patches",
+            snippet: r#"
+              service Svc {
+                option (temporal.v1.service) = {
+                  task_queue: "tq"
+                  patches: [{ version: PV_64, mode: PVM_ENABLED }]
+                };
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {};
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "patches",
+        },
+        Case {
+            label: "ServiceOptions.namespace",
+            snippet: r#"
+              service Svc {
+                option (temporal.v1.service) = {
+                  task_queue: "tq"
+                  namespace: "legacy"
+                };
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {};
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "namespace",
+        },
     ];
 
     for case in cases {

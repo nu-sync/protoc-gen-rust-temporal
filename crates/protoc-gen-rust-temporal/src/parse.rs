@@ -170,7 +170,30 @@ fn service_default_task_queue(
     let value = opts.get_extension(service_ext);
     let bytes = encode_message_value(&value)?;
     let parsed = ServiceOptions::decode(bytes.as_slice())?;
+    reject_unsupported_service_options(&parsed, service.name())?;
     Ok((!parsed.task_queue.is_empty()).then_some(parsed.task_queue))
+}
+
+/// `task_queue` is the only `ServiceOptions` field the v1 emit honours.
+/// `patches` (workflow patch versioning) and `namespace` (deprecated default
+/// namespace) would change runtime behaviour but are not threaded through
+/// the generator — refuse them rather than silently strip.
+fn reject_unsupported_service_options(opts: &ServiceOptions, service: &str) -> Result<()> {
+    let mut unsupported: Vec<&'static str> = Vec::new();
+    if !opts.patches.is_empty() {
+        unsupported.push("patches");
+    }
+    #[allow(deprecated)] // intentional: see workflow-options namespace comment.
+    if !opts.namespace.is_empty() {
+        unsupported.push("namespace (deprecated)");
+    }
+    if unsupported.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "{service}: (temporal.v1.service) sets runtime-affecting field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+        unsupported.join(", "),
+    ))
 }
 
 enum MethodKind {
@@ -464,6 +487,16 @@ fn reject_unsupported_workflow_options(
     }
     if opts.versioning_behavior != 0 {
         unsupported.push("versioning_behavior");
+    }
+    if !opts.patches.is_empty() {
+        unsupported.push("patches");
+    }
+    // `namespace` is `[deprecated = true]` in cludden's schema but still in
+    // wide use on Go-side protos. Refusing it surfaces the port-to-Rust gap
+    // explicitly instead of letting workflows fan out to the wrong namespace.
+    #[allow(deprecated)] // intentional: see comment above.
+    if !opts.namespace.is_empty() {
+        unsupported.push("namespace (deprecated)");
     }
     if unsupported.is_empty() {
         return Ok(());
