@@ -40,6 +40,51 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
     let _ = writeln!(out, "// source: {}", svc.source_file);
     let _ = writeln!(out);
     let _ = writeln!(out, "#[allow(clippy::all, unused_imports, dead_code)]");
+    // Module-level docstring describing the generated surface so
+    // `cargo doc` users see what's available without grep-spelunking.
+    let _ = writeln!(
+        out,
+        "/// Generated Temporal client + worker surface for `{}.{}`.",
+        svc.package, svc.service
+    );
+    let _ = writeln!(out, "///");
+    let _ = writeln!(
+        out,
+        "/// Construct a typed client with [`{}Client::connect`] (or",
+        svc.service
+    );
+    let _ = writeln!(
+        out,
+        "/// [`{}Client::new`] from an existing `TemporalClient`).",
+        svc.service
+    );
+    let _ = writeln!(
+        out,
+        "/// Each workflow rpc gets a typed start method, an attach helper, and a"
+    );
+    let _ = writeln!(
+        out,
+        "/// `<Workflow>Handle` wrapper exposing signal / query / update / cancel"
+    );
+    let _ = writeln!(
+        out,
+        "/// / terminate / result paths typed against the proto."
+    );
+    let _ = writeln!(out, "///");
+    let _ = writeln!(
+        out,
+        "/// Identity consts (`PACKAGE`, `SERVICE_NAME`, `FULLY_QUALIFIED_SERVICE_NAME`,"
+    );
+    let _ = writeln!(
+        out,
+        "/// `SOURCE_FILE`, `GENERATED_BY_PLUGIN_VERSION`) on the client and per-rpc"
+    );
+    let _ = writeln!(
+        out,
+        "/// `<RPC>_*` name / type consts at module scope let tooling enumerate the wire"
+    );
+    let _ = writeln!(out, "/// surface without descriptor-pool");
+    let _ = writeln!(out, "/// round-trips.");
     let _ = writeln!(out, "pub mod {mod_name} {{");
     let _ = writeln!(out, "    use anyhow::Result;");
     let _ = writeln!(out, "    use std::time::Duration;");

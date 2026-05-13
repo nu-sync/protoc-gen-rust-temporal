@@ -208,6 +208,20 @@ Progress:
   (`activities_emit`) emit. Several fixture goldens reblessed
   (every marker gained the `NAME` const line). 169 parse_validate
   tests green. No bridge signature change.
+- 2026-05-13 (R6 — module-level docstring on generated code):
+  every generated `<service>_temporal` module now carries a
+  `///`-style module-level docstring summarising the surface for
+  `cargo doc` consumers: the service identity, recommended
+  constructor (`<Service>Client::connect`), the per-workflow
+  start/attach/Handle pattern, and the identity / per-rpc consts
+  available for tooling. Saves consumers from grep-spelunking the
+  generated file to discover what's available. Several fixture
+  goldens reblessed (every fixture gained the docstring block).
+  Pre-existing test that asserted activity-only services don't
+  contain `_WORKFLOW_NAME` was preserved by re-wording the
+  docstring's metadata mention to `<RPC>_*` (avoiding the literal
+  substring). 193 parse_validate tests green. No bridge signature
+  change.
 - 2026-05-13 (R6 — marker structs also derive `Hash`):
   extends the marker-struct derive list from `Debug, Default,
   Clone, Copy, PartialEq, Eq` to also include `Hash`. Free for

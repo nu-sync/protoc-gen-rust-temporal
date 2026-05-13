@@ -2,6 +2,19 @@
 // source: input.proto
 
 #[allow(clippy::all, unused_imports, dead_code)]
+/// Generated Temporal client + worker surface for `eoqu.v1.EoquService`.
+///
+/// Construct a typed client with [`EoquServiceClient::connect`] (or
+/// [`EoquServiceClient::new`] from an existing `TemporalClient`).
+/// Each workflow rpc gets a typed start method, an attach helper, and a
+/// `<Workflow>Handle` wrapper exposing signal / query / update / cancel
+/// / terminate / result paths typed against the proto.
+///
+/// Identity consts (`PACKAGE`, `SERVICE_NAME`, `FULLY_QUALIFIED_SERVICE_NAME`,
+/// `SOURCE_FILE`, `GENERATED_BY_PLUGIN_VERSION`) on the client and per-rpc
+/// `<RPC>_*` name / type consts at module scope let tooling enumerate the wire
+/// surface without descriptor-pool
+/// round-trips.
 pub mod eoqu_v1_eoqu_service_temporal {
     use anyhow::Result;
     use std::time::Duration;
