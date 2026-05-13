@@ -1213,6 +1213,20 @@ fn workflow_aliases_const_omitted_when_empty() {
 }
 
 #[test]
+fn workflow_definition_trait_exposes_id_template_when_declared() {
+    // R4 — the `<Workflow>Definition` trait re-exposes the
+    // `<RPC>_WORKFLOW_ID_TEMPLATE` const as `ID_TEMPLATE` when
+    // proto declares `id:`. Skipped when no template is declared.
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("const ID_TEMPLATE: &'static str = self::"),
+        "Definition trait must re-expose ID_TEMPLATE when proto declares `id:`: {source}"
+    );
+}
+
+#[test]
 fn workflow_and_update_id_template_source_consts_emit() {
     // R4 — when proto declares `id:` on a workflow or update, the
     // generator now emits a `<RPC>_WORKFLOW_ID_TEMPLATE` /

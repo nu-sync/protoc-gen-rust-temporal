@@ -2576,6 +2576,20 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
             "        const WORKFLOW_ALIASES: &'static [&'static str] = self::{aliases_const};"
         );
     }
+    // ID_TEMPLATE — re-expose the verbatim id template source on the
+    // trait when the proto declares one. Lets generic worker code
+    // spell `<W as Definition>::ID_TEMPLATE` to inspect what the
+    // proto author wrote.
+    if wf.id_template_source.is_some() {
+        let id_const = format!(
+            "{}_WORKFLOW_ID_TEMPLATE",
+            wf.rpc_method.to_shouty_snake_case()
+        );
+        let _ = writeln!(
+            out,
+            "        const ID_TEMPLATE: &'static str = self::{id_const};"
+        );
+    }
 
     for sref in &wf.attached_signals {
         if svc.signals.iter().any(|s| s.rpc_method == sref.rpc_method) {

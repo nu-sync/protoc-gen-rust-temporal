@@ -138,6 +138,19 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `ID_TEMPLATE` re-exposed on `<Workflow>Definition`):
+  the workflow `<Workflow>Definition` trait under `workflows=true`
+  now re-exposes the `<RPC>_WORKFLOW_ID_TEMPLATE` const as
+  `ID_TEMPLATE: &'static str` when the workflow declares `id:`.
+  Workflows without an id template skip the trait const so generic
+  worker code can disambiguate via `if T::ID_TEMPLATE …` (which
+  doesn't compile when absent — explicit absence is meaningful).
+  Mirrors the existing trait re-exposure of `WORKFLOW_NAME` /
+  `TASK_QUEUE` / `WORKFLOW_ALIASES` / `INPUT_TYPE` / `OUTPUT_TYPE`.
+  One new positive parse_validate test pins the trait-const emit
+  on the `workflows_emit` fixture (which declares `id:`). Fixture
+  goldens for the workflows=true paths reblessed. 159 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R4 — `<RPC>_WORKFLOW_ID_TEMPLATE` / `_UPDATE_ID_TEMPLATE` consts):
   every workflow / update that declares `id:` now emits a
   `pub const <RPC>_<KIND>_ID_TEMPLATE: &str = "..."` carrying the
