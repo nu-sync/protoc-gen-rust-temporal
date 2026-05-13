@@ -161,6 +161,21 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
             let tq_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
             let _ = writeln!(out, "    pub const {tq_const}: &str = \"{tq}\";");
         }
+        // Workflow aliases from `(temporal.v1.workflow).aliases`. Only emitted
+        // when at least one alias is declared so existing goldens stay clean.
+        // Consumers register the workflow under each name; the Go plugin does
+        // the equivalent inside its worker registration helper.
+        if !wf.aliases.is_empty() {
+            let aliases_const =
+                format!("{}_WORKFLOW_ALIASES", wf.rpc_method.to_shouty_snake_case());
+            let joined = wf
+                .aliases
+                .iter()
+                .map(|a| format!("\"{}\"", a.escape_default()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let _ = writeln!(out, "    pub const {aliases_const}: &[&str] = &[{joined}];");
+        }
     }
     if !svc.workflows.is_empty() {
         let _ = writeln!(out);
@@ -1112,6 +1127,13 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         out,
         "        const TASK_QUEUE: &'static str = self::{task_queue_const};"
     );
+    if !wf.aliases.is_empty() {
+        let aliases_const = format!("{}_WORKFLOW_ALIASES", wf.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "        const WORKFLOW_ALIASES: &'static [&'static str] = self::{aliases_const};"
+        );
+    }
 
     for sref in &wf.attached_signals {
         if svc.signals.iter().any(|s| s.rpc_method == sref.rpc_method) {

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package aliases.v1;
+
+import "temporal/v1/temporal.proto";
+
+// Exercises `(temporal.v1.workflow).aliases`. With aliases set, render emits
+// a per-workflow `<RPC>_WORKFLOW_ALIASES: &[&str]` const alongside the
+// existing `<RPC>_WORKFLOW_NAME`. Go's plugin uses the same list to register
+// the workflow under multiple names so a service can migrate naming
+// conventions without breaking workflow history or existing clients.
+service AliasService {
+  rpc Run(RunInput) returns (RunOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "aliases"
+      aliases: [
+        "aliases.v1.AliasService.RunLegacy",
+        "aliases.v1.AliasService.RunV0"
+      ]
+    };
+  }
+}
+
+message RunInput  { string name = 1; }
+message RunOutput { string id = 1; }

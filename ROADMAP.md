@@ -93,6 +93,14 @@ This phase should happen before richer emit. The current model is shaped around
 one primary method kind and same-service workflow attachment. Go supports a
 broader set of relationships.
 
+Progress:
+
+- 2026-05-13: workflow `aliases` emitted as `<RPC>_WORKFLOW_ALIASES: &[&str]`
+  module const plus `Definition::WORKFLOW_ALIASES` associated const under
+  `workflows=true`. Fixtures `workflow_aliases` and `worker_workflow_aliases`
+  cover both branches; existing goldens unaffected when no aliases are
+  declared. See `docs/RUNTIME-API.md`.
+
 Deliverables:
 
 - Model co-annotations that Go allows, especially:
@@ -281,7 +289,7 @@ toward majority parity.
 |---|---|---|
 | Method co-annotations | Modeled as one primary generated method kind today. | R1 |
 | Cross-service refs | Workflow refs are validated against methods on the same service. | R1 |
-| Aliases | Parsed for some annotations but not fully emitted or registered. | R1 |
+| Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
 | Activity calls from workflows | Not generated. | R3 |
 | Client cancel/terminate/top-level operations | Not generated. | R4 |

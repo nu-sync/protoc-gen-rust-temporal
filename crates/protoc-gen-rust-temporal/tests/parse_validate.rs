@@ -506,6 +506,68 @@ fn worker_full_render_golden() {
 }
 
 #[test]
+fn workflow_aliases_render_golden() {
+    assert_golden("workflow_aliases");
+}
+
+#[test]
+fn worker_workflow_aliases_render_golden() {
+    assert_golden("worker_workflow_aliases");
+}
+
+#[test]
+fn workflow_aliases_parses_and_emits_const() {
+    let services = parse_and_validate("workflow_aliases");
+    assert_eq!(services.len(), 1);
+    let svc = &services[0];
+    let wf = &svc.workflows[0];
+    assert_eq!(
+        wf.aliases,
+        vec![
+            "aliases.v1.AliasService.RunLegacy".to_string(),
+            "aliases.v1.AliasService.RunV0".to_string(),
+        ],
+        "(temporal.v1.workflow).aliases must survive into the model"
+    );
+
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains("pub const RUN_WORKFLOW_ALIASES: &[&str] = &[\"aliases.v1.AliasService.RunLegacy\", \"aliases.v1.AliasService.RunV0\"];"),
+        "missing or malformed workflow aliases const: {source}"
+    );
+}
+
+#[test]
+fn workflow_aliases_const_omitted_when_empty() {
+    // Regression guard: existing fixtures that don't set aliases must not
+    // grow an aliases const, so previously-blessed goldens stay clean.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("_WORKFLOW_ALIASES"),
+        "fixture without aliases should not emit an aliases const: {source}"
+    );
+}
+
+#[test]
+fn worker_workflow_aliases_surfaces_on_definition_trait() {
+    let services = parse_and_validate("worker_workflow_aliases");
+    let opts = load_fixture_options("worker_workflow_aliases");
+    assert!(opts.workflows);
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const RUN_WORKFLOW_ALIASES: &[&str] = &[\"aliases.v1.AliasService.RunLegacy\", \"aliases.v1.AliasService.RunV0\"];"),
+        "missing module-level aliases const: {source}"
+    );
+    assert!(
+        source.contains(
+            "const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;"
+        ),
+        "Definition trait should re-expose the aliases const: {source}"
+    );
+}
+
+#[test]
 fn workflows_emit_renders_handler_name_consts() {
     let services = parse_and_validate("workflows_emit");
     let opts = load_fixture_options("workflows_emit");

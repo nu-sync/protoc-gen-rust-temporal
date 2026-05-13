@@ -172,7 +172,8 @@ service with at least one workflow rpc:
 | `<METHOD>_SIGNAL_NAME` | `pub const &'static str` per signal-annotated rpc. Value is the cross-language registration name (defaults to the rpc method name). |
 | `<METHOD>_QUERY_NAME` | Same shape, for query-annotated rpcs. |
 | `<METHOD>_UPDATE_NAME` | Same shape, for update-annotated rpcs. |
-| `<Workflow>Definition` | `pub trait` with associated `Input` / `Output` types and default associated consts for `WORKFLOW_NAME`, `TASK_QUEUE`, and attached signal/query/update names. Consumers implement this trait on their SDK `#[workflow]` struct. |
+| `<Workflow>Definition` | `pub trait` with associated `Input` / `Output` types and default associated consts for `WORKFLOW_NAME`, `TASK_QUEUE`, `WORKFLOW_ALIASES` (only when the proto declares any), and attached signal/query/update names. Consumers implement this trait on their SDK `#[workflow]` struct. |
+| `<METHOD>_WORKFLOW_ALIASES` | `pub const &'static [&'static str]` emitted at module scope when the workflow's `(temporal.v1.workflow).aliases` list is non-empty. Mirrors the Go plugin: register the workflow under each name so a service can migrate naming conventions without breaking workflow history or existing clients. |
 | `register_<workflow>_workflow<W>` | `pub fn(&mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker` where `W: temporal_runtime::worker::WorkflowImplementer + <Workflow>Definition<Input = <Input>, Output = <Output>>`. Delegates to `worker.register_workflow::<W>()`. |
 
 The consumer still owns the `temporalio-sdk` `#[workflow]` /

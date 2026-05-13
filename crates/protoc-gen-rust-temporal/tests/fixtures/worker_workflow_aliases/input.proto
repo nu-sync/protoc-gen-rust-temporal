@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package aliases.v1;
+
+import "temporal/v1/temporal.proto";
+
+// As `workflow_aliases`, but with the `workflows=true` plugin option so the
+// per-workflow Definition trait should additionally surface the aliases as
+// `const WORKFLOW_ALIASES: &'static [&'static str]`. Consumers register the
+// workflow under each name when wiring it into the worker.
+service AliasService {
+  rpc Run(RunInput) returns (RunOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "aliases"
+      aliases: [
+        "aliases.v1.AliasService.RunLegacy",
+        "aliases.v1.AliasService.RunV0"
+      ]
+    };
+  }
+}
+
+message RunInput  { string name = 1; }
+message RunOutput { string id = 1; }
