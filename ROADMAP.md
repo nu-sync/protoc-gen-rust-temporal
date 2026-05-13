@@ -182,6 +182,20 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — marker structs derive ergonomic traits):
+  every generated marker struct (`<Activity>Activity`, `<Sig>Signal`,
+  `<Wf>Workflow` for child-workflow refs) is now declared with
+  `#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]`. They
+  hold no state — these derives are free at the type level and
+  let callers: `dbg!()` them in tests; store them in structs that
+  themselves derive `Debug`; copy without `.clone()` ceremony; use
+  `Default::default()` in patterns that prefer it; and compare by
+  identity (every instance of a unit struct is equal). One new
+  positive parse_validate test pins the derive line on the
+  `worker_full` fixture which exercises all three marker kinds.
+  Several fixture goldens reblessed (every fixture with a marker
+  gained the derive attr line). 168 parse_validate tests green.
+  No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client` `Debug` impl):
   parallel of the `<Wf>Handle` Debug shipment for the service-level
   client. `<Service>Client` now carries a manual Debug impl that

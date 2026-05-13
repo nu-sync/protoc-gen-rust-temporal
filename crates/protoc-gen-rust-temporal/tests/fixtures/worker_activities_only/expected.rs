@@ -66,6 +66,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
     pub const FETCH_ACTIVITY_NAME: &str = "workeract.v1.ActivityWorkerService.Fetch";
     pub const PING_ACTIVITY_NAME: &str = "workeract.v1.ActivityWorkerService.Ping";
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct FetchActivity;
     impl temporal_runtime::worker::ActivityDefinition for FetchActivity {
         type Input = temporal_runtime::TypedProtoMessage<FetchInput>;
@@ -90,6 +91,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
     ) -> ::std::result::Result<FetchOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(FetchActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct PingActivity;
     impl temporal_runtime::worker::ActivityDefinition for PingActivity {
         type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;

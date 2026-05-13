@@ -2453,6 +2453,14 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         } else {
             act.output_type.rust_name()
         };
+        // Marker structs hold no state — derive the standard
+        // ergonomic traits so callers can `#[derive(Debug)]` on
+        // structs that store one, copy/clone freely, and use
+        // `Default` for `Default::default()` patterns.
+        let _ = writeln!(
+            out,
+            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]"
+        );
         let _ = writeln!(out, "    pub struct {marker_struct};");
         let _ = writeln!(
             out,
@@ -2622,6 +2630,10 @@ fn render_external_signal_helpers(out: &mut String, svc: &ServiceModel) {
         let workflow_marker = format!("{}Workflow", wf.rpc_method);
         let signal_const = format!("{}_SIGNAL_NAME", sig.rpc_method.to_shouty_snake_case());
         let input_ty = sig.input_type.rust_name();
+        let _ = writeln!(
+            out,
+            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]"
+        );
         let _ = writeln!(out, "    pub struct {signal_marker};");
         let _ = writeln!(
             out,
@@ -2775,6 +2787,10 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
     // rule limitation as the activity markers under `activities=true`).
     if !wf.input_type.is_empty && !wf.output_type.is_empty {
         let marker_struct = format!("{}Workflow", wf.rpc_method);
+        let _ = writeln!(
+            out,
+            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]"
+        );
         let _ = writeln!(out, "    pub struct {marker_struct};");
         let _ = writeln!(
             out,

@@ -276,6 +276,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
 
     pub const LOAD_ACTIVITY_NAME: &str = "workerfull.v1.OrchestrationService.Load";
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct LoadActivity;
     impl temporal_runtime::worker::ActivityDefinition for LoadActivity {
         type Input = temporal_runtime::TypedProtoMessage<LoadInput>;
@@ -355,6 +356,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         worker.register_workflow::<W>()
     }
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct RunWorkflow;
     impl temporal_runtime::worker::WorkflowDefinition for RunWorkflow {
         type Input = temporal_runtime::TypedProtoMessage<RunInput>;
@@ -386,6 +388,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         ctx.continue_as_new(&wrapped, opts)
     }
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct CancelSignal;
     impl temporal_runtime::worker::SignalDefinition for CancelSignal {
         type Workflow = RunWorkflow;

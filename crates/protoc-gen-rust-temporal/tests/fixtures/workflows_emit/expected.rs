@@ -311,6 +311,7 @@ pub mod wf_v1_order_service_temporal {
         worker.register_workflow::<W>()
     }
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct RunWorkflow;
     impl temporal_runtime::worker::WorkflowDefinition for RunWorkflow {
         type Input = temporal_runtime::TypedProtoMessage<OrderInput>;
@@ -342,6 +343,7 @@ pub mod wf_v1_order_service_temporal {
         ctx.continue_as_new(&wrapped, opts)
     }
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct CancelSignal;
     impl temporal_runtime::worker::SignalDefinition for CancelSignal {
         type Workflow = RunWorkflow;

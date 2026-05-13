@@ -1289,6 +1289,26 @@ fn workflow_id_template_const_omitted_when_unset() {
 }
 
 #[test]
+fn marker_structs_derive_standard_traits() {
+    // R6 ergonomics — marker structs (`<Activity>Activity`,
+    // `<Sig>Signal`, `<Wf>Workflow`) hold no state; deriving the
+    // standard ergonomic traits (`Debug, Default, Clone, Copy,
+    // PartialEq, Eq`) lets callers `dbg!()` them, store them in
+    // structs that derive `Debug`, copy without ceremony, and use
+    // `Default::default()`.
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    // Should appear at every marker struct decl (activity + signal +
+    // child-workflow). worker_full has all three kinds.
+    let derive_line = "#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]";
+    assert!(
+        source.matches(derive_line).count() >= 2,
+        "expected marker derive on at least two struct kinds: {source}"
+    );
+}
+
+#[test]
 fn child_workflow_marker_exposes_task_queue_const() {
     // R4 — the child-workflow marker (`<Wf>Workflow`, emitted under
     // workflows=true when both input + output are non-Empty) now
