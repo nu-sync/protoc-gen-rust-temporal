@@ -318,6 +318,19 @@ Progress:
   parse_validate test pins the fn signature + body. Several
   fixture goldens reblessed (every Handle gained the accessor).
   189 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::set_run_id()` mutating setter):
+  every generated `<Wf>Handle` now exposes
+  `set_run_id(&mut self, Option<String>)` as the mutating
+  alternative to the consuming `with_run_id`. Lets callers update
+  a handle stored in a struct field without re-binding via
+  take/replace patterns. Uses `clone() + with_run_id` round-trip
+  on the inner bridge handle (cheap — Arc-backed `TemporalClient`).
+  Pairs with `with_run_id` (consuming) and `without_run_id`
+  (consuming, sugar for `None`) to cover the matrix of
+  ownership × default styles. One new positive parse_validate
+  test pins the fn signature + body. Several fixture goldens
+  reblessed (every Handle gained the setter). 196 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::without_run_id()` convenience):
   sugar over the `with_run_id(None)` form shipped in the previous
   commit. Lets callers transition a handle from a specific

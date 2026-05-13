@@ -1854,6 +1854,21 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.with_run_id(None)");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Mutating setter — alternative to `with_run_id` for callers
+    // that already have `&mut self` (e.g. updating a handle stored
+    // in a struct field without re-binding via take/replace).
+    // Clones the inner bridge handle (cheap — Arc-backed) and
+    // routes through `with_run_id`, then writes back.
+    let _ = writeln!(
+        out,
+        "        pub fn set_run_id(&mut self, run_id: Option<String>) {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.inner = self.inner.clone().with_run_id(run_id);"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Workflow-id-based equality — two handles to the same Temporal
     // workflow id are considered "same workflow" even if their
     // run_ids differ (one started via `<rpc>` returning a typed

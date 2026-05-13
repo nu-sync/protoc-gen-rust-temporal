@@ -260,6 +260,10 @@ pub mod empty_v1_nop_service_temporal {
             self.with_run_id(None)
         }
 
+        pub fn set_run_id(&mut self, run_id: Option<String>) {
+            self.inner = self.inner.clone().with_run_id(run_id);
+        }
+
         pub fn same_workflow_as(&self, other: &Self) -> bool {
             self.inner.workflow_id() == other.inner.workflow_id()
         }

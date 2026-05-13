@@ -2876,6 +2876,26 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_set_run_id_mutating_setter() {
+    // R6 ergonomics — `<Wf>Handle::set_run_id(&mut self,
+    // Option<String>)` is the mutating alternative to the
+    // consuming `with_run_id`. Lets callers update a handle
+    // stored in a struct field without re-binding via
+    // take/replace. Uses `clone() + with_run_id` round-trip
+    // (cheap — Arc-backed bridge handle).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn set_run_id(&mut self, run_id: Option<String>) {"),
+        "missing set_run_id mutating setter: {source}"
+    );
+    assert!(
+        source.contains("self.inner = self.inner.clone().with_run_id(run_id);"),
+        "set_run_id body must clone+with_run_id+assign: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_without_run_id_convenience() {
     // R6 ergonomics — `<Wf>Handle::without_run_id(self) -> Self`
     // is sugar over `with_run_id(None)`. Lets callers transition
