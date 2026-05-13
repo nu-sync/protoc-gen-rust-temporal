@@ -1620,6 +1620,25 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn client_exposes_source_file_const() {
+    // R4 — `<Service>Client::SOURCE_FILE: &'static str` carries the
+    // proto file path as protoc saw it. Lets tooling correlate
+    // generated code back to the input proto without parsing build
+    // outputs.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    let svc = &services[0];
+    let expected = format!(
+        "pub const SOURCE_FILE: &'static str = \"{}\";",
+        svc.source_file
+    );
+    assert!(
+        source.contains(&expected),
+        "SOURCE_FILE const missing or wrong (expected {expected:?}): {source}"
+    );
+}
+
+#[test]
 fn activity_task_queue_const_emits_when_declared() {
     // R4 — `<RPC>_ACTIVITY_TASK_QUEUE: &str` emits per activity that
     // declares `(temporal.v1.activity).task_queue`. Activities that

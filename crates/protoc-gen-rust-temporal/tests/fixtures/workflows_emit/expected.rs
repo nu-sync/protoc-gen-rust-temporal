@@ -50,6 +50,7 @@ pub mod wf_v1_order_service_temporal {
         pub const PACKAGE: &'static str = "wf.v1";
         pub const SERVICE_NAME: &'static str = "OrderService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "wf.v1.OrderService";
+        pub const SOURCE_FILE: &'static str = "input.proto";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Run"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Cancel"];
         pub const QUERY_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Status"];

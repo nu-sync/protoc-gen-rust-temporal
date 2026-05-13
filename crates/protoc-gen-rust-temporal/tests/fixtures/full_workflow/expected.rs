@@ -56,6 +56,7 @@ pub mod full_v1_full_service_temporal {
         pub const PACKAGE: &'static str = "full.v1";
         pub const SERVICE_NAME: &'static str = "FullService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "full.v1.FullService";
+        pub const SOURCE_FILE: &'static str = "input.proto";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["full.v1.FullService.Run"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["full.v1.FullService.Cancel", "full.v1.FullService.Bootstrap"];
         pub const QUERY_NAMES: &'static [&'static str] = &["full.v1.FullService.Status"];

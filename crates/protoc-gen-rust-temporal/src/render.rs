@@ -432,6 +432,14 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         "        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = \"{}\";",
         fqn.escape_default()
     );
+    // Source proto path, as protoc saw it. Lets tooling correlate
+    // generated code back to the input proto without parsing build
+    // outputs.
+    let _ = writeln!(
+        out,
+        "        pub const SOURCE_FILE: &'static str = \"{}\";",
+        svc.source_file.escape_default()
+    );
     let emit = |out: &mut String, ident: &str, names: &[&str]| {
         if names.is_empty() {
             return;

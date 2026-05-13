@@ -138,6 +138,14 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `<Service>Client::SOURCE_FILE` const):
+  every generated `<Service>Client` now exposes a `SOURCE_FILE:
+  &'static str` const carrying the proto file path exactly as protoc
+  saw it. Lets tooling correlate generated code back to its source
+  proto without parsing `build.rs` outputs. One new positive
+  parse_validate test pins the const shape. 16 fixture goldens
+  reblessed (every fixture gained one line in its Client impl). No
+  bridge signature change.
 - 2026-05-13 (R4 — per-activity `<RPC>_ACTIVITY_TASK_QUEUE` consts):
   every activity that declares `(temporal.v1.activity).task_queue`
   now emits a `pub const <RPC>_ACTIVITY_TASK_QUEUE: &str = …`. Mirrors
