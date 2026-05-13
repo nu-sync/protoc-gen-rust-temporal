@@ -53,6 +53,24 @@ impl<T: TemporalProtoMessage> From<T> for TypedProtoMessage<T> {
 /// The encoding string written into / required from `metadata.encoding`.
 pub const ENCODING: &str = "binary/protobuf";
 
+/// Wire-format marker for `google.protobuf.Empty`. The plugin emits
+/// `TypedProtoMessage<ProtoEmpty>` as the `Input` / `Output` associated
+/// type on per-rpc `ActivityDefinition` / `WorkflowDefinition` impls
+/// whenever the proto declares `google.protobuf.Empty` on either side.
+///
+/// `()` can't fill that role because the `TemporalSerializable` /
+/// `TemporalDeserializable` blanket impls live on
+/// `TypedProtoMessage<T: TemporalProtoMessage>` and require
+/// `T: prost::Message + Default`. We define `ProtoEmpty` ourselves
+/// (instead of leaning on a foreign crate's Empty) so the impls land
+/// here without orphan-rule contortions.
+#[derive(Clone, Copy, PartialEq, Eq, prost::Message)]
+pub struct ProtoEmpty {}
+
+impl TemporalProtoMessage for ProtoEmpty {
+    const MESSAGE_TYPE: &'static str = "google.protobuf.Empty";
+}
+
 #[cfg(feature = "sdk")]
 mod sdk_impls {
     use super::{ENCODING, TemporalProtoMessage, TypedProtoMessage};

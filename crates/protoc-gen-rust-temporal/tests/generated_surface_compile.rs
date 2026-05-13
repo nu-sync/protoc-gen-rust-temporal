@@ -328,6 +328,15 @@ pub mod temporal_runtime {
         }
     }
 
+    /// Stub of `temporal_runtime::ProtoEmpty` — the wire-format marker for
+    /// `google.protobuf.Empty`. Generated code spells it into marker
+    /// Input/Output associated types when the proto declares Empty.
+    #[derive(Default)]
+    pub struct ProtoEmpty {}
+    impl TemporalProtoMessage for ProtoEmpty {
+        const MESSAGE_TYPE: &'static str = "google.protobuf.Empty";
+    }
+
     pub type ActivityContext = ();
 
     pub fn random_workflow_id() -> String {

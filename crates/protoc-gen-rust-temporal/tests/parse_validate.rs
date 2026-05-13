@@ -681,11 +681,17 @@ fn activities_emit_renders_per_activity_marker_structs() {
         "marker name() must delegate to the existing name const: {source}"
     );
 
-    // Heartbeat has Empty input — must NOT produce a marker (until we have
-    // `()` TemporalSerializable impls). The name const is still emitted.
+    // Heartbeat has Empty input — now also gets a marker + helper, with
+    // the Empty side carried by `temporal_runtime::ProtoEmpty`.
     assert!(
-        !source.contains("pub struct HeartbeatActivity;"),
-        "Empty-input activity must not produce a marker struct yet: {source}"
+        source.contains("pub struct HeartbeatActivity;"),
+        "Empty-input activity must produce a marker struct: {source}"
+    );
+    assert!(
+        source.contains(
+            "type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;"
+        ),
+        "Empty input must be wrapped in TypedProtoMessage<ProtoEmpty>: {source}"
     );
     assert!(
         source.contains("pub const HEARTBEAT_ACTIVITY_NAME"),
@@ -716,10 +722,14 @@ fn activities_emit_renders_per_activity_marker_structs() {
         source.contains("ctx.start_activity(ProcessActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"),
         "helper must delegate to start_activity + unwrap: {source}"
     );
-    // Empty-side helper must also be suppressed.
+    // Empty-input helper: no `input` arg, constructs ProtoEmpty internally.
     assert!(
-        !source.contains("execute_heartbeat"),
-        "Empty-input activity must not produce a workflow-side helper yet"
+        source.contains("pub async fn execute_heartbeat<W>("),
+        "Empty-input activity must produce a helper: {source}"
+    );
+    assert!(
+        source.contains("ctx.start_activity(HeartbeatActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"),
+        "Empty-input helper must construct ProtoEmpty internally: {source}"
     );
 
     // R3 — local-activity variant. Mirrors the regular helper but uses
@@ -738,8 +748,8 @@ fn activities_emit_renders_per_activity_marker_structs() {
         "local helper must delegate to start_local_activity + unwrap: {source}"
     );
     assert!(
-        !source.contains("execute_heartbeat_local"),
-        "Empty-input activity must not produce a local-activity helper yet"
+        source.contains("pub async fn execute_heartbeat_local<W>("),
+        "Empty-input activity must also produce a local-activity helper: {source}"
     );
 }
 

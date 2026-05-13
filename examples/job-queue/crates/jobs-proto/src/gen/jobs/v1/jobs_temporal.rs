@@ -174,6 +174,26 @@ pub mod jobs_v1_job_service_temporal {
     pub const EXECUTE_COMMAND_ACTIVITY_NAME: &str = "jobs.v1.JobService.ExecuteCommand";
     pub const COLLECT_OUTPUT_ACTIVITY_NAME: &str = "jobs.v1.JobService.CollectOutput";
 
+    pub struct PrepareWorkspaceActivity;
+    impl temporal_runtime::worker::ActivityDefinition for PrepareWorkspaceActivity {
+        type Input = temporal_runtime::TypedProtoMessage<PrepareWorkspaceInput>;
+        type Output = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
+        fn name() -> &'static str { PREPARE_WORKSPACE_ACTIVITY_NAME }
+    }
+    pub async fn execute_prepare_workspace<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: PrepareWorkspaceInput,
+        opts: temporal_runtime::worker::ActivityOptions,
+    ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_activity(PrepareWorkspaceActivity, input, opts).await.map(|_| ())
+    }
+    pub async fn execute_prepare_workspace_local<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: PrepareWorkspaceInput,
+        opts: temporal_runtime::worker::LocalActivityOptions,
+    ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_local_activity(PrepareWorkspaceActivity, input, opts).await.map(|_| ())
+    }
     pub struct ExecuteCommandActivity;
     impl temporal_runtime::worker::ActivityDefinition for ExecuteCommandActivity {
         type Input = temporal_runtime::TypedProtoMessage<JobInput>;
@@ -193,6 +213,24 @@ pub mod jobs_v1_job_service_temporal {
         opts: temporal_runtime::worker::LocalActivityOptions,
     ) -> ::std::result::Result<JobOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(ExecuteCommandActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
+    pub struct CollectOutputActivity;
+    impl temporal_runtime::worker::ActivityDefinition for CollectOutputActivity {
+        type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
+        type Output = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
+        fn name() -> &'static str { COLLECT_OUTPUT_ACTIVITY_NAME }
+    }
+    pub async fn execute_collect_output<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        opts: temporal_runtime::worker::ActivityOptions,
+    ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_activity(CollectOutputActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(|_| ())
+    }
+    pub async fn execute_collect_output_local<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        opts: temporal_runtime::worker::LocalActivityOptions,
+    ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_local_activity(CollectOutputActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(|_| ())
     }
 
     pub trait JobServiceActivities: Send + Sync + 'static {

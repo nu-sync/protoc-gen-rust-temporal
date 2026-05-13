@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R3 — Empty-side activity markers + helpers): Empty-input
+  and Empty-output activities now also ship per-rpc markers + execute
+  helpers. New `temporal_runtime::ProtoEmpty` (a real prost message
+  defined in `temporal-proto-runtime`) carries the Empty side so
+  `TypedProtoMessage<ProtoEmpty>` satisfies the SDK's serializable
+  bounds. Helper signatures hide the wrapper: Empty-input helpers omit
+  the `input` arg (construct `ProtoEmpty {}` internally), Empty-output
+  helpers return `()` (discard the typed wrapper after the await).
+  Closes the last R3 gap. `<activity>_default_options()` factory still
+  emits only when the proto declares a close-timeout (orthogonal to
+  Empty-side support).
 - 2026-05-13 (R6 — `Cli::run_with` dispatch): under `cli=true`, every
   generated `<service>_cli::Cli` now also ships
   `pub async fn run_with<F, Fut>(self, client, mut read_input: F) ->
@@ -562,7 +573,7 @@ toward majority parity.
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks still pending. | R2 |
-| Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` factory shipped 2026-05-13 (non-Empty in/out only); Empty-input/output helpers still pending. | R3 |
+| Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` shipped 2026-05-13. Empty-input/output sides supported via `temporal_runtime::ProtoEmpty` wrapping; helper signatures hide the wrapper (no input arg for Empty-input, `()` return for Empty-output). | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy`, `parent_close_policy`, `wait_for_cancellation` shipped 2026-05-13; search attrs (need R7 Bloblang) and `versioning_behavior` (worker-side, no SDK 0.4 support) still pending. | R5 |
 | Activity runtime options | All six fields graduated to `<activity>_default_options()` 2026-05-13 (incl. `wait_for_cancellation` → `ActivityCancellationType::WaitCancellationCompleted`). | R5/R3 |

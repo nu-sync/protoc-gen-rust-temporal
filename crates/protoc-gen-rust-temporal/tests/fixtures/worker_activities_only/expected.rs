@@ -59,6 +59,24 @@ pub mod workeract_v1_activity_worker_service_temporal {
     ) -> ::std::result::Result<FetchOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(FetchActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
+    pub struct PingActivity;
+    impl temporal_runtime::worker::ActivityDefinition for PingActivity {
+        type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
+        type Output = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
+        fn name() -> &'static str { PING_ACTIVITY_NAME }
+    }
+    pub async fn execute_ping<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        opts: temporal_runtime::worker::ActivityOptions,
+    ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_activity(PingActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(|_| ())
+    }
+    pub async fn execute_ping_local<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        opts: temporal_runtime::worker::LocalActivityOptions,
+    ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_local_activity(PingActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(|_| ())
+    }
 
     pub trait ActivityWorkerServiceActivities: Send + Sync + 'static {
         fn fetch(&self, ctx: temporal_runtime::ActivityContext, input: FetchInput) -> impl ::std::future::Future<Output = Result<FetchOutput>> + Send;

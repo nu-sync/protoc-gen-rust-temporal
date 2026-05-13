@@ -162,6 +162,24 @@ pub mod acts_v1_chunk_service_temporal {
     ) -> ::std::result::Result<ChunkOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(ProcessActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
+    pub struct HeartbeatActivity;
+    impl temporal_runtime::worker::ActivityDefinition for HeartbeatActivity {
+        type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
+        type Output = temporal_runtime::TypedProtoMessage<HeartbeatOutput>;
+        fn name() -> &'static str { HEARTBEAT_ACTIVITY_NAME }
+    }
+    pub async fn execute_heartbeat<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        opts: temporal_runtime::worker::ActivityOptions,
+    ) -> ::std::result::Result<HeartbeatOutput, temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_activity(HeartbeatActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
+    pub async fn execute_heartbeat_local<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        opts: temporal_runtime::worker::LocalActivityOptions,
+    ) -> ::std::result::Result<HeartbeatOutput, temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_local_activity(HeartbeatActivity, temporal_runtime::ProtoEmpty {}, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
 
     pub trait ChunkServiceActivities: Send + Sync + 'static {
         fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;

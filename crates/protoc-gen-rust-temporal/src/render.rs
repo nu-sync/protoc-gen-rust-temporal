@@ -1517,6 +1517,80 @@ fn proto_module_path(package: &str) -> String {
 /// than `async fn` so the `Send` bound is explicit (the consumer's adapter to
 /// `temporalio-sdk`'s `#[activities]` macro needs a Send future to
 /// satisfy `tokio::task::spawn`-style boundaries).
+/// Emit `execute_<activity>` or `execute_<activity>_local` for the given
+/// activity. Hides the `TypedProtoMessage<ProtoEmpty>` wrapper on
+/// Empty-input/output sides: Empty-input skips the `input` arg, Empty-
+/// output returns `()` (the future result is discarded after the
+/// `start_*_activity` await). Non-Empty branches stay identical to the
+/// pre-R3-Empty implementation.
+fn render_activity_helper(
+    out: &mut String,
+    act: &crate::model::ActivityModel,
+    local: bool,
+    marker_struct: &str,
+) {
+    let (suffix, sdk_call, opts_ty) = if local {
+        (
+            "_local",
+            "start_local_activity",
+            "temporal_runtime::worker::LocalActivityOptions",
+        )
+    } else {
+        (
+            "",
+            "start_activity",
+            "temporal_runtime::worker::ActivityOptions",
+        )
+    };
+    let helper_fn = format!("execute_{}{}", act.rpc_method.to_snake_case(), suffix);
+    let output_ty = if act.output_type.is_empty {
+        "()".to_string()
+    } else {
+        act.output_type.rust_name().to_string()
+    };
+    let input_arg = if act.input_type.is_empty {
+        // Empty-input: no input arg in the helper. Body constructs
+        // `ProtoEmpty` and passes it through. The SDK's `start_activity`
+        // takes `impl Into<AD::Input>` and there's a `From<T>` impl on
+        // `TypedProtoMessage<T>`.
+        None
+    } else {
+        Some(act.input_type.rust_name().to_string())
+    };
+
+    let _ = writeln!(out, "    pub async fn {helper_fn}<W>(");
+    let _ = writeln!(
+        out,
+        "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
+    );
+    if let Some(in_ty) = input_arg.as_deref() {
+        let _ = writeln!(out, "        input: {in_ty},");
+    }
+    let _ = writeln!(out, "        opts: {opts_ty},");
+    let _ = writeln!(
+        out,
+        "    ) -> ::std::result::Result<{output_ty}, temporal_runtime::worker::ActivityExecutionError> {{"
+    );
+    let input_expr = if input_arg.is_some() {
+        "input".to_string()
+    } else {
+        "temporal_runtime::ProtoEmpty {}".to_string()
+    };
+    if act.output_type.is_empty {
+        // Empty-output: discard the typed wrapper after the await.
+        let _ = writeln!(
+            out,
+            "        ctx.{sdk_call}({marker_struct}, {input_expr}, opts).await.map(|_| ())"
+        );
+    } else {
+        let _ = writeln!(
+            out,
+            "        ctx.{sdk_call}({marker_struct}, {input_expr}, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
+        );
+    }
+    let _ = writeln!(out, "    }}");
+}
+
 /// Emit `pub fn <activity>_default_options() -> temporal_runtime::worker::ActivityOptions`.
 /// Picks the right `ActivityCloseTimeouts` variant based on which of
 /// schedule_to_close_timeout / start_to_close_timeout is set, then chains
@@ -1641,27 +1715,26 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     // ActivityDefinition impls per service.
     //
     // Scoped to activities with **non-Empty** input *and* output because
-    // `temporalio-common`'s `ActivityDefinition` trait requires `Input`/
-    // `Output` to impl `TemporalSerializable + TemporalDeserializable`,
-    // which `()` does not satisfy in the 0.4 SDK. Empty-input/output
-    // activities still get a name const above — they just need a hand-
-    // written ActivityDefinition (or wrap the Empty side in a marker
-    // message).
+    // `Input` / `Output` always resolve through `TypedProtoMessage<T>`
+    // (the orphan rule blocks impls on raw `T` directly). When the proto
+    // declares `google.protobuf.Empty` on either side, the marker carries
+    // `temporal_runtime::ProtoEmpty` — a real prost message we ship in
+    // `temporal-proto-runtime` so `TypedProtoMessage<ProtoEmpty>`
+    // satisfies the SDK trait bounds. Helper signatures hide the wrapper:
+    // Empty-input takes no `input` arg, Empty-output returns `()`.
     for act in &svc.activities {
-        if act.input_type.is_empty || act.output_type.is_empty {
-            continue;
-        }
         let marker_struct = format!("{}Activity", act.rpc_method);
         let const_ident = format!("{}_ACTIVITY_NAME", act.rpc_method.to_shouty_snake_case());
-        let input_ty = act.input_type.rust_name();
-        let output_ty = act.output_type.rust_name();
-        // `Input` / `Output` resolve through `TypedProtoMessage<T>` because
-        // the `TemporalSerializable` / `TemporalDeserializable` impls live
-        // on the wrapper, not on raw `T` (Rust orphan rule). Callers pass
-        // a raw `T` value at the call site — the SDK's `start_activity`
-        // takes `impl Into<AD::Input>` and there's a `From<T>` impl on
-        // `TypedProtoMessage<T>`. The returned future yields
-        // `TypedProtoMessage<O>`; consumers unwrap via `.into_inner()`.
+        let input_marker_ty = if act.input_type.is_empty {
+            "temporal_runtime::ProtoEmpty"
+        } else {
+            act.input_type.rust_name()
+        };
+        let output_marker_ty = if act.output_type.is_empty {
+            "temporal_runtime::ProtoEmpty"
+        } else {
+            act.output_type.rust_name()
+        };
         let _ = writeln!(out, "    pub struct {marker_struct};");
         let _ = writeln!(
             out,
@@ -1669,77 +1742,20 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(
             out,
-            "        type Input = temporal_runtime::TypedProtoMessage<{input_ty}>;"
+            "        type Input = temporal_runtime::TypedProtoMessage<{input_marker_ty}>;"
         );
         let _ = writeln!(
             out,
-            "        type Output = temporal_runtime::TypedProtoMessage<{output_ty}>;"
+            "        type Output = temporal_runtime::TypedProtoMessage<{output_marker_ty}>;"
         );
         let _ = writeln!(out, "        fn name() -> &'static str {{ {const_ident} }}");
         let _ = writeln!(out, "    }}");
 
-        // R3 — workflow-side helper. Wraps `ctx.start_activity(...)` so
-        // workflow code calls `execute_<activity>(ctx, input, opts).await`
-        // and gets the raw output back. The helper unwraps the
-        // `TypedProtoMessage` envelope so consumers don't reach into it.
-        // Generic over `W` because the SDK ties `WorkflowContext` to the
-        // surrounding workflow implementer type — staying generic keeps
-        // the helper callable from any workflow body in the service.
-        let helper_fn = format!("execute_{}", act.rpc_method.to_snake_case());
-        let _ = writeln!(out, "    pub async fn {helper_fn}<W>(");
-        let _ = writeln!(
-            out,
-            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
-        );
-        let _ = writeln!(out, "        input: {input_ty},");
-        let _ = writeln!(
-            out,
-            "        opts: temporal_runtime::worker::ActivityOptions,"
-        );
-        let _ = writeln!(
-            out,
-            "    ) -> ::std::result::Result<{output_ty}, temporal_runtime::worker::ActivityExecutionError> {{"
-        );
-        let _ = writeln!(
-            out,
-            "        ctx.start_activity({marker_struct}, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
-        );
-        let _ = writeln!(out, "    }}");
-
-        // R3 — proto-default `ActivityOptions` factory. Emitted whenever
-        // the proto declares at least one runtime-affecting field
-        // (timeouts, task_queue override, retry_policy). Callers use it
-        // as a starting point and pass the result straight into
-        // `execute_<activity>`.
+        render_activity_helper(out, act, /* local: */ false, &marker_struct);
         if let Some(spec) = act.default_options.as_ref() {
             render_activity_default_options_fn(out, &act.rpc_method, spec);
         }
-
-        // R3 — local-activity variant. Mirrors the helper above but routes
-        // through `start_local_activity` + `LocalActivityOptions`. Local
-        // activities run in-process on the worker without going through
-        // the matching service — useful for cheap deterministic work that
-        // doesn't need workflow task scheduling overhead.
-        let local_fn = format!("execute_{}_local", act.rpc_method.to_snake_case());
-        let _ = writeln!(out, "    pub async fn {local_fn}<W>(");
-        let _ = writeln!(
-            out,
-            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
-        );
-        let _ = writeln!(out, "        input: {input_ty},");
-        let _ = writeln!(
-            out,
-            "        opts: temporal_runtime::worker::LocalActivityOptions,"
-        );
-        let _ = writeln!(
-            out,
-            "    ) -> ::std::result::Result<{output_ty}, temporal_runtime::worker::ActivityExecutionError> {{"
-        );
-        let _ = writeln!(
-            out,
-            "        ctx.start_local_activity({marker_struct}, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
-        );
-        let _ = writeln!(out, "    }}");
+        render_activity_helper(out, act, /* local: */ true, &marker_struct);
     }
     let _ = writeln!(out);
 

@@ -54,6 +54,13 @@ use temporalio_common::protos::temporal::api::workflowservice::v1::{
     ExecuteMultiOperationRequest, StartWorkflowExecutionRequest, UpdateWorkflowExecutionRequest,
 };
 
+/// `google.protobuf.Empty` marker. The plugin spells out
+/// `temporal_runtime::ProtoEmpty` for the `Input` / `Output` associated
+/// types on per-rpc `ActivityDefinition` / `WorkflowDefinition` impls
+/// whenever the proto declares `google.protobuf.Empty` on either side.
+/// Consumers normally don't construct it directly — generated helpers
+/// hide it behind unit-typed signatures.
+pub use temporal_proto_runtime::ProtoEmpty;
 pub use temporal_proto_runtime::TemporalProtoMessage;
 /// Re-export the `binary/protobuf` payload wrapper so plugin-emitted
 /// activity marker structs can spell out `temporal_runtime::TypedProtoMessage<T>`
