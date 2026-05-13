@@ -31,6 +31,9 @@ pub mod jobs_v1_job_service_temporal {
     pub const RUN_JOB_INPUT_TYPE: &str = "jobs.v1.JobInput";
     pub const RUN_JOB_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
+    pub const RUN_JOB_ATTACHED_SIGNAL_NAMES: &'static [&'static str] = &["jobs.v1.JobService.CancelJob"];
+    pub const RUN_JOB_ATTACHED_QUERY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.GetStatus"];
+    pub const RUN_JOB_ATTACHED_UPDATE_NAMES: &'static [&'static str] = &["jobs.v1.JobService.Reconfigure"];
 
     pub const CANCEL_JOB_SIGNAL_INPUT_TYPE: &str = "jobs.v1.CancelJobInput";
     pub const GET_STATUS_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";

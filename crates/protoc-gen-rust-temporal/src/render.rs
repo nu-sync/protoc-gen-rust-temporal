@@ -201,6 +201,15 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
                 .join(", ");
             let _ = writeln!(out, "    pub const {aliases_const}: &[&str] = &[{joined}];");
         }
+        // Per-workflow attached-handler name lists. Each lists the
+        // *registered* names (the same strings consumers see on the
+        // wire) of the signals / queries / updates this workflow ref'd
+        // via `WorkflowOptions.{signal,query,update}[]`. Only emits
+        // when the list is non-empty so workflows with no attached
+        // handlers don't bloat the surface. Resolves both same-service
+        // refs (look up SignalModel et al on `svc`) and cross-service
+        // refs (registered_name lives on `cross_service.registered_name`).
+        emit_attached_handler_names(out, svc, wf);
     }
     if !svc.workflows.is_empty() {
         let _ = writeln!(out);
@@ -294,6 +303,83 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
     {
         let _ = writeln!(out);
     }
+}
+
+/// Emit `<RPC>_ATTACHED_SIGNAL_NAMES` / `_QUERY_NAMES` / `_UPDATE_NAMES`
+/// `&'static [&'static str]` consts for the given workflow when the
+/// corresponding attached-ref list is non-empty. Each entry is the
+/// *registered* (Temporal-wire) name, resolved against same-service
+/// models or cross-service target metadata captured at parse.
+fn emit_attached_handler_names(
+    out: &mut String,
+    svc: &ServiceModel,
+    wf: &crate::model::WorkflowModel,
+) {
+    use heck::ToShoutySnakeCase;
+    let resolve_signal = |sref: &crate::model::SignalRef| -> Option<String> {
+        if let Some(target) = sref.cross_service.as_ref() {
+            return Some(target.registered_name.clone());
+        }
+        svc.signals
+            .iter()
+            .find(|s| s.rpc_method == sref.rpc_method)
+            .map(|s| s.registered_name.clone())
+    };
+    let resolve_query = |qref: &crate::model::QueryRef| -> Option<String> {
+        if let Some(target) = qref.cross_service.as_ref() {
+            return Some(target.registered_name.clone());
+        }
+        svc.queries
+            .iter()
+            .find(|q| q.rpc_method == qref.rpc_method)
+            .map(|q| q.registered_name.clone())
+    };
+    let resolve_update = |uref: &crate::model::UpdateRef| -> Option<String> {
+        if let Some(target) = uref.cross_service.as_ref() {
+            return Some(target.registered_name.clone());
+        }
+        svc.updates
+            .iter()
+            .find(|u| u.rpc_method == uref.rpc_method)
+            .map(|u| u.registered_name.clone())
+    };
+    let emit = |out: &mut String, suffix: &str, names: &[String]| {
+        if names.is_empty() {
+            return;
+        }
+        let ident = format!(
+            "{}_ATTACHED_{}",
+            wf.rpc_method.to_shouty_snake_case(),
+            suffix
+        );
+        let joined = names
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "    pub const {ident}: &'static [&'static str] = &[{joined}];"
+        );
+    };
+    let sig_names: Vec<String> = wf
+        .attached_signals
+        .iter()
+        .filter_map(resolve_signal)
+        .collect();
+    let q_names: Vec<String> = wf
+        .attached_queries
+        .iter()
+        .filter_map(resolve_query)
+        .collect();
+    let u_names: Vec<String> = wf
+        .attached_updates
+        .iter()
+        .filter_map(resolve_update)
+        .collect();
+    emit(out, "SIGNAL_NAMES", &sig_names);
+    emit(out, "QUERY_NAMES", &q_names);
+    emit(out, "UPDATE_NAMES", &u_names);
 }
 
 /// Emit one private `<wf>_id` function per workflow that has an `id`

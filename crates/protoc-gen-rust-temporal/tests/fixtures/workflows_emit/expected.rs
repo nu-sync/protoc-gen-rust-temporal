@@ -31,6 +31,9 @@ pub mod wf_v1_order_service_temporal {
     pub const RUN_INPUT_TYPE: &str = "wf.v1.OrderInput";
     pub const RUN_OUTPUT_TYPE: &str = "wf.v1.OrderOutput";
     pub const RUN_TASK_QUEUE: &str = "orders";
+    pub const RUN_ATTACHED_SIGNAL_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Cancel"];
+    pub const RUN_ATTACHED_QUERY_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Status"];
+    pub const RUN_ATTACHED_UPDATE_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Confirm"];
 
     pub const CANCEL_SIGNAL_INPUT_TYPE: &str = "wf.v1.CancelInput";
     pub const STATUS_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";

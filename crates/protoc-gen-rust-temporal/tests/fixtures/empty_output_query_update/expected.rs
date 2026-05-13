@@ -25,6 +25,8 @@ pub mod eoqu_v1_eoqu_service_temporal {
     pub const RUN_INPUT_TYPE: &str = "eoqu.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "eoqu.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "eoqu";
+    pub const RUN_ATTACHED_QUERY_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Ack", "eoqu.v1.EoquService.AckEmpty"];
+    pub const RUN_ATTACHED_UPDATE_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];
 
     pub const ACK_QUERY_INPUT_TYPE: &str = "eoqu.v1.AckInput";
     pub const ACK_QUERY_OUTPUT_TYPE: &str = "google.protobuf.Empty";

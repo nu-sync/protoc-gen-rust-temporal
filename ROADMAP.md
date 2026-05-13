@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — per-workflow attached-handler name consts):
+  every workflow that refs at least one signal / query / update via
+  `WorkflowOptions.{signal,query,update}[]` now emits per-kind
+  `<RPC>_ATTACHED_SIGNAL_NAMES` / `_QUERY_NAMES` / `_UPDATE_NAMES`
+  `&'static [&'static str]` consts listing the *registered* (Temporal-
+  wire) names of those handlers. Resolves both same-service refs and
+  cross-service refs (the cross-service target's `registered_name` is
+  captured at parse). Workflows with no attached refs of a given
+  kind produce no const for that kind, so workflows with no handler
+  attachments stay surface-clean. One new positive parse_validate
+  test pins the populated + empty cases. 130 parse_validate tests
+  total. Several fixture goldens reblessed (every fixture with
+  workflow-attached handlers gained the corresponding const block).
+  No bridge signature change.
 - 2026-05-13 (R1 — cross-workflow alias collision validation):
   extends the per-workflow alias-collision parse check (previous
   commit) to a service-wide validation pass: two workflows on the

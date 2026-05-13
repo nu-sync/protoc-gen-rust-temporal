@@ -1620,6 +1620,84 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn workflow_attached_handler_name_consts_emit() {
+    // R4 — per-workflow `<RPC>_ATTACHED_{SIGNAL,QUERY,UPDATE}_NAMES`
+    // consts list the registered names of handlers the workflow refs
+    // via `WorkflowOptions.{signal,query,update}[]`. Only emits when
+    // the attached list is non-empty.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package att.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" }, { ref: "Pause" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Pause(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+          rpc Bare(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const RUN_ATTACHED_SIGNAL_NAMES: &'static [&'static str] = &[\"att.v1.Svc.Cancel\", \"att.v1.Svc.Pause\"];"
+        ),
+        "RUN_ATTACHED_SIGNAL_NAMES missing or wrong: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const RUN_ATTACHED_QUERY_NAMES: &'static [&'static str] = &[\"att.v1.Svc.Status\"];"
+        ),
+        "RUN_ATTACHED_QUERY_NAMES missing or wrong: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const RUN_ATTACHED_UPDATE_NAMES: &'static [&'static str] = &[\"att.v1.Svc.Touch\"];"
+        ),
+        "RUN_ATTACHED_UPDATE_NAMES missing or wrong: {source}"
+    );
+    // Workflow with no attached refs must NOT emit empty consts.
+    assert!(
+        !source.contains("BARE_ATTACHED_SIGNAL_NAMES"),
+        "must not emit empty BARE attached-signal const: {source}"
+    );
+    assert!(
+        !source.contains("BARE_ATTACHED_QUERY_NAMES"),
+        "must not emit empty BARE attached-query const: {source}"
+    );
+    assert!(
+        !source.contains("BARE_ATTACHED_UPDATE_NAMES"),
+        "must not emit empty BARE attached-update const: {source}"
+    );
+}
+
+#[test]
 fn workflow_alias_collision_across_workflows_fails_validation() {
     // Two workflows on the same service can't share a Temporal name —
     // would register both under the same name and route to either at

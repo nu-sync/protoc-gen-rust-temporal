@@ -34,6 +34,9 @@ pub mod full_v1_full_service_temporal {
     pub const RUN_INPUT_TYPE: &str = "full.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "full.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "full";
+    pub const RUN_ATTACHED_SIGNAL_NAMES: &'static [&'static str] = &["full.v1.FullService.Cancel", "full.v1.FullService.Bootstrap"];
+    pub const RUN_ATTACHED_QUERY_NAMES: &'static [&'static str] = &["full.v1.FullService.Status"];
+    pub const RUN_ATTACHED_UPDATE_NAMES: &'static [&'static str] = &["full.v1.FullService.Reconfigure"];
 
     pub const CANCEL_SIGNAL_INPUT_TYPE: &str = "full.v1.CancelInput";
     pub const BOOTSTRAP_SIGNAL_INPUT_TYPE: &str = "full.v1.BootstrapInput";

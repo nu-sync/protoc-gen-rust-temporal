@@ -37,6 +37,9 @@ pub mod workerfull_v1_orchestration_service_temporal {
     pub const RUN_INPUT_TYPE: &str = "workerfull.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "workerfull.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "worker-full";
+    pub const RUN_ATTACHED_SIGNAL_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Cancel"];
+    pub const RUN_ATTACHED_QUERY_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Status"];
+    pub const RUN_ATTACHED_UPDATE_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Confirm"];
 
     pub const CANCEL_SIGNAL_INPUT_TYPE: &str = "workerfull.v1.CancelInput";
     pub const STATUS_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";
