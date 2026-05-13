@@ -142,6 +142,14 @@ impl WorkflowHandle {
         self.run_id.as_deref()
     }
 
+    /// Borrow the `TemporalClient` this handle is bound to. Lets
+    /// consumers reach the bridge surface (e.g. construct a sibling
+    /// handle on the same client) without round-tripping through
+    /// the typed wrapper.
+    pub fn client(&self) -> &TemporalClient {
+        &self.client
+    }
+
     fn untyped(&self) -> UntypedWorkflowHandle<Client> {
         self.client
             .inner

@@ -1,0 +1,146 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - paragraph [ref=e4]: Temporal Rust SDK gap analysis
+      - 'heading "SDK gaps blocking richer `protoc-gen-rust-temporal` parity" [level=1] [ref=e5]'
+      - paragraph [ref=e6]: "A source-backed tabbed report for the SDK surfaces that constrain generated Rust Temporal worker/client ergonomics, with prototype paths in `/Users/wcygan/Development/sdk-core`."
+      - generic "Report metadata" [ref=e7]:
+        - generic [ref=e8]: "Generated: 2026-05-13"
+        - generic [ref=e9]: "SDK repo: /Users/wcygan/Development/sdk-core"
+        - generic [ref=e10]: "Generator repo: /Users/wcygan/Development/protoc-gen-rust-temporal"
+        - generic [ref=e11]: "Format: standalone HTML"
+  - main [ref=e12]:
+    - region "Executive Takeaway" [ref=e13]:
+      - generic [ref=e14]:
+        - heading "Executive Takeaway" [level=2] [ref=e15]
+        - paragraph [ref=e16]: The biggest blockers are not payload encoding. They are the SDK's macro-owned workflow dispatch model, private registration internals, and the absence of a high-level test environment. Some gaps are small and high-leverage, especially per-workflow versioning behavior and direct activity registration.
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - strong [ref=e19]: "9"
+            - text: SDK gaps documented
+          - generic [ref=e20]:
+            - strong [ref=e21]: "3"
+            - text: good first prototypes
+          - generic [ref=e22]:
+            - strong [ref=e23]: "2"
+            - text: high-design-risk workflow gaps
+          - generic [ref=e24]:
+            - strong [ref=e25]: "1"
+            - text: "not a true SDK blocker: update handles"
+      - generic [ref=e26]:
+        - heading "Files Read" [level=3] [ref=e27]
+        - generic [ref=e28]:
+          - generic [ref=e29]: crates/sdk/src/workflows.rs
+          - generic [ref=e30]: crates/sdk/src/workflow_context.rs
+          - generic [ref=e31]: crates/sdk/src/activities.rs
+          - generic [ref=e32]: crates/common/src/workflow_definition.rs
+          - generic [ref=e33]: crates/common/src/worker.rs
+          - generic [ref=e34]: crates/common/src/data_converters.rs
+          - generic [ref=e35]: crates/client/src/options_structs.rs
+          - generic [ref=e36]: crates/client/src/workflow_handle.rs
+          - generic [ref=e37]: crates/sdk-core/src/ephemeral_server/mod.rs
+          - generic [ref=e38]: crates/client/src/grpc.rs
+    - region "Recommended Prototype Order" [ref=e39]:
+      - heading "Recommended Prototype Order" [level=2] [ref=e40]
+      - table [ref=e41]:
+        - rowgroup [ref=e42]:
+          - row "Order Prototype Why first Validation" [ref=e43]:
+            - columnheader "Order" [ref=e44]
+            - columnheader "Prototype" [ref=e45]
+            - columnheader "Why first" [ref=e46]
+            - columnheader "Validation" [ref=e47]
+        - rowgroup [ref=e48]:
+          - 'row "1 Per-workflow `versioning_behavior` Small, isolated API addition with direct generator payoff. `cargo integ-test worker_versioning` or focused worker versioning test." [ref=e49]':
+            - cell "1" [ref=e50]
+            - 'cell "Per-workflow `versioning_behavior`" [ref=e51]'
+            - cell "Small, isolated API addition with direct generator payoff." [ref=e52]
+            - 'cell "`cargo integ-test worker_versioning` or focused worker versioning test." [ref=e53]'
+          - 'row "2 Direct `register_activity_fn` Contained registration ergonomic fix; avoids workflow dispatch design complexity. Unit test `ActivityDefinitions`; one SDK example/integ worker registration test." [ref=e54]':
+            - cell "2" [ref=e55]
+            - 'cell "Direct `register_activity_fn`" [ref=e56]'
+            - cell "Contained registration ergonomic fix; avoids workflow dispatch design complexity." [ref=e57]
+            - 'cell "Unit test `ActivityDefinitions`; one SDK example/integ worker registration test." [ref=e58]'
+          - 'row "3 `temporalio_sdk::testing` harness Mostly composition of existing pieces; high downstream test value. New focused integration test using ephemeral test server and time-skipping." [ref=e59]':
+            - cell "3" [ref=e60]
+            - 'cell "`temporalio_sdk::testing` harness" [ref=e61]'
+            - cell "Mostly composition of existing pieces; high downstream test value." [ref=e62]
+            - cell "New focused integration test using ephemeral test server and time-skipping." [ref=e63]
+          - row "4 Typed search attributes Useful type safety, but needs careful value-kind API design. Common/client unit tests plus start/upsert integration coverage." [ref=e64]:
+            - cell "4" [ref=e65]
+            - cell "Typed search attributes" [ref=e66]
+            - cell "Useful type safety, but needs careful value-kind API design." [ref=e67]
+            - cell "Common/client unit tests plus start/upsert integration coverage." [ref=e68]
+          - row "5 Workflow message inbox and handler hooks Highest generator value, highest determinism/API design risk. Replay and nondeterminism tests, then message-passing integration tests." [ref=e69]:
+            - cell "5" [ref=e70]
+            - cell "Workflow message inbox and handler hooks" [ref=e71]
+            - cell "Highest generator value, highest determinism/API design risk." [ref=e72]
+            - cell "Replay and nondeterminism tests, then message-passing integration tests." [ref=e73]
+    - region "Gap tabs" [ref=e74]:
+      - tablist "SDK gap tabs" [ref=e75]:
+        - tab "Signal receive/select" [selected] [ref=e76] [cursor=pointer]
+        - tab "Handler hooks" [ref=e77] [cursor=pointer]
+        - tab "Versioning behavior" [ref=e78] [cursor=pointer]
+        - tab "Activity registration" [ref=e79] [cursor=pointer]
+        - tab "Workflow registration" [ref=e80] [cursor=pointer]
+        - tab "Typed search attrs" [ref=e81] [cursor=pointer]
+        - tab "Test environment" [ref=e82] [cursor=pointer]
+        - tab "Codec server" [ref=e83] [cursor=pointer]
+        - tab "Update-with-start" [ref=e84] [cursor=pointer]
+    - tabpanel "Signal receive/select" [ref=e85]:
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - heading "Typed Signal Receive / Select" [level=2] [ref=e88]
+          - paragraph [ref=e89]: "The generator can emit typed signal definitions and external signal send helpers, but workflow bodies cannot currently ask the SDK for a typed signal stream. Signal delivery is owned by `#[workflow_methods]` dispatch."
+        - generic [ref=e90]: High value / high API risk
+      - generic [ref=e91]:
+        - generic [ref=e92]: Blocker
+        - paragraph [ref=e93]: "Workflow messages are only exposed through macro-generated dispatch methods. `WorkflowContext` has no deterministic public API for awaiting or selecting a typed signal inside workflow code, so generated workflow helpers cannot receive `SignalDefinition` inputs directly."
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - strong [ref=e96]: SDK needs
+          - paragraph [ref=e97]: "A deterministic inbox API such as `WorkflowContext::next_signal<S>()` or `signal_channel<S>()` where `S: SignalDefinition`, usable with SDK workflow futures and `workflows::select!`."
+        - generic [ref=e98]:
+          - strong [ref=e99]: Prototype locally
+          - paragraph [ref=e100]: "Yes. Start in `workflow_future.rs` where signal activations are received, store typed inbox state in workflow context internals, then expose a context method in `workflow_context.rs`."
+        - generic [ref=e101]:
+          - strong [ref=e102]: Use case
+          - paragraph [ref=e103]: "A generated workflow helper could wait for `CancelJobSignal` or race `ApprovalSignal` against a timer without stringly handler methods."
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - heading "Current shape" [level=3] [ref=e106]
+          - paragraph [ref=e107]: "Signals are dispatched by name through the macro-generated implementation. There is no public receive API on `WorkflowContext` analogous to activity or child workflow start methods."
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]: crates/sdk/src/workflows.rs:200
+              - button "Copy" [ref=e111] [cursor=pointer]
+            - code [ref=e113]: "fn dispatch_signal( _ctx: WorkflowContext<Self>, _name: &str, _payloads: Payloads, _converter: &PayloadConverter, ) -> Option<LocalBoxFuture<'static, Result<(), WorkflowError>>> { None }"
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]: crates/sdk/src/workflow_context.rs:720
+              - button "Copy" [ref=e117] [cursor=pointer]
+            - code [ref=e119]: "pub fn start_activity<AD: ActivityDefinition>(...) -> impl CancellableFuture<...>; pub fn child_workflow<WD: WorkflowDefinition>(...) -> impl CancellableFutureWithReason<...>; // No equivalent public method for receiving typed signals."
+        - generic [ref=e120]:
+          - heading "Prototype sketch" [level=3] [ref=e121]
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - generic [ref=e124]: possible public API
+              - button "Copy" [ref=e125] [cursor=pointer]
+            - code [ref=e127]: "impl<W> WorkflowContext<W> { pub fn next_signal<S>(&self) -> impl CancellableFuture<Result<S::Input, WorkflowError>> where S: SignalDefinition, S::Input: TemporalDeserializable; }"
+          - generic [ref=e128]:
+            - strong [ref=e129]: "Design risk:"
+            - text: "the API must preserve deterministic replay. Avoid raw `tokio` channels; route through SDK workflow activation state and existing deterministic future machinery."
+    - region "Where Each Fix Lands" [ref=e130]:
+      - heading "Where Each Fix Lands" [level=2] [ref=e131]
+      - img "SDK gap flow map Shows how generator capabilities depend on SDK public surfaces." [ref=e132]:
+        - generic [ref=e134]: Generator
+        - generic [ref=e135]: protoc-gen-rust-temporal
+        - generic [ref=e140]: Workflow dispatch APIs
+        - generic [ref=e142]: Registration APIs
+        - generic [ref=e144]: Testing / codec APIs
+        - generic [ref=e149]: SDK prototypes
+        - generic [ref=e150]: stable public surfaces
+        - generic [ref=e152]: Harness / server
+        - generic [ref=e153]: testing and codecs
+        - generic [ref=e157]: Parity
+        - generic [ref=e158]: unlocked
+    - paragraph [ref=e159]: This artifact is standalone and source-backed. It intentionally separates true SDK blockers from generator-only backlog.

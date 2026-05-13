@@ -2876,6 +2876,26 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_client_passthrough() {
+    // R6 ergonomics — `<Wf>Handle::client(&self) -> &TemporalClient`
+    // borrows the bound bridge client. Lets callers construct
+    // sibling handles on the same client without round-tripping
+    // through the typed `<Service>Client` (or storing it
+    // separately). Bridge gained the matching `client()`
+    // accessor; the typed wrapper passes through.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn client(&self) -> &temporal_runtime::TemporalClient {"),
+        "missing client passthrough on handle: {source}"
+    );
+    assert!(
+        source.contains("self.inner.client()"),
+        "client passthrough must call through to bridge handle: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_same_workflow_as_helper() {
     // R6 ergonomics — `<Wf>Handle::same_workflow_as(&other)`
     // compares two handles by workflow_id only (ignoring run_id).

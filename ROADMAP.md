@@ -293,6 +293,23 @@ Progress:
   parse_validate test pins the fn signature + body. Several
   fixture goldens reblessed (every Handle gained the accessor).
   189 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::client()` passthrough):
+  every generated `<Wf>Handle` now exposes
+  `client(&self) -> &TemporalClient` borrowing the bound bridge
+  client. Lets callers construct sibling handles on the same
+  client without round-tripping through the typed
+  `<Service>Client` or storing it separately:
+  ```
+  let other_handle = client_a.run_handle(handle.client().clone(), id);
+  ```
+  Bridge `WorkflowHandle` gained the matching `client()` accessor;
+  the typed wrapper passes through. Stub runtime updated with a
+  `client()` method backed by `OnceLock<TemporalClient>` so the
+  generated surface compiles. One new positive parse_validate test
+  pins the fn signature and bridge passthrough. Several fixture
+  goldens reblessed (every Handle gained the accessor). 193
+  parse_validate tests green. Bridge change is additive — only
+  adds the new `client()` method.
 - 2026-05-13 (R6 — `<Wf>Handle::same_workflow_as()` comparison):
   every generated `<Wf>Handle` now exposes `same_workflow_as(&self,
   other: &Self) -> bool` comparing two handles by workflow_id only

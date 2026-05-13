@@ -250,6 +250,10 @@ pub mod solo_v1_solo_service_temporal {
             self.inner.workflow_id().to_string()
         }
 
+        pub fn client(&self) -> &temporal_runtime::TemporalClient {
+            self.inner.client()
+        }
+
         pub fn same_workflow_as(&self, other: &Self) -> bool {
             self.inner.workflow_id() == other.inner.workflow_id()
         }

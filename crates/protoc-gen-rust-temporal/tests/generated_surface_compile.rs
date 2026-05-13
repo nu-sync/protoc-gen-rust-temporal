@@ -269,6 +269,11 @@ pub mod temporal_runtime {
     pub struct WorkflowHandle;
 
     impl WorkflowHandle {
+        pub fn client(&self) -> &TemporalClient {
+            // Stub returns a leaked default — fine for compile-only tests.
+            static STUB: std::sync::OnceLock<TemporalClient> = std::sync::OnceLock::new();
+            STUB.get_or_init(TemporalClient::default)
+        }
         pub fn workflow_id(&self) -> &str {
             "stub-workflow-id"
         }
