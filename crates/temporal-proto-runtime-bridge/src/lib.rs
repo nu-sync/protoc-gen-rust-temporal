@@ -1196,13 +1196,14 @@ where
 pub mod worker {
     pub use temporalio_common::{ActivityDefinition, WorkflowDefinition};
     pub use temporalio_sdk::Worker;
+    pub use temporalio_sdk::WorkflowTermination;
     pub use temporalio_sdk::activities::{
         ActivityContext, ActivityDefinitions, ActivityError, ActivityImplementer,
     };
-    pub use temporalio_sdk::workflows::WorkflowImplementer;
+    pub use temporalio_sdk::workflows::{WorkflowImplementation, WorkflowImplementer};
     pub use temporalio_sdk::{
         ActivityExecutionError, ActivityOptions, ChildWorkflowOptions, ChildWorkflowStartError,
-        LocalActivityOptions, StartedChildWorkflow, WorkflowContext,
+        ContinueAsNewOptions, LocalActivityOptions, StartedChildWorkflow, WorkflowContext,
     };
 }
 

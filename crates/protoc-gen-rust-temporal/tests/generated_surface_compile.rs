@@ -546,6 +546,10 @@ pub mod temporal_runtime {
             fn name(&self) -> &str;
         }
 
+        pub trait WorkflowImplementation: Sized + 'static {
+            type Run: WorkflowDefinition;
+        }
+
         #[derive(Debug, Default)]
         pub struct ChildWorkflowOptions;
 
@@ -554,6 +558,12 @@ pub mod temporal_runtime {
 
         #[derive(Debug)]
         pub struct StartedChildWorkflow<WD: WorkflowDefinition>(::std::marker::PhantomData<WD>);
+
+        #[derive(Debug, Default)]
+        pub struct ContinueAsNewOptions;
+
+        #[derive(Debug)]
+        pub enum WorkflowTermination {}
 
         #[derive(Debug, Default)]
         pub struct ActivityOptions;
@@ -596,6 +606,16 @@ pub mod temporal_runtime {
                 _opts: ChildWorkflowOptions,
             ) -> ::std::result::Result<StartedChildWorkflow<WD>, ChildWorkflowStartError> {
                 Ok(StartedChildWorkflow(::std::marker::PhantomData))
+            }
+            pub fn continue_as_new(
+                &self,
+                _input: &<<W as WorkflowImplementation>::Run as WorkflowDefinition>::Input,
+                _opts: ContinueAsNewOptions,
+            ) -> ::std::result::Result<::std::convert::Infallible, WorkflowTermination>
+            where
+                W: WorkflowImplementation,
+            {
+                unreachable!("stub")
             }
         }
 

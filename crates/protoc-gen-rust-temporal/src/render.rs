@@ -1828,6 +1828,46 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         );
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
+
+        // R2 — continue-as-new helper. Re-enters the *current* workflow
+        // execution as a new run with fresh input. The SDK's
+        // `ctx.continue_as_new` always returns `Err(WorkflowTermination)`
+        // which the caller propagates; our helper wraps the raw input in
+        // a `TypedProtoMessage<{input_ty}>` so the user passes a bare
+        // proto message.
+        //
+        // The `W: WorkflowImplementation<Run = {marker_struct}>` bound
+        // ties this helper to workflows whose body's macro-derived
+        // `Run` matches the marker we emit above. That's the contract
+        // for using these helpers — documented in RUNTIME-API.md.
+        let cont_fn = format!("continue_{}_as_new", wf.rpc_method.to_snake_case());
+        let _ = writeln!(out, "    pub fn {cont_fn}<W>(");
+        let _ = writeln!(
+            out,
+            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
+        );
+        let _ = writeln!(out, "        input: {input_ty},");
+        let _ = writeln!(
+            out,
+            "        opts: temporal_runtime::worker::ContinueAsNewOptions,"
+        );
+        let _ = writeln!(
+            out,
+            "    ) -> ::std::result::Result<::std::convert::Infallible, temporal_runtime::worker::WorkflowTermination>"
+        );
+        let _ = writeln!(out, "    where");
+        let _ = writeln!(
+            out,
+            "        W: temporal_runtime::worker::WorkflowImplementation<Run = {marker_struct}>,"
+        );
+        let _ = writeln!(out, "    {{");
+        let _ = writeln!(
+            out,
+            "        let wrapped = temporal_runtime::TypedProtoMessage::from(input);"
+        );
+        let _ = writeln!(out, "        ctx.continue_as_new(&wrapped, opts)");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
     }
 }
 

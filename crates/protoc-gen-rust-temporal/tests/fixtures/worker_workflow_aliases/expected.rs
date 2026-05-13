@@ -156,4 +156,16 @@ pub mod aliases_v1_alias_service_temporal {
         ctx.child_workflow(RunWorkflow, input, opts).await
     }
 
+    pub fn continue_run_as_new<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: RunInput,
+        opts: temporal_runtime::worker::ContinueAsNewOptions,
+    ) -> ::std::result::Result<::std::convert::Infallible, temporal_runtime::worker::WorkflowTermination>
+    where
+        W: temporal_runtime::worker::WorkflowImplementation<Run = RunWorkflow>,
+    {
+        let wrapped = temporal_runtime::TypedProtoMessage::from(input);
+        ctx.continue_as_new(&wrapped, opts)
+    }
+
 }

@@ -657,6 +657,44 @@ fn workflows_emit_renders_child_workflow_marker_and_helper() {
 }
 
 #[test]
+fn workflows_emit_renders_continue_as_new_helper() {
+    // R2 — continue-as-new helper. Wraps `ctx.continue_as_new(&input, opts)`
+    // so workflow code can finish the current run and start a new one of
+    // the same type with fresh input. Bound to
+    // `WorkflowImplementation<Run = <RPC>Workflow>` so it only applies
+    // to workflows whose macro-derived Run matches our marker.
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn continue_run_as_new<W>("),
+        "must emit `continue_run_as_new` helper: {source}"
+    );
+    assert!(
+        source.contains("opts: temporal_runtime::worker::ContinueAsNewOptions,"),
+        "helper must take ContinueAsNewOptions: {source}"
+    );
+    assert!(
+        source.contains(
+            "-> ::std::result::Result<::std::convert::Infallible, temporal_runtime::worker::WorkflowTermination>"
+        ),
+        "helper return type must mirror the SDK's always-Err shape: {source}"
+    );
+    assert!(
+        source.contains("W: temporal_runtime::worker::WorkflowImplementation<Run = RunWorkflow>,"),
+        "helper must bind W to the marker via WorkflowImplementation::Run: {source}"
+    );
+    assert!(
+        source.contains("let wrapped = temporal_runtime::TypedProtoMessage::from(input);"),
+        "helper must wrap the raw input before forwarding: {source}"
+    );
+    assert!(
+        source.contains("ctx.continue_as_new(&wrapped, opts)"),
+        "helper must delegate to ctx.continue_as_new: {source}"
+    );
+}
+
+#[test]
 fn child_workflow_marker_suppressed_for_empty_io() {
     // Empty-input workflows fall through the orphan-rule gate. They keep
     // the Definition trait but skip the marker + helper.
