@@ -103,6 +103,45 @@ pub mod solo_v1_solo_service_temporal {
         }
     }
 
+    impl DoWorkStartOptions {
+        pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
+            self.workflow_id = Some(v.into());
+            self
+        }
+        pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {
+            self.task_queue = Some(v.into());
+            self
+        }
+        pub fn with_id_reuse_policy(mut self, v: temporal_runtime::WorkflowIdReusePolicy) -> Self {
+            self.id_reuse_policy = Some(v);
+            self
+        }
+        pub fn with_id_conflict_policy(mut self, v: temporal_runtime::WorkflowIdConflictPolicy) -> Self {
+            self.id_conflict_policy = Some(v);
+            self
+        }
+        pub fn with_execution_timeout(mut self, v: Duration) -> Self {
+            self.execution_timeout = Some(v);
+            self
+        }
+        pub fn with_run_timeout(mut self, v: Duration) -> Self {
+            self.run_timeout = Some(v);
+            self
+        }
+        pub fn with_task_timeout(mut self, v: Duration) -> Self {
+            self.task_timeout = Some(v);
+            self
+        }
+        pub fn with_enable_eager_workflow_start(mut self, v: bool) -> Self {
+            self.enable_eager_workflow_start = Some(v);
+            self
+        }
+        pub fn with_retry_policy(mut self, v: temporal_runtime::RetryPolicy) -> Self {
+            self.retry_policy = Some(v);
+            self
+        }
+    }
+
     pub struct DoWorkHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

@@ -2129,6 +2129,63 @@ fn workflow_alias_duplicate_within_list_fails_at_parse() {
 }
 
 #[test]
+fn start_options_exposes_with_field_builders() {
+    // R6 ergonomics — `<Wf>StartOptions` gains `with_<field>`
+    // builder-style setters complementing struct-init. Each takes the
+    // bare type (not Option) and wraps in Some, returning Self for
+    // chaining.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    for (sig, body) in [
+        (
+            "with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self",
+            "self.workflow_id = Some(v.into());",
+        ),
+        (
+            "with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self",
+            "self.task_queue = Some(v.into());",
+        ),
+        (
+            "with_id_reuse_policy(mut self, v: temporal_runtime::WorkflowIdReusePolicy) -> Self",
+            "self.id_reuse_policy = Some(v);",
+        ),
+        (
+            "with_id_conflict_policy(mut self, v: temporal_runtime::WorkflowIdConflictPolicy) -> Self",
+            "self.id_conflict_policy = Some(v);",
+        ),
+        (
+            "with_execution_timeout(mut self, v: Duration) -> Self",
+            "self.execution_timeout = Some(v);",
+        ),
+        (
+            "with_run_timeout(mut self, v: Duration) -> Self",
+            "self.run_timeout = Some(v);",
+        ),
+        (
+            "with_task_timeout(mut self, v: Duration) -> Self",
+            "self.task_timeout = Some(v);",
+        ),
+        (
+            "with_enable_eager_workflow_start(mut self, v: bool) -> Self",
+            "self.enable_eager_workflow_start = Some(v);",
+        ),
+        (
+            "with_retry_policy(mut self, v: temporal_runtime::RetryPolicy) -> Self",
+            "self.retry_policy = Some(v);",
+        ),
+    ] {
+        assert!(
+            source.contains(sig),
+            "missing builder signature `{sig}` in: {source}"
+        );
+        assert!(
+            source.contains(body),
+            "missing builder body `{body}` in: {source}"
+        );
+    }
+}
+
+#[test]
 fn client_exposes_source_file_const() {
     // R4 — `<Service>Client::SOURCE_FILE: &'static str` carries the
     // proto file path as protoc saw it. Lets tooling correlate

@@ -1333,6 +1333,84 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }
+
+    // Builder-style `with_<field>` setters complementing struct-init.
+    // Each takes the bare type (not Option) and wraps in Some, so
+    // callers chain ergonomically:
+    //     `<Wf>StartOptions::default().with_workflow_id("id").with_task_queue("tq")`
+    // String fields accept `impl Into<String>` so &str literals work
+    // without explicit `.to_string()`. Existing struct-init usage
+    // (`<Wf>StartOptions { workflow_id: Some(..), ..Default::default() }`)
+    // keeps working.
+    let _ = writeln!(out, "    impl {opts_struct} {{");
+    let _ = writeln!(
+        out,
+        "        pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.workflow_id = Some(v.into());");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.task_queue = Some(v.into());");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_id_reuse_policy(mut self, v: temporal_runtime::WorkflowIdReusePolicy) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.id_reuse_policy = Some(v);");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_id_conflict_policy(mut self, v: temporal_runtime::WorkflowIdConflictPolicy) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.id_conflict_policy = Some(v);");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_execution_timeout(mut self, v: Duration) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.execution_timeout = Some(v);");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_run_timeout(mut self, v: Duration) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.run_timeout = Some(v);");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_task_timeout(mut self, v: Duration) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.task_timeout = Some(v);");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_enable_eager_workflow_start(mut self, v: bool) -> Self {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.enable_eager_workflow_start = Some(v);"
+    );
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(
+        out,
+        "        pub fn with_retry_policy(mut self, v: temporal_runtime::RetryPolicy) -> Self {{"
+    );
+    let _ = writeln!(out, "            self.retry_policy = Some(v);");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
 }
 
 fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {

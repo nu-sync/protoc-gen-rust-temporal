@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `<Wf>StartOptions::with_<field>` builder setters):
+  every generated `<Wf>StartOptions` struct now exposes
+  builder-style setters per field (`with_workflow_id`,
+  `with_task_queue`, `with_id_reuse_policy`,
+  `with_id_conflict_policy`, `with_execution_timeout`,
+  `with_run_timeout`, `with_task_timeout`,
+  `with_enable_eager_workflow_start`, `with_retry_policy`). Each
+  takes the bare type (not `Option`), wraps in `Some`, and returns
+  `Self` for chaining. String fields accept `impl Into<String>` so
+  `&str` literals don't need explicit `.to_string()`. Struct-init
+  usage (`<Wf>StartOptions { workflow_id: Some(..),
+  ..Default::default() }`) keeps working unchanged. One new positive
+  parse_validate test pins all nine signatures + bodies against the
+  `minimal_workflow` fixture. 16 fixture goldens reblessed (every
+  workflow gained the `with_<field>` impl block). 149 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6/R1 — reject CLI subcommand collisions vs default-derived values):
   the cross-workflow CLI subcommand collision check previously only
   compared explicit `cli.name` / `cli.aliases` against each other.
