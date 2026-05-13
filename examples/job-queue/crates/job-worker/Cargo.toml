@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+e2e-tests = ["temporalio-sdk-core/ephemeral-server"]
+
 [lib]
 path = "src/lib.rs"
 
@@ -33,3 +36,8 @@ uuid.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
+
+[[test]]
+name = "generated_temporal_e2e"
+path = "tests/generated_temporal_e2e.rs"
+required-features = ["e2e-tests"]
