@@ -245,10 +245,18 @@ pub mod report_service_cli {
         StartGenerate(StartGenerateArgs),
         /// Attach to a running `cli.v1.ReportService.Generate` workflow by id.
         AttachGenerate(AttachGenerateArgs),
+        /// Request cooperative cancellation of a running `cli.v1.ReportService.Generate` workflow by id.
+        CancelGenerate(CancelGenerateArgs),
+        /// Terminate a running `cli.v1.ReportService.Generate` workflow by id.
+        TerminateGenerate(TerminateGenerateArgs),
         /// Start a new `cli.v1.ReportService.Aggregate` workflow.
         StartAggregate(StartAggregateArgs),
         /// Attach to a running `cli.v1.ReportService.Aggregate` workflow by id.
         AttachAggregate(AttachAggregateArgs),
+        /// Request cooperative cancellation of a running `cli.v1.ReportService.Aggregate` workflow by id.
+        CancelAggregate(CancelAggregateArgs),
+        /// Terminate a running `cli.v1.ReportService.Aggregate` workflow by id.
+        TerminateAggregate(TerminateAggregateArgs),
     }
 
     impl Cli {
@@ -283,6 +291,16 @@ pub mod report_service_cli {
                     ::std::println!("attached: workflow_id={}", args.workflow_id);
                     if args.wait { let _ = handle.result().await?; }
                 }
+                Command::CancelGenerate(args) => {
+                    let handle = client.generate_handle(args.workflow_id.clone());
+                    handle.cancel_workflow(&args.reason).await?;
+                    ::std::println!("cancel requested: workflow_id={}", args.workflow_id);
+                }
+                Command::TerminateGenerate(args) => {
+                    let handle = client.generate_handle(args.workflow_id.clone());
+                    handle.terminate_workflow(&args.reason).await?;
+                    ::std::println!("terminated: workflow_id={}", args.workflow_id);
+                }
                 Command::StartAggregate(args) => {
                     let dyn_input = read_input(&args.input_file, "cli.v1.AggregateInput").await?;
                     let input: AggregateInput = *dyn_input.downcast::<AggregateInput>()
@@ -296,6 +314,16 @@ pub mod report_service_cli {
                     let handle = client.aggregate_handle(args.workflow_id.clone());
                     ::std::println!("attached: workflow_id={}", args.workflow_id);
                     if args.wait { let _ = handle.result().await?; }
+                }
+                Command::CancelAggregate(args) => {
+                    let handle = client.aggregate_handle(args.workflow_id.clone());
+                    handle.cancel_workflow(&args.reason).await?;
+                    ::std::println!("cancel requested: workflow_id={}", args.workflow_id);
+                }
+                Command::TerminateAggregate(args) => {
+                    let handle = client.aggregate_handle(args.workflow_id.clone());
+                    handle.terminate_workflow(&args.reason).await?;
+                    ::std::println!("terminated: workflow_id={}", args.workflow_id);
                 }
             }
             Ok(())
@@ -326,6 +354,24 @@ pub mod report_service_cli {
     }
 
     #[derive(temporal_runtime::clap::Args)]
+    pub struct CancelGenerateArgs {
+        /// Workflow id to cancel.
+        pub workflow_id: String,
+        /// Reason recorded in event history. Defaults to an empty string.
+        #[arg(long, default_value = "")]
+        pub reason: String,
+    }
+
+    #[derive(temporal_runtime::clap::Args)]
+    pub struct TerminateGenerateArgs {
+        /// Workflow id to terminate.
+        pub workflow_id: String,
+        /// Reason recorded in event history. Defaults to an empty string.
+        #[arg(long, default_value = "")]
+        pub reason: String,
+    }
+
+    #[derive(temporal_runtime::clap::Args)]
     pub struct StartAggregateArgs {
         /// Path to a JSON file containing the workflow input.
         /// Format: prost-json (matching pbjson) of `cli.v1.AggregateInput`.
@@ -346,6 +392,24 @@ pub mod report_service_cli {
         /// Wait for the workflow to complete and print its result.
         #[arg(long)]
         pub wait: bool,
+    }
+
+    #[derive(temporal_runtime::clap::Args)]
+    pub struct CancelAggregateArgs {
+        /// Workflow id to cancel.
+        pub workflow_id: String,
+        /// Reason recorded in event history. Defaults to an empty string.
+        #[arg(long, default_value = "")]
+        pub reason: String,
+    }
+
+    #[derive(temporal_runtime::clap::Args)]
+    pub struct TerminateAggregateArgs {
+        /// Workflow id to terminate.
+        pub workflow_id: String,
+        /// Reason recorded in event history. Defaults to an empty string.
+        #[arg(long, default_value = "")]
+        pub reason: String,
     }
 
 }

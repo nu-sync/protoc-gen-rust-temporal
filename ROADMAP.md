@@ -138,6 +138,21 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `cancel-<wf>` + `terminate-<wf>` CLI subcommands):
+  the `cli=true` scaffold gains two new variants per workflow:
+  `Cancel<Wf>(Cancel<Wf>Args)` and `Terminate<Wf>(Terminate<Wf>Args)`,
+  each carrying a positional `workflow_id` and a `--reason` flag
+  (defaults to empty string). Dispatch in `Cli::run_with` calls into
+  the existing `Handle::cancel_workflow(&reason)` /
+  `terminate_workflow(&reason)` methods, so the wire surface is just
+  the bridge calls the scaffold already exposed on the typed handle.
+  Per-workflow `cli.name` / `cli.aliases` / `cli.usage` overrides now
+  apply uniformly across all four verbs (start / attach / cancel /
+  terminate). One new positive parse_validate test pins the variants,
+  args, default flag, and dispatch lines. The `cli.usage` test
+  upgraded its occurrence count from 2 to 4 since the override now
+  reaches the new variants too. `cli_emit` and `cli_ignore` golden
+  fixtures reblessed.
 - 2026-05-13 (R6 — `cli.usage` per-workflow honoured):
   `(temporal.v1.workflow).cli.usage` moves from rejected to supported.
   Emits as `#[command(about = "<usage>")]` on both the start and attach

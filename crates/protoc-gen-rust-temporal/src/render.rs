@@ -2483,6 +2483,41 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
             "                    if args.wait {{ let _ = handle.result().await?; }}"
         );
         let _ = writeln!(out, "                }}");
+
+        // Cancel<Wf>
+        let _ = writeln!(out, "                Command::Cancel{pascal}(args) => {{");
+        let _ = writeln!(
+            out,
+            "                    let handle = client.{snake}_handle(args.workflow_id.clone());"
+        );
+        let _ = writeln!(
+            out,
+            "                    handle.cancel_workflow(&args.reason).await?;"
+        );
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"cancel requested: workflow_id={{}}\", args.workflow_id);"
+        );
+        let _ = writeln!(out, "                }}");
+
+        // Terminate<Wf>
+        let _ = writeln!(
+            out,
+            "                Command::Terminate{pascal}(args) => {{"
+        );
+        let _ = writeln!(
+            out,
+            "                    let handle = client.{snake}_handle(args.workflow_id.clone());"
+        );
+        let _ = writeln!(
+            out,
+            "                    handle.terminate_workflow(&args.reason).await?;"
+        );
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"terminated: workflow_id={{}}\", args.workflow_id);"
+        );
+        let _ = writeln!(out, "                }}");
     }
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "            Ok(())");
@@ -2559,11 +2594,12 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "    pub enum Command {{");
     for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();
-        // Per-workflow `(temporal.v1.workflow).cli.name` overrides the
-        // kebab-case clap default; `cli.aliases` add extra command names
-        // for both the start and attach variants.
+        // Per-workflow `(temporal.v1.workflow).cli.{name,aliases,usage}`
+        // overrides flow into each verb-prefixed variant uniformly.
         let start_attrs = cli_command_attrs("start", wf);
         let attach_attrs = cli_command_attrs("attach", wf);
+        let cancel_attrs = cli_command_attrs("cancel", wf);
+        let terminate_attrs = cli_command_attrs("terminate", wf);
         let _ = writeln!(
             out,
             "        /// Start a new `{}` workflow.",
@@ -2582,6 +2618,24 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
             let _ = writeln!(out, "        #[command({attach_attrs})]");
         }
         let _ = writeln!(out, "        Attach{pascal}(Attach{pascal}Args),");
+        let _ = writeln!(
+            out,
+            "        /// Request cooperative cancellation of a running `{}` workflow by id.",
+            wf.registered_name
+        );
+        if !cancel_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({cancel_attrs})]");
+        }
+        let _ = writeln!(out, "        Cancel{pascal}(Cancel{pascal}Args),");
+        let _ = writeln!(
+            out,
+            "        /// Terminate a running `{}` workflow by id.",
+            wf.registered_name
+        );
+        if !terminate_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({terminate_attrs})]");
+        }
+        let _ = writeln!(out, "        Terminate{pascal}(Terminate{pascal}Args),");
     }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
@@ -2628,6 +2682,36 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "        #[arg(long)]");
         let _ = writeln!(out, "        pub wait: bool,");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+
+        // Cancel<Wf> args: workflow id (positional) + optional reason
+        // recorded in event history. Mirrors `Handle::cancel_workflow`.
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Cancel{pascal}Args {{");
+        let _ = writeln!(out, "        /// Workflow id to cancel.");
+        let _ = writeln!(out, "        pub workflow_id: String,");
+        let _ = writeln!(
+            out,
+            "        /// Reason recorded in event history. Defaults to an empty string."
+        );
+        let _ = writeln!(out, "        #[arg(long, default_value = \"\")]");
+        let _ = writeln!(out, "        pub reason: String,");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+
+        // Terminate<Wf> args: same shape as Cancel — workflow id +
+        // optional reason. Mirrors `Handle::terminate_workflow`.
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Terminate{pascal}Args {{");
+        let _ = writeln!(out, "        /// Workflow id to terminate.");
+        let _ = writeln!(out, "        pub workflow_id: String,");
+        let _ = writeln!(
+            out,
+            "        /// Reason recorded in event history. Defaults to an empty string."
+        );
+        let _ = writeln!(out, "        #[arg(long, default_value = \"\")]");
+        let _ = writeln!(out, "        pub reason: String,");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

@@ -1471,8 +1471,8 @@ fn workflow_cli_usage_emits_clap_about_override() {
         source
             .matches("#[command(about = \"Run the thing.\")]")
             .count(),
-        2,
-        "cli.usage must apply to both start + attach variants: {source}"
+        4,
+        "cli.usage must apply to all four variants (start/attach/cancel/terminate): {source}"
     );
 }
 
@@ -1550,6 +1550,49 @@ fn cli_emit_renders_clap_subcommands() {
     assert!(
         source.contains("pub struct StartGenerateArgs {"),
         "missing StartGenerateArgs struct"
+    );
+}
+
+#[test]
+fn cli_emit_renders_cancel_and_terminate_subcommands() {
+    // R6 — per-workflow `Cancel<Wf>` / `Terminate<Wf>` subcommands
+    // call into the existing `Handle::cancel_workflow` /
+    // `Handle::terminate_workflow` methods. Both accept a positional
+    // workflow id and an optional `--reason` flag forwarded to the
+    // bridge call.
+    let services = parse_and_validate("cli_emit");
+    let opts = load_fixture_options("cli_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("CancelGenerate(CancelGenerateArgs),"),
+        "missing CancelGenerate variant: {source}"
+    );
+    assert!(
+        source.contains("TerminateGenerate(TerminateGenerateArgs),"),
+        "missing TerminateGenerate variant: {source}"
+    );
+    assert!(
+        source.contains("pub struct CancelGenerateArgs {"),
+        "missing CancelGenerateArgs struct: {source}"
+    );
+    assert!(
+        source.contains("pub struct TerminateGenerateArgs {"),
+        "missing TerminateGenerateArgs struct: {source}"
+    );
+    // The reason flag must be optional with an empty-string default so
+    // callers can omit it.
+    assert!(
+        source.contains("#[arg(long, default_value = \"\")]"),
+        "reason flag must default to empty string: {source}"
+    );
+    // Dispatch must forward the reason to the existing Handle methods.
+    assert!(
+        source.contains("handle.cancel_workflow(&args.reason).await?;"),
+        "cancel dispatch must forward reason: {source}"
+    );
+    assert!(
+        source.contains("handle.terminate_workflow(&args.reason).await?;"),
+        "terminate dispatch must forward reason: {source}"
     );
 }
 

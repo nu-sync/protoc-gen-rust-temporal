@@ -245,6 +245,10 @@ pub mod report_service_cli {
         StartGenerate(StartGenerateArgs),
         /// Attach to a running `cli.v1.ReportService.Generate` workflow by id.
         AttachGenerate(AttachGenerateArgs),
+        /// Request cooperative cancellation of a running `cli.v1.ReportService.Generate` workflow by id.
+        CancelGenerate(CancelGenerateArgs),
+        /// Terminate a running `cli.v1.ReportService.Generate` workflow by id.
+        TerminateGenerate(TerminateGenerateArgs),
     }
 
     impl Cli {
@@ -279,6 +283,16 @@ pub mod report_service_cli {
                     ::std::println!("attached: workflow_id={}", args.workflow_id);
                     if args.wait { let _ = handle.result().await?; }
                 }
+                Command::CancelGenerate(args) => {
+                    let handle = client.generate_handle(args.workflow_id.clone());
+                    handle.cancel_workflow(&args.reason).await?;
+                    ::std::println!("cancel requested: workflow_id={}", args.workflow_id);
+                }
+                Command::TerminateGenerate(args) => {
+                    let handle = client.generate_handle(args.workflow_id.clone());
+                    handle.terminate_workflow(&args.reason).await?;
+                    ::std::println!("terminated: workflow_id={}", args.workflow_id);
+                }
             }
             Ok(())
         }
@@ -305,6 +319,24 @@ pub mod report_service_cli {
         /// Wait for the workflow to complete and print its result.
         #[arg(long)]
         pub wait: bool,
+    }
+
+    #[derive(temporal_runtime::clap::Args)]
+    pub struct CancelGenerateArgs {
+        /// Workflow id to cancel.
+        pub workflow_id: String,
+        /// Reason recorded in event history. Defaults to an empty string.
+        #[arg(long, default_value = "")]
+        pub reason: String,
+    }
+
+    #[derive(temporal_runtime::clap::Args)]
+    pub struct TerminateGenerateArgs {
+        /// Workflow id to terminate.
+        pub workflow_id: String,
+        /// Reason recorded in event history. Defaults to an empty string.
+        #[arg(long, default_value = "")]
+        pub reason: String,
     }
 
 }
