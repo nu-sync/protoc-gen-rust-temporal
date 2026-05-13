@@ -181,6 +181,8 @@ pub mod aliases_v1_alias_service_temporal {
         type Output;
         const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;
         const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+        const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
+        const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;
     }
 

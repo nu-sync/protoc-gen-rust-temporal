@@ -306,6 +306,8 @@ pub mod workerfull_v1_orchestration_service_temporal {
         type Output;
         const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;
         const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+        const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
+        const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         const CANCEL_SIGNAL_NAME: &'static str = self::CANCEL_SIGNAL_NAME;
         const STATUS_QUERY_NAME: &'static str = self::STATUS_QUERY_NAME;
         const CONFIRM_UPDATE_NAME: &'static str = self::CONFIRM_UPDATE_NAME;

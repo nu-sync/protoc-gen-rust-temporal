@@ -180,6 +180,8 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         type Output;
         const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;
         const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+        const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
+        const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
     }
 
     pub fn register_run_workflow<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker

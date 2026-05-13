@@ -1213,6 +1213,25 @@ fn workflow_aliases_const_omitted_when_empty() {
 }
 
 #[test]
+fn workflow_definition_trait_exposes_input_output_type_consts() {
+    // R4 — `<Workflow>Definition` trait re-exposes the per-rpc
+    // `<RPC>_INPUT_TYPE` / `_OUTPUT_TYPE` proto FQN consts as
+    // associated `&'static str`. Lets generic worker code spell
+    // `<W as <Wf>Definition>::INPUT_TYPE` for payload routing.
+    let services = parse_and_validate("worker_workflow_only");
+    let opts = load_fixture_options("worker_workflow_only");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("const INPUT_TYPE: &'static str = self::"),
+        "Definition trait must re-expose INPUT_TYPE const: {source}"
+    );
+    assert!(
+        source.contains("const OUTPUT_TYPE: &'static str = self::"),
+        "Definition trait must re-expose OUTPUT_TYPE const: {source}"
+    );
+}
+
+#[test]
 fn worker_workflow_aliases_surfaces_on_definition_trait() {
     let services = parse_and_validate("worker_workflow_aliases");
     let opts = load_fixture_options("worker_workflow_aliases");

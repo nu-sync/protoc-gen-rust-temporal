@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` consts on `<Workflow>Definition` trait):
+  the `<Workflow>Definition` trait under `workflows=true` already
+  re-exposed `WORKFLOW_NAME` / `TASK_QUEUE` / `WORKFLOW_ALIASES` as
+  default `&'static str` consts. Now extended with `INPUT_TYPE` and
+  `OUTPUT_TYPE` sourced from the previously-shipped per-rpc
+  module-level consts. Lets generic worker code spell `<W as
+  <Wf>Definition>::INPUT_TYPE` for payload routing without
+  re-deriving from the registered name. One new positive
+  parse_validate test pins the trait-const emit. Several fixture
+  goldens reblessed (every workflows=true fixture's Definition trait
+  gained the two new const lines). 154 parse_validate tests green.
+  No bridge signature change.
 - 2026-05-13 (R6/R1 — reject unusable cli override values):
   every CLI override site now goes through a printable-token check
   at validate. Rejects empty strings (clap can't use them as

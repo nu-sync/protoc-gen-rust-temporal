@@ -2492,6 +2492,21 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         out,
         "        const TASK_QUEUE: &'static str = self::{task_queue_const};"
     );
+    // INPUT_TYPE / OUTPUT_TYPE proto FQN consts on the trait, sourced
+    // from the previously-shipped module-level
+    // `<RPC>_INPUT_TYPE` / `_OUTPUT_TYPE` consts. Lets generic code
+    // spell `<W as Definition>::INPUT_TYPE` for payload routing
+    // without re-deriving from the registered name.
+    let input_type_const = format!("{}_INPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+    let output_type_const = format!("{}_OUTPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+    let _ = writeln!(
+        out,
+        "        const INPUT_TYPE: &'static str = self::{input_type_const};"
+    );
+    let _ = writeln!(
+        out,
+        "        const OUTPUT_TYPE: &'static str = self::{output_type_const};"
+    );
     if !wf.aliases.is_empty() {
         let aliases_const = format!("{}_WORKFLOW_ALIASES", wf.rpc_method.to_shouty_snake_case());
         let _ = writeln!(
