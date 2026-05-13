@@ -3911,6 +3911,94 @@ fn search_attributes_double_literal_compiles_to_encoder_call() {
 }
 
 #[test]
+fn workflow_id_template_rejects_repeated_field() {
+    // Catch a real footgun: a workflow id template referencing a
+    // repeated / map field would emit `format!("{}", input.<field>)`
+    // and fail to compile with a generic Display error. Reject at
+    // parse with a clear message instead.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package id_repeated.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              id:         "job-{{ .Tags }}"
+            };
+          }
+        }
+        message In  { repeated string tags = 1; }
+        message Out {}
+        "#,
+    );
+    let err = format!("{:#}", parse::parse(&pool, &files).unwrap_err());
+    assert!(
+        err.contains("repeated") && err.contains("Tags"),
+        "diagnostic must name the repeated kind + field, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_id_template_rejects_message_field() {
+    // Nested-message field refs in the id template don't have a
+    // stable string form — reject with a clear message.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package id_msg.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              id:         "job-{{ .Meta }}"
+            };
+          }
+        }
+        message Inner {}
+        message In  { Inner meta = 1; }
+        message Out {}
+        "#,
+    );
+    let err = format!("{:#}", parse::parse(&pool, &files).unwrap_err());
+    assert!(
+        err.contains("nested message") && err.contains("Meta"),
+        "diagnostic must name the nested-message kind + field, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_id_template_rejects_bytes_field() {
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package id_bytes.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              id:         "job-{{ .Blob }}"
+            };
+          }
+        }
+        message In  { bytes blob = 1; }
+        message Out {}
+        "#,
+    );
+    let err = format!("{:#}", parse::parse(&pool, &files).unwrap_err());
+    assert!(
+        err.contains("bytes") && err.contains("Blob"),
+        "diagnostic must name the bytes kind + field, got: {err}"
+    );
+}
+
+#[test]
 fn search_attributes_string_literal_accepts_minimal_json_escapes() {
     // R7 slice 2 — the string lexer accepts the same minimal escape
     // set the encoder emits: `\\` (backslash) and `\"` (double quote).

@@ -138,6 +138,25 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — id-template field-kind validation at parse):
+  `parse_id_template` previously only checked that the referenced
+  field *existed* on the input message — leaving repeated, message,
+  and bytes refs to surface as cryptic `Vec<T> does not implement
+  Display` rustc errors when the generator emitted `format!("{}",
+  input.<field>)`. Now rejected at parse with clear diagnostics:
+  - repeated / map fields → "field is repeated / map; only singular
+    scalar fields can be substituted into workflow ids"
+  - nested-message fields → "field is a nested message; only scalar
+    fields can be substituted"
+  - bytes fields → "`bytes` fields don't have a stable string form"
+
+  Each diagnostic names the proto field token and parent message so
+  authors can fix the proto without running the build to read
+  rustc's complaints. Three new positive parse_validate tests cover
+  the three rejection paths. The check applies uniformly to both
+  workflow `id` and update `id` templates since they share
+  `parse_id_template`. 141 parse_validate tests green. No fixture
+  goldens touched.
 - 2026-05-13 (R7 slice 2 — string literal accepts `\\` and `\"` escapes):
   the Bloblang string-literal lexer previously rejected any string
   containing a backslash, blocking proto authors from declaring

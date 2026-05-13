@@ -1224,13 +1224,41 @@ fn parse_id_template(
             );
         }
         let rust_field = field_name.to_snake_case();
-        let known = input.fields().any(|f| f.name() == rust_field);
-        if !known {
+        let Some(descriptor) = input.fields().find(|f| f.name() == rust_field) else {
             anyhow::bail!(
                 "id template references `{field_name}` (looked up as `{rust_field}`) \
                  but no such field exists on input message `{}`",
                 input.full_name()
             );
+        };
+        // Reject field kinds whose Rust types don't implement Display.
+        // The render emits `format!("{}", input.<field>)` against each
+        // referenced field; without this guard a `repeated string` field
+        // would surface as an awful rustc error (`Vec<String> does not
+        // implement Display`) instead of a clear parse-time diagnostic.
+        if descriptor.is_list() || descriptor.is_map() {
+            anyhow::bail!(
+                "id template references `{field_name}` on input `{}`, but the field is repeated / map; \
+                 only singular scalar fields can be substituted into workflow ids",
+                input.full_name(),
+            );
+        }
+        match descriptor.kind() {
+            prost_reflect::Kind::Message(_) => {
+                anyhow::bail!(
+                    "id template references `{field_name}` on input `{}`, but the field is a nested message; \
+                     only scalar fields can be substituted into workflow ids",
+                    input.full_name(),
+                );
+            }
+            prost_reflect::Kind::Bytes => {
+                anyhow::bail!(
+                    "id template references `{field_name}` on input `{}`, but `bytes` fields don't have a stable string form; \
+                     only string / int / bool / float / enum fields can be substituted",
+                    input.full_name(),
+                );
+            }
+            _ => {}
         }
         out.push(IdTemplateSegment::Field(rust_field));
         rest = &after_open[close + 2..];
