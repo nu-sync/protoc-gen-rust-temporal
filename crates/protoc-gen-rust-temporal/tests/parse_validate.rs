@@ -1620,6 +1620,38 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn client_exposes_service_identity_consts() {
+    // R4 — `<Service>Client` carries `PACKAGE`, `SERVICE_NAME`, and
+    // `FULLY_QUALIFIED_SERVICE_NAME` consts so tooling that needs the
+    // proto namespace at runtime can read them directly instead of
+    // re-parsing import paths.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    let svc = &services[0];
+    assert!(
+        source.contains(&format!(
+            "pub const PACKAGE: &'static str = \"{}\";",
+            svc.package
+        )),
+        "PACKAGE const missing: {source}"
+    );
+    assert!(
+        source.contains(&format!(
+            "pub const SERVICE_NAME: &'static str = \"{}\";",
+            svc.service
+        )),
+        "SERVICE_NAME const missing: {source}"
+    );
+    let fqn = format!("{}.{}", svc.package, svc.service);
+    assert!(
+        source.contains(&format!(
+            "pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = \"{fqn}\";"
+        )),
+        "FULLY_QUALIFIED_SERVICE_NAME const missing: {source}"
+    );
+}
+
+#[test]
 fn handler_input_output_type_consts_emit_for_all_rpc_kinds() {
     // R4 — per-rpc `_INPUT_TYPE` / `_OUTPUT_TYPE` consts emit for
     // signals, queries, updates, and activities (parallel of the

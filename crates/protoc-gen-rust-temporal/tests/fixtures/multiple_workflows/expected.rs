@@ -41,6 +41,9 @@ pub mod multi_v1_multi_service_temporal {
     }
 
     impl MultiServiceClient {
+        pub const PACKAGE: &'static str = "multi.v1";
+        pub const SERVICE_NAME: &'static str = "MultiService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "multi.v1.MultiService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Alpha", "multi.v1.MultiService.Beta"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Ping"];
 

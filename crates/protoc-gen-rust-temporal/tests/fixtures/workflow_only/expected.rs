@@ -25,6 +25,9 @@ pub mod solo_v1_solo_service_temporal {
     }
 
     impl SoloServiceClient {
+        pub const PACKAGE: &'static str = "solo.v1";
+        pub const SERVICE_NAME: &'static str = "SoloService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "solo.v1.SoloService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["solo.v1.SoloService.DoWork"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

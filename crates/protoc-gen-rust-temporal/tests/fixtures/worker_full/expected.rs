@@ -51,6 +51,9 @@ pub mod workerfull_v1_orchestration_service_temporal {
     }
 
     impl OrchestrationServiceClient {
+        pub const PACKAGE: &'static str = "workerfull.v1";
+        pub const SERVICE_NAME: &'static str = "OrchestrationService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "workerfull.v1.OrchestrationService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Run"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Cancel"];
         pub const QUERY_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Status"];

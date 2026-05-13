@@ -25,6 +25,9 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     }
 
     impl WorkerWorkflowServiceClient {
+        pub const PACKAGE: &'static str = "workerwf.v1";
+        pub const SERVICE_NAME: &'static str = "WorkerWorkflowService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "workerwf.v1.WorkerWorkflowService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

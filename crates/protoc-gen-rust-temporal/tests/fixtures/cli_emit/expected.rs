@@ -39,6 +39,9 @@ pub mod cli_v1_report_service_temporal {
     }
 
     impl ReportServiceClient {
+        pub const PACKAGE: &'static str = "cli.v1";
+        pub const SERVICE_NAME: &'static str = "ReportService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "cli.v1.ReportService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["cli.v1.ReportService.Generate", "cli.v1.ReportService.Aggregate"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

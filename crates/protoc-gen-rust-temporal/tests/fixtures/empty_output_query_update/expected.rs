@@ -42,6 +42,9 @@ pub mod eoqu_v1_eoqu_service_temporal {
     }
 
     impl EoquServiceClient {
+        pub const PACKAGE: &'static str = "eoqu.v1";
+        pub const SERVICE_NAME: &'static str = "EoquService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "eoqu.v1.EoquService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Run"];
         pub const QUERY_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Ack", "eoqu.v1.EoquService.AckEmpty"];
         pub const UPDATE_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];

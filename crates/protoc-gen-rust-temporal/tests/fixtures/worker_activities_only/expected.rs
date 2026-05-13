@@ -25,6 +25,9 @@ pub mod workeract_v1_activity_worker_service_temporal {
     }
 
     impl ActivityWorkerServiceClient {
+        pub const PACKAGE: &'static str = "workeract.v1";
+        pub const SERVICE_NAME: &'static str = "ActivityWorkerService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "workeract.v1.ActivityWorkerService";
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

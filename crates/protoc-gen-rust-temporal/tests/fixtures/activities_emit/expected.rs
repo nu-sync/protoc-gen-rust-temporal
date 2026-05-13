@@ -43,6 +43,9 @@ pub mod acts_v1_chunk_service_temporal {
     }
 
     impl ChunkServiceClient {
+        pub const PACKAGE: &'static str = "acts.v1";
+        pub const SERVICE_NAME: &'static str = "ChunkService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "acts.v1.ChunkService";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.RunBatch"];
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.Process", "acts.v1.ChunkService.Heartbeat"];
 

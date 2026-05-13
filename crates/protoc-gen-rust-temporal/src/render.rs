@@ -386,12 +386,34 @@ fn compile_id_template(segments: &[IdTemplateSegment]) -> (String, Vec<String>) 
     (fmt, args)
 }
 
-/// Emit service-level aggregate `&'static [&'static str]` constants
-/// exposing every workflow / signal / query / update / activity name
-/// registered on the service. Each kind only emits a const when at
-/// least one of that kind is in the model (so a workflow-only service
-/// doesn't get an empty `SIGNAL_NAMES`).
+/// Emit service-level identity + aggregate constants on the
+/// `<Service>Client` impl. Includes the package / service-name /
+/// fully-qualified-service-name identity triple, then the
+/// `WORKFLOW_NAMES` / `SIGNAL_NAMES` / `QUERY_NAMES` / `UPDATE_NAMES`
+/// / `ACTIVITY_NAMES` aggregates. Empty aggregate kinds are omitted.
 fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
+    // Identity triple — useful for tooling that needs the proto
+    // namespace at runtime (codecs, registries, JSON dispatch tables).
+    let _ = writeln!(
+        out,
+        "        pub const PACKAGE: &'static str = \"{}\";",
+        svc.package.escape_default()
+    );
+    let _ = writeln!(
+        out,
+        "        pub const SERVICE_NAME: &'static str = \"{}\";",
+        svc.service.escape_default()
+    );
+    let fqn = if svc.package.is_empty() {
+        svc.service.clone()
+    } else {
+        format!("{}.{}", svc.package, svc.service)
+    };
+    let _ = writeln!(
+        out,
+        "        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = \"{}\";",
+        fqn.escape_default()
+    );
     let emit = |out: &mut String, ident: &str, names: &[&str]| {
         if names.is_empty() {
             return;
@@ -436,14 +458,9 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
     emit(out, "QUERY_NAMES", &q_names);
     emit(out, "UPDATE_NAMES", &u_names);
     emit(out, "ACTIVITY_NAMES", &act_names);
-    if !wf_names.is_empty()
-        || !sig_names.is_empty()
-        || !q_names.is_empty()
-        || !u_names.is_empty()
-        || !act_names.is_empty()
-    {
-        let _ = writeln!(out);
-    }
+    // Identity triple always emits, so the trailing newline is always
+    // needed to separate the const block from the `new()` ctor below.
+    let _ = writeln!(out);
 }
 
 fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &str) {

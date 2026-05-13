@@ -18,6 +18,9 @@ pub mod act_v1_worker_only_service_temporal {
     }
 
     impl WorkerOnlyServiceClient {
+        pub const PACKAGE: &'static str = "act.v1";
+        pub const SERVICE_NAME: &'static str = "WorkerOnlyService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "act.v1.WorkerOnlyService";
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["act.v1.WorkerOnlyService.ProcessChunk", "act.v1.WorkerOnlyService.Cleanup"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

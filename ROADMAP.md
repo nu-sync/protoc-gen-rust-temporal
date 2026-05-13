@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `<Service>Client` identity consts: `PACKAGE` / `SERVICE_NAME` / `FULLY_QUALIFIED_SERVICE_NAME`):
+  three more `&'static str` consts on the generated client impl,
+  carrying the proto namespace identity (e.g. `PACKAGE = "jobs.v1"`,
+  `SERVICE_NAME = "JobService"`, `FULLY_QUALIFIED_SERVICE_NAME =
+  "jobs.v1.JobService"`). Lets tooling read the proto identity at
+  runtime without re-parsing import paths. Always emitted on every
+  service (not gated by per-kind list emptiness). One new positive
+  parse_validate test pins the const shapes. 16 fixture goldens
+  reblessed. No bridge signature change.
 - 2026-05-13 (R4 — handler `_INPUT_TYPE` / `_OUTPUT_TYPE` consts for signals/queries/updates/activities):
   extends the previous workflow-only commit to all rpc kinds. Each
   signal emits `<RPC>_SIGNAL_INPUT_TYPE` (signal outputs are always
