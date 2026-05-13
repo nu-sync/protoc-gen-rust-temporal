@@ -157,6 +157,19 @@ fn check_ref(
     if declared.contains(target) {
         return Ok(());
     }
+    // A target containing a `.` is almost certainly a fully-qualified
+    // cross-service ref (e.g. `other.v1.OtherService.Cancel`). The Go plugin
+    // resolves these against any sibling service in the descriptor pool; the
+    // Rust plugin does not yet (tracked under R1 in ROADMAP.md). Surface that
+    // limitation explicitly so users porting from Go don't waste time chasing
+    // the generic "no sibling rpc carries…" diagnostic.
+    if target.contains('.') {
+        bail!(
+            "{}.{}: workflow references {kind} \"{target}\" using a fully-qualified path — cross-service refs are not yet supported by the v1 Rust plugin (see ROADMAP.md R1). Move the {kind} rpc onto this service, or pin to a generator release that supports cross-service refs.",
+            model.service,
+            wf.rpc_method,
+        );
+    }
     bail!(
         "{}.{}: workflow references {kind} \"{target}\" but no sibling rpc carries {expected_annotation}",
         model.service,

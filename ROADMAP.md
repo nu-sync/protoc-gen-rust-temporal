@@ -111,6 +111,12 @@ Progress:
   `co_annotations_are_rejected_with_clear_diagnostic` covers all three
   combinations R1 calls out. Lifting the rejection is the natural next step
   toward full co-annotation support.
+- 2026-05-13: cross-service workflow refs now surface an explicit
+  "cross-service refs are not yet supported" diagnostic instead of the generic
+  "no sibling rpc carries…" error. `validate.rs::check_ref` detects the
+  fully-qualified syntax (target contains `.`) and points users at R1. Test
+  `cross_service_ref_is_rejected_with_clear_diagnostic` locks the diagnostic
+  in. Full resolution against the descriptor pool remains R1 work.
 
 Deliverables:
 
@@ -299,7 +305,7 @@ toward majority parity.
 | Area | Current behavior | Roadmap |
 |---|---|---|
 | Method co-annotations | Refused at parse with a clear diagnostic (2026-05-13); generator still models one primary kind per rpc. Full support is the next R1 step. | R1 |
-| Cross-service refs | Workflow refs are validated against methods on the same service. | R1 |
+| Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
 | Activity calls from workflows | Not generated. | R3 |

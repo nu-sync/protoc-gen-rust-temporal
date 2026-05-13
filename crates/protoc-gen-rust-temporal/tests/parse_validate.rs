@@ -1333,6 +1333,58 @@ fn unsupported_field_support_status_table() {
     }
 }
 
+/// Cross-service refs — Go's plugin resolves `ref: "other.v1.OtherService.Cancel"`
+/// against any sibling service in the descriptor pool. The Rust plugin does
+/// not yet (R1). Users porting from Go must see an explicit "cross-service
+/// refs are not yet supported" diagnostic, not the generic "no sibling rpc
+/// carries…" one, or they'll spend time hunting for a missing same-service
+/// signal that the Go side never had.
+#[test]
+fn cross_service_ref_is_rejected_with_clear_diagnostic() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "xs.v1.Notifications.Cancel" }]
+            };
+          }
+        }
+
+        service Notifications {
+          rpc Cancel(In) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let workflows_svc = services
+        .iter()
+        .find(|s| s.service == "Workflows")
+        .expect("Workflows service parsed");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = validate::validate(workflows_svc, &opts)
+        .expect_err("validate should fail")
+        .to_string();
+    assert!(
+        err.contains("cross-service refs are not yet supported"),
+        "diagnostic should call out cross-service refs as unsupported, got: {err}"
+    );
+    assert!(
+        err.contains("xs.v1.Notifications.Cancel"),
+        "diagnostic should quote the offending ref so users can search it, got: {err}"
+    );
+}
+
 /// Co-annotations on a single rpc — Go's plugin supports several combinations
 /// (workflow+activity, signal+activity, update+activity); the Rust emit does
 /// not, and R1 in ROADMAP.md tracks adding support. Until then the parser
