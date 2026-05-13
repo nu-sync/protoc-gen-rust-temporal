@@ -2876,6 +2876,24 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_run_id_owned_accessor() {
+    // R6 ergonomics — `<Wf>Handle::run_id_owned()` returns
+    // `Option<String>`, the owned-string parallel of the
+    // borrowing `run_id() -> Option<&str>` accessor. Useful when
+    // the optional id needs to outlive the borrow.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn run_id_owned(&self) -> Option<String> {"),
+        "missing run_id_owned accessor: {source}"
+    );
+    assert!(
+        source.contains("self.inner.run_id().map(String::from)"),
+        "run_id_owned must map the optional &str through String::from: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_workflow_id_owned_accessor() {
     // R6 ergonomics — `<Wf>Handle::workflow_id_owned()` returns
     // an owned `String` to save the `.to_string()` ceremony at

@@ -283,6 +283,16 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::run_id_owned()` accessor):
+  parallel of the previous `workflow_id_owned` shipment for the
+  optional run_id field. Returns `Option<String>` mapping the
+  borrowing `run_id() -> Option<&str>` through `String::from`.
+  Useful when the optional id needs to outlive the borrow (e.g.
+  storing it alongside the workflow_id in a record struct, or
+  threading both through a channel together). One new positive
+  parse_validate test pins the fn signature + body. Several
+  fixture goldens reblessed (every Handle gained the accessor).
+  189 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::workflow_id_owned()` accessor):
   every generated `<Wf>Handle` now exposes
   `workflow_id_owned(&self) -> String` returning an owned String.

@@ -1789,6 +1789,14 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.run_id()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Owned form, parallel of `workflow_id_owned`.
+    let _ = writeln!(
+        out,
+        "        pub fn run_id_owned(&self) -> Option<String> {{"
+    );
+    let _ = writeln!(out, "            self.inner.run_id().map(String::from)");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Cheap predicate over `run_id().is_some()` — lets diagnostic
     // logging branch on whether a handle was returned by the start
     // path (run_id known) vs constructed via attach (run_id `None`).
