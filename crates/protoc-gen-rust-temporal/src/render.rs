@@ -776,6 +776,7 @@ fn render_start_body(
     let _ = writeln!(out, "{ind}    task_timeout,");
     let _ = writeln!(out, "{ind}    enable_eager_workflow_start,");
     let _ = writeln!(out, "{ind}    retry_policy,");
+    let _ = writeln!(out, "{ind}    search_attributes,");
     let _ = writeln!(out, "{ind}).await?;");
 }
 
@@ -842,6 +843,59 @@ fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
         }
         None => {
             let _ = writeln!(out, "{ind}let retry_policy = opts.retry_policy;");
+        }
+    }
+    // R7 — search attributes. Static literal maps fold into a generated
+    // `HashMap<String, Payload>` construction that calls the bridge's
+    // per-type encoders. Empty / unset stays `None`.
+    let sa_literal = search_attributes_literal(wf.search_attributes.as_ref());
+    let _ = writeln!(out, "{ind}let search_attributes = {sa_literal};");
+}
+
+/// Build the expression that fills the start path's `search_attributes`
+/// variable. Returns:
+/// * `None` for proto-unset *and* `SearchAttributesSpec::Empty` (the
+///   slice-1 no-op).
+/// * `Some(HashMap::from([…]))` for a slice-2 `Static` map.
+///
+/// Keeps the wire-format on the right side of the orphan rule by
+/// constructing each entry through one of the bridge's
+/// `encode_search_attribute_*` helpers.
+fn search_attributes_literal(spec: Option<&crate::model::SearchAttributesSpec>) -> String {
+    use crate::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    match spec {
+        // Slice-1 no-op and "unset" produce the same `None`. The bridge
+        // call expects `Option<HashMap<String, Payload>>` so we spell
+        // out the type fully — generic inference can't see through the
+        // None to the Payload parameter otherwise.
+        None | Some(SearchAttributesSpec::Empty) => {
+            "::std::option::Option::<::std::collections::HashMap<::std::string::String, temporal_runtime::ProtoPayload>>::None"
+                .to_string()
+        }
+        Some(SearchAttributesSpec::Static(entries)) => {
+            let mut s = String::from(
+                "Some({ let mut sa: ::std::collections::HashMap<::std::string::String, _> = ::std::collections::HashMap::new(); ",
+            );
+            for (key, lit) in entries {
+                let encoder_call = match lit {
+                    SearchAttributeLiteral::String(v) => format!(
+                        "temporal_runtime::encode_search_attribute_string(\"{}\")",
+                        v.escape_default()
+                    ),
+                    SearchAttributeLiteral::Int(v) => {
+                        format!("temporal_runtime::encode_search_attribute_int({v}i64)")
+                    }
+                    SearchAttributeLiteral::Bool(v) => {
+                        format!("temporal_runtime::encode_search_attribute_bool({v})")
+                    }
+                };
+                s.push_str(&format!(
+                    "sa.insert(\"{}\".to_string(), {encoder_call}); ",
+                    key.escape_default()
+                ));
+            }
+            s.push_str("sa })");
+            s
         }
     }
 }

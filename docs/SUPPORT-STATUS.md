@@ -37,7 +37,7 @@ issue or add the row. The diagnostic-coverage test
 | `execution_timeout`, `run_timeout`, `task_timeout` | supported | Folded into the generated start path as defaults; caller can override via `<Workflow>StartOptions`. |
 | `query[]`, `signal[]`, `update[]` | supported (same-service only) | Same-service refs become typed handle methods. Fully-qualified refs are rejected by `validate.rs::check_ref` (R1). Per-entry sub-fields each have their own row below. |
 | `retry_policy` | rejected | R5. |
-| `search_attributes` | partial — slice 1 | R7 slice 1 accepts the empty-map Bloblang literal `root = {}` (whitespace-tolerant) and treats it as a no-op on the start path (semantically equivalent to "no search attrs declared"). Richer expressions still rejected. See `docs/R7-BLOBLANG.md`. |
+| `search_attributes` | supported (slices 1 + 2) | The empty-map `root = {}` (slice 1) and non-empty literal maps `root = { "Key": <literal>, … }` (slice 2) with string / signed-integer / boolean values both compile and flow through to `WorkflowStartOptions.search_attributes`. Field references (`this.<field>`) and richer expressions remain rejected for slice 3. See `docs/R7-BLOBLANG.md`. |
 | `typed_search_attributes` | rejected | R5 + R7. |
 | `parent_close_policy` | supported | Folds into a per-workflow `<rpc>_default_child_options() -> ChildWorkflowOptions` factory that bakes the policy in. Caller passes the result into `start_<workflow>_child(ctx, input, opts)`. |
 | `workflow_id_conflict_policy` | supported | Plumbed through to `WorkflowStartOptions.id_conflict_policy`. Caller can override via `<Workflow>StartOptions::id_conflict_policy`. |

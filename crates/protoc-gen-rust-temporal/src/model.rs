@@ -325,17 +325,29 @@ impl IdReusePolicy {
     }
 }
 
-/// Compiled form of `(temporal.v1.workflow).search_attributes`. R7
-/// slice 1 only models the empty-map literal — `root = {}` — which
-/// faithfully says "this workflow declares zero search attributes" and
-/// emits as a no-op on the start path. Slice 2 will add a `Static`
-/// variant carrying a `HashMap<String, Value>` of literal entries;
-/// slice 3 will add a `WithInput` variant carrying field references.
+/// Compiled form of `(temporal.v1.workflow).search_attributes`.
+/// Slice 1 ships the `Empty` variant; slice 2 ships `Static` with
+/// literal key/value entries; slice 3 (deferred) will add a
+/// `WithInput` variant for `this.<field>` references.
 /// See `docs/R7-BLOBLANG.md`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchAttributesSpec {
-    /// Empty map — proto declared `root = {}`.
+    /// Empty map — proto declared `root = {}`. Emits as a no-op on
+    /// the start path.
     Empty,
+    /// Non-empty literal map — proto declared
+    /// `root = { "Key1": <literal>, "Key2": <literal>, … }` where each
+    /// `<literal>` is a string / signed integer / boolean.
+    Static(Vec<(String, SearchAttributeLiteral)>),
+}
+
+/// One literal entry in a `Static` `SearchAttributesSpec`. Mirrors
+/// the three primitive Bloblang literal types slice 2 accepts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SearchAttributeLiteral {
+    String(String),
+    Int(i64),
+    Bool(bool),
 }
 
 /// Compiled form of `(temporal.v1.workflow).retry_policy`. Holds the

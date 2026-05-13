@@ -2418,6 +2418,79 @@ fn search_attributes_whitespace_variations_accepted() {
 }
 
 #[test]
+fn search_attributes_static_literal_map_compiles_to_hashmap() {
+    // R7 slice 2 — `root = { "Key1": "value", "Key2": 42, "Key3": true }`
+    // parses to `SearchAttributesSpec::Static(..)` and emits a
+    // `HashMap<String, Payload>` construction at the start path that
+    // calls the bridge's per-type encoders.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_static.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"Environment\": \"production\", \"Priority\": 5, \"Critical\": true }"
+            };
+          }
+        }
+        message In {}  message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept literal-map form");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let spec = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the slice-2 spec");
+    let SearchAttributesSpec::Static(entries) = spec else {
+        panic!("expected Static spec, got {spec:?}");
+    };
+    assert_eq!(entries.len(), 3, "all three entries must land: {entries:?}");
+    assert!(
+        entries.contains(&(
+            "Environment".to_string(),
+            SearchAttributeLiteral::String("production".to_string())
+        )),
+        "string entry must parse: {entries:?}"
+    );
+    assert!(
+        entries.contains(&("Priority".to_string(), SearchAttributeLiteral::Int(5))),
+        "int entry must parse: {entries:?}"
+    );
+    assert!(
+        entries.contains(&("Critical".to_string(), SearchAttributeLiteral::Bool(true))),
+        "bool entry must parse: {entries:?}"
+    );
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("temporal_runtime::encode_search_attribute_string(\"production\")"),
+        "string encoder must be invoked: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::encode_search_attribute_int(5i64)"),
+        "int encoder must be invoked: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::encode_search_attribute_bool(true)"),
+        "bool encoder must be invoked: {source}"
+    );
+    assert!(
+        source.contains("let search_attributes = Some({"),
+        "Static spec must produce `Some(HashMap)` rather than `None`: {source}"
+    );
+    assert!(
+        source.contains("    search_attributes,\n"),
+        "resolved value must forward to the bridge call: {source}"
+    );
+}
+
+#[test]
 fn search_attributes_richer_expressions_still_rejected() {
     // R7 slice 1 explicitly does NOT support field references or
     // literal key/value entries — those land in slices 2 / 3. The

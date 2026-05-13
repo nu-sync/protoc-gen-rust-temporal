@@ -49,6 +49,7 @@ pub mod aliases_v1_alias_service_temporal {
             let task_timeout = opts.task_timeout;
             let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
             let retry_policy = opts.retry_policy;
+            let search_attributes = ::std::option::Option::<::std::collections::HashMap<::std::string::String, temporal_runtime::ProtoPayload>>::None;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_WORKFLOW_NAME,
@@ -62,6 +63,7 @@ pub mod aliases_v1_alias_service_temporal {
                 task_timeout,
                 enable_eager_workflow_start,
                 retry_policy,
+                search_attributes,
             ).await?;
             Ok(RunHandle { inner })
         }

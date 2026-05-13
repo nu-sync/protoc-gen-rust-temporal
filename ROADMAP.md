@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 — slice 2 lands end-to-end): literal-map
+  search-attribute Bloblang expressions now flow from proto to wire.
+  `(temporal.v1.workflow).search_attributes = "root = { \"Env\":
+  \"prod\", \"Priority\": 5, \"Critical\": true }"` parses into
+  `SearchAttributesSpec::Static(Vec<(String, Literal)>)`, render emits
+  a `HashMap<String, Payload>` construction at the start path that
+  calls the bridge's `encode_search_attribute_*` helpers, and the
+  bridge's `start_workflow_proto` / `_empty` thread the option through
+  to `WorkflowStartOptions.search_attributes`. Supported value types:
+  string literals, signed integers, booleans. Field references
+  (`this.<field>`) and richer expressions stay rejected for slice 3.
+  Bridge re-exports `Payload as ProtoPayload` so generated code spells
+  the map value type by name. New positive test pins the model state,
+  each literal type's encoder invocation, and the `Some(HashMap)` flow
+  into the bridge call. All 16 fixture goldens reblessed (every
+  workflow start path gained a `let search_attributes = …;` line).
 - 2026-05-13 (R7 — slice-2 bridge primitives): the bridge now exposes
   `encode_search_attribute_string(&str)`,
   `encode_search_attribute_int(i64)`, and

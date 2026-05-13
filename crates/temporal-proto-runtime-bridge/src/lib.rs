@@ -69,6 +69,12 @@ pub use temporal_proto_runtime::TemporalProtoMessage;
 /// `TemporalDeserializable` impls on `TypedProtoMessage<T>` — the orphan
 /// rule blocks impls on raw `T` directly, so the wrapper is the bridge.
 pub use temporal_proto_runtime::TypedProtoMessage;
+/// Re-export the `temporalio-common` `Payload` type so plugin-emitted
+/// code can spell out `temporal_runtime::Payload` for the
+/// `search_attributes` map value type. The bridge already calls into
+/// this type from `encode_search_attribute_*`; surfacing it at the
+/// top-level keeps the generated start-path emit single-named.
+pub use temporalio_common::protos::temporal::api::common::v1::Payload as ProtoPayload;
 
 /// Encoding constant for the wire-format triple (`metadata.encoding`).
 const ENCODING: &str = temporal_proto_runtime::ENCODING;
@@ -453,6 +459,7 @@ pub async fn start_workflow_proto<I>(
     task_timeout: Option<Duration>,
     enable_eager_workflow_start: bool,
     retry_policy: Option<RetryPolicy>,
+    search_attributes: Option<std::collections::HashMap<String, Payload>>,
 ) -> Result<WorkflowHandle>
 where
     I: TemporalProtoMessage,
@@ -464,6 +471,7 @@ where
         .maybe_run_timeout(run_timeout)
         .maybe_task_timeout(task_timeout)
         .maybe_retry_policy(retry_policy.map(Into::into))
+        .maybe_search_attributes(search_attributes)
         .enable_eager_workflow_start(enable_eager_workflow_start);
     // bon builders use typestate — every conditional setter has its own
     // `Set*` marker, so the call chain must terminate in a single
@@ -507,6 +515,7 @@ pub async fn start_workflow_proto_empty(
     task_timeout: Option<Duration>,
     enable_eager_workflow_start: bool,
     retry_policy: Option<RetryPolicy>,
+    search_attributes: Option<std::collections::HashMap<String, Payload>>,
 ) -> Result<WorkflowHandle> {
     let raw = RawValue::new(vec![encode_empty_payload()]);
     let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
@@ -514,6 +523,7 @@ pub async fn start_workflow_proto_empty(
         .maybe_run_timeout(run_timeout)
         .maybe_task_timeout(task_timeout)
         .maybe_retry_policy(retry_policy.map(Into::into))
+        .maybe_search_attributes(search_attributes)
         .enable_eager_workflow_start(enable_eager_workflow_start);
     let options = match (id_reuse_policy, id_conflict_policy) {
         (Some(reuse), Some(conflict)) => base

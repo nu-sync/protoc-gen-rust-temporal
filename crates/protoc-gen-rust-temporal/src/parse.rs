@@ -831,18 +831,83 @@ fn reject_unsupported_activity_options(
     Ok(())
 }
 
-/// R7 slice 1 — recognise the canonical empty-map Bloblang expression
-/// `root = {}` (whitespace-tolerant). Returns `Some(Empty)` on match,
-/// `None` otherwise. Slice 2 will replace this with a real lexer +
-/// parser; for now we hand-fold the only form that has a useful
-/// no-op semantic.
+/// R7 slice 1 + 2 — recognise the subset of Bloblang search-attribute
+/// expressions the plugin currently supports:
+///
+/// * Slice 1 — empty map: `root = {}`
+/// * Slice 2 — non-empty literal map:
+///   `root = { "Key1": "value", "Key2": 42, "Key3": true }`
+///
+/// `<value>` is a string literal, signed-integer literal, or boolean
+/// (`true` / `false`). Field references (`this.<field>`) and richer
+/// Bloblang surface fall through to `None` and the caller surfaces the
+/// standard unsupported-field diagnostic.
 fn parse_search_attributes_spec(raw: &str) -> Option<crate::model::SearchAttributesSpec> {
-    let normalized: String = raw.split_whitespace().collect::<Vec<_>>().join("");
-    if normalized == "root={}" {
-        Some(crate::model::SearchAttributesSpec::Empty)
-    } else {
-        None
+    use crate::model::SearchAttributesSpec;
+
+    let s = raw.trim();
+    // Strip the `root =` prefix (whitespace-tolerant).
+    let body = s.strip_prefix("root")?.trim_start();
+    let body = body.strip_prefix('=')?.trim_start();
+    // Body should be a brace-delimited block.
+    let body = body.strip_prefix('{')?.trim_start();
+    let body = body.strip_suffix('}').or_else(|| body.strip_suffix(" }"))?;
+    let body = body.trim();
+    if body.is_empty() {
+        return Some(SearchAttributesSpec::Empty);
     }
+
+    // Split into entries on commas. We don't allow commas inside string
+    // literals here; cludden's examples don't use them and the
+    // simplification keeps the lexer trivial. If slice 3 needs richer
+    // strings the lexer graduates.
+    let mut entries = Vec::new();
+    for entry in body.split(',') {
+        let entry = entry.trim();
+        if entry.is_empty() {
+            // Trailing comma — tolerate.
+            continue;
+        }
+        // Each entry is `"key": value`.
+        let (key_part, value_part) = entry.split_once(':')?;
+        let key_part = key_part.trim();
+        let value_part = value_part.trim();
+        // Key must be a quoted string.
+        let key = key_part
+            .strip_prefix('"')
+            .and_then(|s| s.strip_suffix('"'))?;
+        // Reject keys containing escape sequences for slice 2 simplicity.
+        if key.contains('\\') {
+            return None;
+        }
+        let value = parse_search_attribute_literal(value_part)?;
+        entries.push((key.to_string(), value));
+    }
+    Some(SearchAttributesSpec::Static(entries))
+}
+
+fn parse_search_attribute_literal(raw: &str) -> Option<crate::model::SearchAttributeLiteral> {
+    use crate::model::SearchAttributeLiteral;
+    let raw = raw.trim();
+    if raw == "true" {
+        return Some(SearchAttributeLiteral::Bool(true));
+    }
+    if raw == "false" {
+        return Some(SearchAttributeLiteral::Bool(false));
+    }
+    if let Some(inner) = raw.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+        if inner.contains('\\') {
+            // Slice 2 keeps the string-literal lexer minimal (no
+            // escapes); fall through so the caller surfaces the
+            // standard unsupported-field diagnostic.
+            return None;
+        }
+        return Some(SearchAttributeLiteral::String(inner.to_string()));
+    }
+    if let Ok(n) = raw.parse::<i64>() {
+        return Some(SearchAttributeLiteral::Int(n));
+    }
+    None
 }
 
 fn activity_options_spec_from_proto(

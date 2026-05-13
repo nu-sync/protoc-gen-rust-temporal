@@ -347,6 +347,23 @@ pub mod temporal_runtime {
         WorkflowHandle
     }
 
+    /// Stub Payload — generated surface only needs the type to exist.
+    /// Bridge surfaces this as `ProtoPayload` (a real
+    /// `temporalio-common` re-export); the stub names them differently
+    /// to mirror the visibility distinction.
+    pub struct ProtoPayload;
+    pub use ProtoPayload as Payload;
+
+    pub fn encode_search_attribute_string(_value: &str) -> ProtoPayload {
+        ProtoPayload
+    }
+    pub fn encode_search_attribute_int(_value: i64) -> ProtoPayload {
+        ProtoPayload
+    }
+    pub fn encode_search_attribute_bool(_value: bool) -> ProtoPayload {
+        ProtoPayload
+    }
+
     pub async fn start_workflow_proto<I: TemporalProtoMessage>(
         _client: &TemporalClient,
         _workflow_name: &'static str,
@@ -360,6 +377,7 @@ pub mod temporal_runtime {
         _task_timeout: Option<std::time::Duration>,
         _enable_eager_workflow_start: bool,
         _retry_policy: Option<RetryPolicy>,
+        _search_attributes: Option<::std::collections::HashMap<String, ProtoPayload>>,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }
@@ -376,6 +394,7 @@ pub mod temporal_runtime {
         _task_timeout: Option<std::time::Duration>,
         _enable_eager_workflow_start: bool,
         _retry_policy: Option<RetryPolicy>,
+        _search_attributes: Option<::std::collections::HashMap<String, ProtoPayload>>,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }
