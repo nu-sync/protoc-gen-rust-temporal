@@ -491,6 +491,50 @@ where
     decode_proto_payload::<O>(payload).context("decode query output")
 }
 
+/// Run a query whose output is `google.protobuf.Empty`. Mirrors
+/// [`wait_result_unit`] — the response payload must be the canonical Empty
+/// triple, so a non-empty result can't silently round-trip as success.
+pub async fn query_unit<I>(handle: &WorkflowHandle, name: &str, input: &I) -> Result<()>
+where
+    I: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw_input = RawValue::new(vec![payload]);
+    let raw_out: RawValue = handle
+        .untyped()
+        .query(
+            UntypedQuery::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowQueryOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("run query {name}"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("query returned no payloads")?;
+    validate_empty_payload(payload).context("validate query output")
+}
+
+/// Run a query whose input and output are both `google.protobuf.Empty`.
+pub async fn query_proto_empty_unit(handle: &WorkflowHandle, name: &str) -> Result<()> {
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
+    let raw_out: RawValue = handle
+        .untyped()
+        .query(
+            UntypedQuery::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowQueryOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("run query {name}"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("query returned no payloads")?;
+    validate_empty_payload(payload).context("validate query output")
+}
+
 // ── Updates ────────────────────────────────────────────────────────────
 
 fn wait_stage_from(policy: WaitPolicy) -> WorkflowUpdateWaitStage {
@@ -566,6 +610,70 @@ where
         .first()
         .context("update returned no payloads")?;
     decode_proto_payload::<O>(payload).context("decode update output")
+}
+
+/// Send an update whose output is `google.protobuf.Empty`. Mirrors
+/// [`wait_result_unit`].
+pub async fn update_unit<I>(
+    handle: &WorkflowHandle,
+    name: &str,
+    input: &I,
+    wait_policy: WaitPolicy,
+) -> Result<()>
+where
+    I: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw_input = RawValue::new(vec![payload]);
+    let update_handle = handle
+        .untyped()
+        .start_update(
+            UntypedUpdate::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowStartUpdateOptions::builder()
+                .wait_for_stage(wait_stage_from(wait_policy))
+                .build(),
+        )
+        .await
+        .with_context(|| format!("start update {name}"))?;
+    let raw_out: RawValue = update_handle
+        .get_result()
+        .await
+        .with_context(|| format!("await update {name} result"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("update returned no payloads")?;
+    validate_empty_payload(payload).context("validate update output")
+}
+
+/// Send an update whose input and output are both `google.protobuf.Empty`.
+pub async fn update_proto_empty_unit(
+    handle: &WorkflowHandle,
+    name: &str,
+    wait_policy: WaitPolicy,
+) -> Result<()> {
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
+    let update_handle = handle
+        .untyped()
+        .start_update(
+            UntypedUpdate::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowStartUpdateOptions::builder()
+                .wait_for_stage(wait_stage_from(wait_policy))
+                .build(),
+        )
+        .await
+        .with_context(|| format!("start update {name}"))?;
+    let raw_out: RawValue = update_handle
+        .get_result()
+        .await
+        .with_context(|| format!("await update {name} result"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("update returned no payloads")?;
+    validate_empty_payload(payload).context("validate update output")
 }
 
 // ── With-start helpers ─────────────────────────────────────────────────
@@ -782,6 +890,156 @@ where
         },
         output,
     ))
+}
+
+/// Sibling of [`update_with_start_workflow_proto`] for updates whose output
+/// is `google.protobuf.Empty`. The plugin routes here when the update rpc's
+/// return type is Empty, since `()` does not implement [`TemporalProtoMessage`]
+/// and cannot be substituted for the `O` generic on the typed variant.
+#[allow(clippy::too_many_arguments)]
+pub async fn update_with_start_workflow_proto_unit<W, U>(
+    client: &TemporalClient,
+    workflow_name: &'static str,
+    workflow_id: &str,
+    task_queue: &str,
+    workflow_input: &W,
+    update_name: &str,
+    update_input: &U,
+    wait_policy: WaitPolicy,
+    id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    execution_timeout: Option<Duration>,
+    run_timeout: Option<Duration>,
+    task_timeout: Option<Duration>,
+) -> Result<WorkflowHandle>
+where
+    W: TemporalProtoMessage,
+    U: TemporalProtoMessage,
+{
+    let sdk_client = client.sdk();
+    let namespace = sdk_client.namespace();
+    let identity = sdk_client.identity();
+
+    let workflow_payload = encode_proto_payload(workflow_input);
+    let update_payload = encode_proto_payload(update_input);
+
+    let id_reuse = id_reuse_policy
+        .map(sdk_enums::WorkflowIdReusePolicy::from)
+        .unwrap_or(sdk_enums::WorkflowIdReusePolicy::Unspecified) as i32;
+
+    let start = StartWorkflowExecutionRequest {
+        namespace: namespace.clone(),
+        workflow_id: workflow_id.to_string(),
+        workflow_type: Some(WorkflowType {
+            name: workflow_name.to_string(),
+        }),
+        task_queue: Some(TaskQueue {
+            name: task_queue.to_string(),
+            kind: TaskQueueKind::Unspecified as i32,
+            normal_name: String::new(),
+        }),
+        input: Some(Payloads {
+            payloads: vec![workflow_payload],
+        }),
+        workflow_execution_timeout: execution_timeout.and_then(|d| d.try_into().ok()),
+        workflow_run_timeout: run_timeout.and_then(|d| d.try_into().ok()),
+        workflow_task_timeout: task_timeout.and_then(|d| d.try_into().ok()),
+        workflow_id_reuse_policy: id_reuse,
+        workflow_id_conflict_policy: WorkflowIdConflictPolicy::UseExisting as i32,
+        request_id: uuid::Uuid::new_v4().to_string(),
+        identity: identity.clone(),
+        ..Default::default()
+    };
+
+    let update_request = UpdateWorkflowExecutionRequest {
+        namespace: namespace.clone(),
+        workflow_execution: Some(WorkflowExecution {
+            workflow_id: workflow_id.to_string(),
+            run_id: String::new(),
+        }),
+        wait_policy: Some(ProtoWaitPolicy {
+            lifecycle_stage: sdk_enums::UpdateWorkflowExecutionLifecycleStage::from(wait_policy)
+                as i32,
+        }),
+        request: Some(update::Request {
+            meta: Some(update::Meta {
+                update_id: uuid::Uuid::new_v4().to_string(),
+                identity: identity.clone(),
+            }),
+            input: Some(update::Input {
+                header: None,
+                name: update_name.to_string(),
+                args: Some(Payloads {
+                    payloads: vec![update_payload],
+                }),
+            }),
+        }),
+        ..Default::default()
+    };
+
+    let req = ExecuteMultiOperationRequest {
+        namespace: namespace.clone(),
+        operations: vec![
+            Operation {
+                operation: Some(OperationKind::StartWorkflow(start)),
+            },
+            Operation {
+                operation: Some(OperationKind::UpdateWorkflow(update_request)),
+            },
+        ],
+        resource_id: workflow_id.to_string(),
+    };
+
+    let response =
+        WorkflowService::execute_multi_operation(&mut sdk_client.clone(), req.into_request())
+            .await
+            .with_context(|| format!("update-with-start workflow {workflow_name}"))?
+            .into_inner();
+
+    let start_resp = response
+        .responses
+        .first()
+        .and_then(|r| r.response.as_ref())
+        .context("execute_multi_operation: missing start response")?;
+    let update_resp = response
+        .responses
+        .get(1)
+        .and_then(|r| r.response.as_ref())
+        .context("execute_multi_operation: missing update response")?;
+
+    let run_id = match start_resp {
+        RespKind::StartWorkflow(r) => r.run_id.clone(),
+        RespKind::UpdateWorkflow(_) => {
+            anyhow::bail!("execute_multi_operation: response[0] was not StartWorkflow")
+        }
+    };
+    let update_payloads = match update_resp {
+        RespKind::UpdateWorkflow(r) => r
+            .outcome
+            .as_ref()
+            .and_then(|o| match &o.value {
+                Some(update::outcome::Value::Success(s)) => Some(s.payloads.clone()),
+                _ => None,
+            })
+            .context("execute_multi_operation: update outcome had no success payloads")?,
+        RespKind::StartWorkflow(_) => {
+            anyhow::bail!("execute_multi_operation: response[1] was not UpdateWorkflow")
+        }
+    };
+
+    let update_payload = update_payloads
+        .first()
+        .context("update returned no payloads")?;
+    validate_empty_payload(update_payload).context("validate update output")?;
+
+    Ok(WorkflowHandle {
+        client: client.clone(),
+        workflow_id: workflow_id.to_string(),
+        run_id: if run_id.is_empty() {
+            None
+        } else {
+            Some(run_id)
+        },
+    })
 }
 
 // ── Worker primitives (feature = "worker") ─────────────────────────────

@@ -259,6 +259,8 @@ fn workflow_from(
 ) -> Result<WorkflowModel> {
     let rpc_method = method.name().to_string();
     reject_unsupported_workflow_options(&opts, service_name, &rpc_method)?;
+    reject_unsupported_workflow_signal_ref(&opts.signal, service_name, &rpc_method)?;
+    reject_unsupported_workflow_query_ref(&opts.query, service_name, &rpc_method)?;
     reject_unsupported_workflow_update_ref(&opts.update, service_name, &rpc_method)?;
     let registered_name = if opts.name.is_empty() {
         default_registered_name(package, service_name, &rpc_method)
@@ -477,15 +479,81 @@ fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &
 /// emit drops. The bridge's `update-with-start` path hardcodes
 /// `WorkflowIdConflictPolicy::UseExisting`, so a proto-level override would
 /// be silently ignored — refuse the proto rather than ship the wrong policy.
+///
+/// **Why this lives in parse, not model:** rejection must run against the
+/// raw `WorkflowOptions.Update` proto, before [`workflow_from`] projects
+/// it into the narrower [`crate::model::UpdateRef`] (which intentionally
+/// drops `cli` / `xns` / `workflow_id_conflict_policy`). Any future
+/// "reject unsupported X" fix on nested refs belongs here too.
 fn reject_unsupported_workflow_update_ref(
     refs: &[crate::temporal::v1::workflow_options::Update],
     service: &str,
     rpc: &str,
 ) -> Result<()> {
     for r in refs {
+        let mut unsupported: Vec<&'static str> = Vec::new();
         if r.workflow_id_conflict_policy != 0 {
+            unsupported.push("workflow_id_conflict_policy");
+        }
+        if r.cli.is_some() {
+            unsupported.push("cli");
+        }
+        if r.xns.is_some() {
+            unsupported.push("xns");
+        }
+        if unsupported.is_empty() {
+            continue;
+        }
+        return Err(anyhow!(
+            "{service}.{rpc}: (temporal.v1.workflow).update[ref={}] sets field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+            r.r#ref,
+            unsupported.join(", "),
+        ));
+    }
+    Ok(())
+}
+
+/// Sibling of [`reject_unsupported_workflow_update_ref`] for `signal` refs
+/// nested in `WorkflowOptions.signal[]`. The model layer projects only
+/// `ref` and `start`, dropping `cli` and `xns` silently.
+fn reject_unsupported_workflow_signal_ref(
+    refs: &[crate::temporal::v1::workflow_options::Signal],
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    for r in refs {
+        let mut unsupported: Vec<&'static str> = Vec::new();
+        if r.cli.is_some() {
+            unsupported.push("cli");
+        }
+        if r.xns.is_some() {
+            unsupported.push("xns");
+        }
+        if unsupported.is_empty() {
+            continue;
+        }
+        return Err(anyhow!(
+            "{service}.{rpc}: (temporal.v1.workflow).signal[ref={}] sets field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+            r.r#ref,
+            unsupported.join(", "),
+        ));
+    }
+    Ok(())
+}
+
+/// Sibling of [`reject_unsupported_workflow_update_ref`] for `query` refs
+/// nested in `WorkflowOptions.query[]`. The model layer projects only
+/// `ref`, dropping `xns` silently. (Queries have no `cli` field on the
+/// nested ref.)
+fn reject_unsupported_workflow_query_ref(
+    refs: &[crate::temporal::v1::workflow_options::Query],
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    for r in refs {
+        if r.xns.is_some() {
             return Err(anyhow!(
-                "{service}.{rpc}: (temporal.v1.workflow).update[ref={}] sets workflow_id_conflict_policy, which the v1 Rust client emit does not yet honour (update-with-start hardcodes UseExisting). Remove the field or pin to a generator release that supports it.",
+                "{service}.{rpc}: (temporal.v1.workflow).query[ref={}] sets field(s) xns that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
                 r.r#ref,
             ));
         }

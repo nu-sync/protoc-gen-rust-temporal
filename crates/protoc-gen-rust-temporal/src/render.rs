@@ -589,29 +589,57 @@ fn render_query_method(out: &mut String, q: &QueryModel) {
     let method_snake = q.rpc_method.to_snake_case();
     let out_ty = q.output_type.rust_name();
     let _ = writeln!(out, "        /// Run the `{}` query.", q.registered_name);
-    if q.input_type.is_empty {
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::query_proto_empty::<{out_ty}>(&self.inner, \"{}\").await",
-            q.registered_name
-        );
-        let _ = writeln!(out, "        }}");
-    } else {
-        let in_ty = q.input_type.rust_name();
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self, input: {in_ty}) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::query_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input).await",
-            q.registered_name
-        );
-        let _ = writeln!(out, "        }}");
+    match (q.input_type.is_empty, q.output_type.is_empty) {
+        (true, true) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto_empty_unit(&self.inner, \"{}\").await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (true, false) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto_empty::<{out_ty}>(&self.inner, \"{}\").await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, true) => {
+            let in_ty = q.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_unit::<{in_ty}>(&self.inner, \"{}\", &input).await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, false) => {
+            let in_ty = q.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input).await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
     }
     let _ = writeln!(out);
 }
@@ -620,29 +648,57 @@ fn render_update_method(out: &mut String, u: &UpdateModel) {
     let method_snake = u.rpc_method.to_snake_case();
     let out_ty = u.output_type.rust_name();
     let _ = writeln!(out, "        /// Run the `{}` update.", u.registered_name);
-    if u.input_type.is_empty {
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::update_proto_empty::<{out_ty}>(&self.inner, \"{}\", wait_policy).await",
-            u.registered_name
-        );
-        let _ = writeln!(out, "        }}");
-    } else {
-        let in_ty = u.input_type.rust_name();
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::update_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
-            u.registered_name
-        );
-        let _ = writeln!(out, "        }}");
+    match (u.input_type.is_empty, u.output_type.is_empty) {
+        (true, true) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto_empty_unit(&self.inner, \"{}\", wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (true, false) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto_empty::<{out_ty}>(&self.inner, \"{}\", wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, true) => {
+            let in_ty = u.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_unit::<{in_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, false) => {
+            let in_ty = u.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
     }
     let _ = writeln!(out);
 }
@@ -791,11 +847,15 @@ fn render_update_with_start_fn(
     }
     let _ = writeln!(out, "        opts: {opts_struct},");
     let _ = writeln!(out, "        wait_policy: temporal_runtime::WaitPolicy,");
-    let _ = writeln!(
-        out,
-        "    ) -> Result<({handle_struct}, {})> {{",
-        u.output_type.rust_name()
-    );
+    if u.output_type.is_empty {
+        let _ = writeln!(out, "    ) -> Result<{handle_struct}> {{");
+    } else {
+        let _ = writeln!(
+            out,
+            "    ) -> Result<({handle_struct}, {})> {{",
+            u.output_type.rust_name()
+        );
+    }
 
     let update_input_expr = if u.input_type.is_empty {
         "&()".to_string()
@@ -830,17 +890,30 @@ fn render_update_with_start_fn(
         );
     }
     render_default_resolutions(out, wf, "        ");
-    // Three explicit generics: workflow input (W), update input (U),
-    // update output (O). All three appear in distinct argument positions
-    // so they could in principle be inferred, but spelling them out keeps
-    // generated code grep-able and immune to inference brittleness.
-    let _ = writeln!(
-        out,
-        "        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<{}, {}, {}>(",
-        wf.input_type.rust_name(),
-        u.input_type.rust_name(),
-        u.output_type.rust_name(),
-    );
+    // Output type is Empty → route through the `_unit` sibling, which
+    // validates the canonical Empty payload server-side instead of decoding
+    // it into a `()` (the typed `update_with_start_workflow_proto` requires
+    // `O: TemporalProtoMessage`, which `()` cannot satisfy).
+    if u.output_type.is_empty {
+        let _ = writeln!(
+            out,
+            "        let inner = temporal_runtime::update_with_start_workflow_proto_unit::<{}, {}>(",
+            wf.input_type.rust_name(),
+            u.input_type.rust_name(),
+        );
+    } else {
+        // Three explicit generics: workflow input (W), update input (U),
+        // update output (O). All three appear in distinct argument positions
+        // so they could in principle be inferred, but spelling them out keeps
+        // generated code grep-able and immune to inference brittleness.
+        let _ = writeln!(
+            out,
+            "        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<{}, {}, {}>(",
+            wf.input_type.rust_name(),
+            u.input_type.rust_name(),
+            u.output_type.rust_name(),
+        );
+    }
     let _ = writeln!(out, "            client,");
     let _ = writeln!(out, "            {const_name},");
     let _ = writeln!(out, "            &workflow_id,");
@@ -854,10 +927,14 @@ fn render_update_with_start_fn(
     let _ = writeln!(out, "            run_timeout,");
     let _ = writeln!(out, "            task_timeout,");
     let _ = writeln!(out, "        ).await?;");
-    let _ = writeln!(
-        out,
-        "        Ok(({handle_struct} {{ inner }}, update_result))"
-    );
+    if u.output_type.is_empty {
+        let _ = writeln!(out, "        Ok({handle_struct} {{ inner }})");
+    } else {
+        let _ = writeln!(
+            out,
+            "        Ok(({handle_struct} {{ inner }}, update_result))"
+        );
+    }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 }

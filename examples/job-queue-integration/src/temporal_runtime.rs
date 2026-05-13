@@ -137,6 +137,18 @@ pub async fn query_proto_empty<O: TemporalProtoMessage>(
     todo!("handle.query(name, Empty).await")
 }
 
+pub async fn query_unit<I: TemporalProtoMessage>(
+    _handle: &WorkflowHandle,
+    _query_name: &str,
+    _input: &I,
+) -> Result<()> {
+    todo!("handle.query(name, input).await — validate Empty response")
+}
+
+pub async fn query_proto_empty_unit(_handle: &WorkflowHandle, _query_name: &str) -> Result<()> {
+    todo!("handle.query(name, Empty).await — validate Empty response")
+}
+
 pub async fn update_proto<I: TemporalProtoMessage, O: TemporalProtoMessage>(
     _handle: &WorkflowHandle,
     _update_name: &str,
@@ -152,6 +164,23 @@ pub async fn update_proto_empty<O: TemporalProtoMessage>(
     _wait_policy: WaitPolicy,
 ) -> Result<O> {
     todo!("handle.update(name, Empty, wait_policy).await")
+}
+
+pub async fn update_unit<I: TemporalProtoMessage>(
+    _handle: &WorkflowHandle,
+    _update_name: &str,
+    _input: &I,
+    _wait_policy: WaitPolicy,
+) -> Result<()> {
+    todo!("handle.update(name, input, wait_policy).await — validate Empty response")
+}
+
+pub async fn update_proto_empty_unit(
+    _handle: &WorkflowHandle,
+    _update_name: &str,
+    _wait_policy: WaitPolicy,
+) -> Result<()> {
+    todo!("handle.update(name, Empty, wait_policy).await — validate Empty response")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -191,4 +220,25 @@ pub async fn update_with_start_workflow_proto<
     _task_timeout: Option<Duration>,
 ) -> Result<(WorkflowHandle, O)> {
     todo!("client.update_with_start_workflow_execution(...)")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn update_with_start_workflow_proto_unit<
+    W: TemporalProtoMessage,
+    U: TemporalProtoMessage,
+>(
+    _client: &TemporalClient,
+    _workflow_name: &'static str,
+    _workflow_id: &str,
+    _task_queue: &str,
+    _workflow_input: &W,
+    _update_name: &str,
+    _update_input: &U,
+    _wait_policy: WaitPolicy,
+    _id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    _execution_timeout: Option<Duration>,
+    _run_timeout: Option<Duration>,
+    _task_timeout: Option<Duration>,
+) -> Result<WorkflowHandle> {
+    todo!("client.update_with_start_workflow_execution(...) — validate Empty response")
 }

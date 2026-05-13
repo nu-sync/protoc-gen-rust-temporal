@@ -61,12 +61,17 @@ service that has at least one workflow.
 | `wait_result_unit` | workflow handle `result()`, **Empty** output | `async fn(&WorkflowHandle) -> Result<()>` | 0.1.0 |
 | `signal_proto<I>` | `handle.<signal>()` for signals with **non-Empty** input | `async fn(&WorkflowHandle, signal_name: &str, input: &I) -> Result<()>` | 0.1.0 |
 | `signal_unit` | `handle.<signal>()` for signals with **Empty** input | `async fn(&WorkflowHandle, signal_name: &str) -> Result<()>` | 0.1.0 |
-| `query_proto<I, O>` | `handle.<query>()` with **non-Empty** input | `async fn(&WorkflowHandle, query_name: &str, input: &I) -> Result<O>` where both: `TemporalProtoMessage` | 0.1.0 |
-| `query_proto_empty<O>` | `handle.<query>()` with **Empty** input | `async fn(&WorkflowHandle, query_name: &str) -> Result<O>` where `O: TemporalProtoMessage` | 0.1.0 |
-| `update_proto<I, O>` | `handle.<update>()` with **non-Empty** input | `async fn(&WorkflowHandle, update_name: &str, input: &I, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
-| `update_proto_empty<O>` | `handle.<update>()` with **Empty** input | `async fn(&WorkflowHandle, update_name: &str, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
+| `query_proto<I, O>` | `handle.<query>()` with **non-Empty** input and **non-Empty** output | `async fn(&WorkflowHandle, query_name: &str, input: &I) -> Result<O>` where both: `TemporalProtoMessage` | 0.1.0 |
+| `query_proto_empty<O>` | `handle.<query>()` with **Empty** input, **non-Empty** output | `async fn(&WorkflowHandle, query_name: &str) -> Result<O>` where `O: TemporalProtoMessage` | 0.1.0 |
+| `query_unit<I>` | `handle.<query>()` with **non-Empty** input, **Empty** output | `async fn(&WorkflowHandle, query_name: &str, input: &I) -> Result<()>` where `I: TemporalProtoMessage` | 0.1.1 |
+| `query_proto_empty_unit` | `handle.<query>()` with **Empty** input **and** **Empty** output | `async fn(&WorkflowHandle, query_name: &str) -> Result<()>` | 0.1.1 |
+| `update_proto<I, O>` | `handle.<update>()` with **non-Empty** input and **non-Empty** output | `async fn(&WorkflowHandle, update_name: &str, input: &I, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
+| `update_proto_empty<O>` | `handle.<update>()` with **Empty** input, **non-Empty** output | `async fn(&WorkflowHandle, update_name: &str, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
+| `update_unit<I>` | `handle.<update>()` with **non-Empty** input, **Empty** output | `async fn(&WorkflowHandle, update_name: &str, input: &I, wait_policy: WaitPolicy) -> Result<()>` where `I: TemporalProtoMessage` | 0.1.1 |
+| `update_proto_empty_unit` | `handle.<update>()` with **Empty** input **and** **Empty** output | `async fn(&WorkflowHandle, update_name: &str, wait_policy: WaitPolicy) -> Result<()>` | 0.1.1 |
 | `signal_with_start_workflow_proto<W, S>` | `<signal>_with_start` free fn (signal has `start: true`) | `async fn(client, workflow_name, workflow_id, task_queue, workflow_input: &W, signal_name, signal_input: &S, …) -> Result<WorkflowHandle>` | 0.1.0 |
-| `update_with_start_workflow_proto<W, U, O>` | `<update>_with_start` free fn (update has `start: true`) | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<(WorkflowHandle, O)>` | 0.1.0 |
+| `update_with_start_workflow_proto<W, U, O>` | `<update>_with_start` free fn, **non-Empty** update output | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<(WorkflowHandle, O)>` | 0.1.0 |
+| `update_with_start_workflow_proto_unit<W, U>` | `<update>_with_start` free fn, **Empty** update output | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<WorkflowHandle>` | 0.1.1 |
 
 ### Removed since 0.0.x
 
@@ -77,7 +82,9 @@ service that has at least one workflow.
 ## `Empty`-input contract for `_empty` variants
 
 The plugin emits `start_workflow_proto_empty` / `signal_unit` /
-`query_proto_empty` / `update_proto_empty` / `wait_result_unit` whenever a
+`query_proto_empty` / `query_unit` / `query_proto_empty_unit` /
+`update_proto_empty` / `update_unit` / `update_proto_empty_unit` /
+`wait_result_unit` / `update_with_start_workflow_proto_unit` whenever a
 workflow / signal / query / update has a `google.protobuf.Empty` input or
 output. Those variants exist purely so the generated call site doesn't need
 to express `()` as a `TemporalProtoMessage` — they do **not** mean "send no
@@ -112,10 +119,16 @@ v1.
 
 The plugin's validate step **rejects** workflows that combine
 `signal: [{ start: true }]` or `update: [{ start: true }]` with any
-Empty side, asking users to wrap the empty payload in a single-field
-message instead. So in practice, generated code never calls
-`signal_with_start_workflow_proto` or `update_with_start_workflow_proto`
-with `&()` arguments.
+Empty **input** side, asking users to wrap the empty payload in a
+single-field message instead. So in practice, generated code never calls
+`signal_with_start_workflow_proto` or
+`update_with_start_workflow_proto{,_unit}` with `&()` workflow-input or
+signal/update-input arguments.
+
+Empty **update outputs** on `_with_start` are supported — render dispatches
+to the `_unit` variant, which validates the canonical Empty payload server-
+side. The typed variant can't be reused because `()` does not implement
+`TemporalProtoMessage` and so cannot satisfy the `O` generic.
 
 ## Phase 2 — Activities (opt-in via `activities=true`)
 

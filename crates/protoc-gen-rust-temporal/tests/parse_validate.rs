@@ -241,6 +241,102 @@ fn workflow_with_bad_signal_ref_fails_validation() {
 }
 
 #[test]
+fn workflow_signal_ref_with_xns_is_rejected_at_parse() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Tick", xns: { task_queue: "other" } }]
+            };
+          }
+          rpc Tick(In) returns (In) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("xns on signal ref must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("xns") && err.contains("signal[ref=Tick]"),
+        "parse error must surface xns + signal ref name, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_update_ref_with_cli_is_rejected_at_parse() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Touch", cli: {} }]
+            };
+          }
+          rpc Touch(In) returns (Out) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("cli on update ref must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("cli") && err.contains("update[ref=Touch]"),
+        "parse error must surface cli + update ref name, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_query_ref_with_xns_is_rejected_at_parse() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              query: [{ ref: "Status", xns: { task_queue: "other" } }]
+            };
+          }
+          rpc Status(In) returns (Out) {
+            option (temporal.v1.query) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("xns on query ref must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("xns") && err.contains("query[ref=Status]"),
+        "parse error must surface xns + query ref name, got: {err}"
+    );
+}
+
+#[test]
 fn workflow_without_task_queue_fails_validation() {
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
@@ -295,6 +391,37 @@ fn full_workflow_render_golden() {
 #[test]
 fn empty_input_workflow_render_golden() {
     assert_golden("empty_input_workflow");
+}
+
+#[test]
+fn empty_output_query_update_render_golden() {
+    assert_golden("empty_output_query_update");
+}
+
+/// Sanity: confirm the new empty-output fixture parses and validates
+/// cleanly — so any future render-time breakage (e.g. dropping the
+/// `_unit` dispatch in `render_query_method`) shows up here.
+#[test]
+fn empty_output_query_update_parses_and_validates() {
+    let services = parse_and_validate("empty_output_query_update");
+    assert_eq!(services.len(), 1);
+    let svc = &services[0];
+    assert_eq!(svc.queries.len(), 2);
+    assert_eq!(svc.updates.len(), 3);
+    for q in &svc.queries {
+        assert!(
+            q.output_type.is_empty,
+            "fixture invariant: every query must have Empty output (got {})",
+            q.output_type.full_name
+        );
+    }
+    for u in &svc.updates {
+        assert!(
+            u.output_type.is_empty,
+            "fixture invariant: every update must have Empty output (got {})",
+            u.output_type.full_name
+        );
+    }
 }
 
 #[test]

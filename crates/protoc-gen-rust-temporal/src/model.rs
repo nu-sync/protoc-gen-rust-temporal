@@ -5,6 +5,20 @@
 //! fields needed for v1 Rust client emit. Anything we read but ignore (XNS,
 //! patches, CLI options) lives in the descriptor pool and is silently
 //! dropped here.
+//!
+//! # Adding "reject unsupported X" rules
+//!
+//! Validation that should refuse a proto field must run **before** that
+//! field is projected away. The model layer narrows the schema — rejection
+//! code added at a call site that runs after projection has no visibility
+//! into the fields the projection threw away, so the user's proto-level
+//! setting silently disappears instead of erroring.
+//!
+//! Concretely: rejection of fields nested inside `WorkflowOptions.signal[]`,
+//! `WorkflowOptions.query[]`, and `WorkflowOptions.update[]` lives in
+//! `parse::reject_unsupported_workflow_{signal,query,update}_ref`, which
+//! runs in `workflow_from` against the raw proto, not against
+//! `attached_signals` / `attached_queries` / `attached_updates`.
 
 use std::time::Duration;
 
