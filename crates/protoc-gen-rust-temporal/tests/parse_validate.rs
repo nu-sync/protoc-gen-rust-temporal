@@ -1620,6 +1620,70 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn workflow_alias_collision_with_registered_name_fails_at_parse() {
+    // Catch a real bug: a workflow alias that equals the workflow's
+    // own registered name would attempt to register the same workflow
+    // twice under the same Temporal name. Refuse at parse rather than
+    // ship the duplicate registration.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wf_alias_self.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              name:       "explicit-name"
+              aliases:    ["explicit-name", "extra-alias"]
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("alias colliding with registered_name must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("collides with the workflow's registered name")
+            && err.contains("explicit-name"),
+        "expected alias-self-collision diagnostic, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_alias_duplicate_within_list_fails_at_parse() {
+    // Same alias listed twice would also register the workflow twice
+    // under that name. Reject so the bug surfaces at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wf_alias_dup.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              aliases:    ["a", "b", "a"]
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("duplicate alias in same list must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("more than once") && err.contains("\"a\""),
+        "expected duplicate-alias diagnostic, got: {err}"
+    );
+}
+
+#[test]
 fn client_exposes_source_file_const() {
     // R4 — `<Service>Client::SOURCE_FILE: &'static str` carries the
     // proto file path as protoc saw it. Lets tooling correlate

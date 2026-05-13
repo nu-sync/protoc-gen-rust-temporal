@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — workflow alias collision validation):
+  `(temporal.v1.workflow).aliases` now rejects two real footguns at
+  parse: (1) an alias that equals the workflow's own `registered_name`
+  (would register the workflow twice under the same Temporal name),
+  and (2) the same alias listed more than once within the list (same
+  duplicate-registration outcome). Both diagnostics name the
+  offending alias literal so the user can fix the proto without
+  hunting. Two new parse_validate tests pin both rejections. No
+  bridge signature change; no fixture goldens touched (no fixture
+  declared a colliding alias).
 - 2026-05-13 (R4 — `<Service>Client::SOURCE_FILE` const):
   every generated `<Service>Client` now exposes a `SOURCE_FILE:
   &'static str` const carrying the proto file path exactly as protoc

@@ -492,6 +492,27 @@ fn workflow_from(
         opts.name
     };
 
+    // Reject aliases that collide with the workflow's own registered
+    // name (would attempt to register the same workflow twice under
+    // the same Temporal name) or that duplicate each other within
+    // the alias list (same duplicate-registration outcome).
+    let mut seen_aliases: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for alias in &opts.aliases {
+        if alias == &registered_name {
+            anyhow::bail!(
+                "{service_name}.{rpc_method}: (temporal.v1.workflow).aliases entry {alias:?} \
+                 collides with the workflow's registered name; remove the duplicate alias or \
+                 rename the workflow",
+            );
+        }
+        if !seen_aliases.insert(alias.as_str()) {
+            anyhow::bail!(
+                "{service_name}.{rpc_method}: (temporal.v1.workflow).aliases lists {alias:?} \
+                 more than once; each alias must be unique",
+            );
+        }
+    }
+
     let id_expression = if opts.id.is_empty() {
         None
     } else {
