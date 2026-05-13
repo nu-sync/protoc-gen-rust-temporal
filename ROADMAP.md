@@ -411,18 +411,35 @@ Done when:
 Today's worker emit is a contract and registration layer. Go generates a richer
 worker-facing surface that reduces hand wiring inside workflow implementations.
 
-Target capabilities:
+Shipped (2026-05-13):
 
-- Generated per-workflow implementation traits or adapter contracts that include
-  the workflow run signature and attached signal/query/update handler shapes.
-- Generated typed names and input/output structs where Go exposes them and where
-  Rust needs them to make handler wiring readable.
-- Signal receive/select helpers, subject to what `temporalio-sdk` exposes.
-- Query and update handler helpers, including validation hooks for update
-  validators.
-- Continue-as-new helpers for workflows.
-- Child-workflow and external-signal helpers when the SDK shape allows clean
-  facade functions.
+- Per-workflow `<Workflow>Definition` trait + registration helper
+  (`workflows=true`).
+- `<RPC>Workflow` markers + `WorkflowDefinition` impl + typed
+  `start_<workflow>_child` helper.
+- `continue_<workflow>_as_new` helper.
+- `<RPC>Signal` markers + `signal_<rpc>_external` workflow-side helper.
+- Per-handler I/O type aliases (`<Rpc>SignalInput`, `<Rpc>QueryOutput`,
+  …) so workflow body code spells handler types by role.
+
+Blocked on upstream SDK shape:
+
+- **Signal-receive / select helpers** — the SDK only exposes signal
+  *sending* (`StartedChildWorkflow::signal`, `ExternalWorkflowHandle::signal`).
+  There's no `WorkflowContext::signal_channel()` analog for the body to
+  receive on; signals reach the workflow through the
+  `#[workflow_methods]` macro's generated dispatch, which owns the
+  channel layer. A typed receive helper would either need the SDK to
+  publish a `signal_channel<S>()` surface or this plugin would have to
+  ship a parallel macro that duplicates the SDK's dispatch — out of
+  scope for the v1 emit.
+- **Query / update handler hooks** — same constraint. The SDK macro
+  generates the handler dispatch from method attributes on the
+  consumer's struct. The plugin's emit has no clean place to inject a
+  typed hook without conflicting with the macro.
+
+Re-evaluate these when `temporalio-sdk` exposes a public channel /
+hook API.
 
 Non-goal for this phase:
 
@@ -606,7 +623,7 @@ toward majority parity.
 | Method co-annotations | Shipped 2026-05-13: `activity` co-occurs with `workflow` / `signal` / `update`; both buckets populate. Two-primary combinations (workflow+signal etc.) still refused because their generated symbols would collide. | R1 |
 | Cross-service refs | Same-service emit only; parse-time DescriptorPool resolution catches typos and wrong-kind targets with pinpoint diagnostics (2026-05-13); validate still rejects well-formed cross-service refs with "emit not yet implemented". | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
-| Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers + per-handler I/O type aliases shipped 2026-05-13; signal-receive/select helpers and query/update handler hooks still pending (SDK macro-shape constrains the surface). | R2 |
+| Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers + per-handler I/O type aliases shipped 2026-05-13. Signal-receive/select helpers and query/update handler hooks are blocked on the SDK macro shape — see R2 "Blocked on upstream SDK shape". | R2 |
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` shipped 2026-05-13. Empty-input/output sides supported via `temporal_runtime::ProtoEmpty` wrapping; helper signatures hide the wrapper (no input arg for Empty-input, `()` return for Empty-output). | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy`, `parent_close_policy`, `wait_for_cancellation` shipped 2026-05-13; search attrs (need R7 Bloblang) and `versioning_behavior` (worker-side, no SDK 0.4 support) still pending. | R5 |

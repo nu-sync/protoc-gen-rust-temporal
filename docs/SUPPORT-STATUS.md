@@ -174,3 +174,23 @@ not block "majority parity" against the Rust client/worker surface.
 - **Patch / protopatch handling.** The Rust plugin compiles templates at
   codegen time, so there's no inline-eval pattern to stage migrations for.
   `patches` proto fields are rejected at parse.
+
+## Blocked on upstream SDK 0.4
+
+These items have clean Go-plugin equivalents but cannot ship cleanly until
+`temporalio-sdk` exposes the corresponding hook. Tracked in ROADMAP, not
+out-of-scope, but not actionable in this codebase alone.
+
+- **R2 signal-receive / select helpers and query/update handler hooks.**
+  The SDK's `#[workflow_methods]` macro owns the dispatch from the wire to
+  the consumer's struct methods. There's no public
+  `WorkflowContext::signal_channel<S>()` (or query/update equivalent) for
+  the plugin to wrap. See ROADMAP "R2 — Blocked on upstream SDK shape".
+- **R5 `WorkflowOptions.versioning_behavior`.** `WorkflowImplementation` in
+  SDK 0.4 has no `VERSIONING_BEHAVIOR` const for the plugin's
+  `register_<workflow>_workflow` to set.
+- **R8 codec server generation.** No Rust SDK surface to target; the
+  codec-server pattern is a separate Go service today.
+- **R8 generated test clients / mocks.** `temporalio-sdk` 0.4 does not
+  expose a `TestWorkflowEnvironment` equivalent (see
+  `docs/sdk-shape-worker.md`).
