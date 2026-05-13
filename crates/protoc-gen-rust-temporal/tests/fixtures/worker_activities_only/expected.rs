@@ -56,6 +56,10 @@ pub mod workeract_v1_activity_worker_service_temporal {
         type Output = temporal_runtime::TypedProtoMessage<FetchOutput>;
         fn name() -> &'static str { FETCH_ACTIVITY_NAME }
     }
+    impl FetchActivity {
+        pub const INPUT_TYPE: &'static str = self::FETCH_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::FETCH_ACTIVITY_OUTPUT_TYPE;
+    }
     pub async fn execute_fetch<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: FetchInput,
@@ -75,6 +79,10 @@ pub mod workeract_v1_activity_worker_service_temporal {
         type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
         type Output = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
         fn name() -> &'static str { PING_ACTIVITY_NAME }
+    }
+    impl PingActivity {
+        pub const INPUT_TYPE: &'static str = self::PING_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::PING_ACTIVITY_OUTPUT_TYPE;
     }
     pub async fn execute_ping<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

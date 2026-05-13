@@ -2319,6 +2319,29 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "        fn name() -> &'static str {{ {const_ident} }}");
         let _ = writeln!(out, "    }}");
+        // Inherent `INPUT_TYPE` / `OUTPUT_TYPE` consts on the marker
+        // struct surface the proto FQN for tooling that holds a
+        // typed marker but wants the wire type name without going
+        // through `<M as ActivityDefinition>` (which the SDK trait
+        // doesn't expose for it).
+        let in_const = format!(
+            "{}_ACTIVITY_INPUT_TYPE",
+            act.rpc_method.to_shouty_snake_case()
+        );
+        let out_const = format!(
+            "{}_ACTIVITY_OUTPUT_TYPE",
+            act.rpc_method.to_shouty_snake_case()
+        );
+        let _ = writeln!(out, "    impl {marker_struct} {{");
+        let _ = writeln!(
+            out,
+            "        pub const INPUT_TYPE: &'static str = self::{in_const};"
+        );
+        let _ = writeln!(
+            out,
+            "        pub const OUTPUT_TYPE: &'static str = self::{out_const};"
+        );
+        let _ = writeln!(out, "    }}");
 
         render_activity_helper(out, act, /* local: */ false, &marker_struct);
         if let Some(spec) = act.default_options.as_ref() {

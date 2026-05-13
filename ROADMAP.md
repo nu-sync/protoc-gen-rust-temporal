@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` on activity marker structs):
+  parallel of the workflow Definition trait shipment. Each generated
+  activity marker struct (`<Activity>Activity`) now carries an
+  inherent `impl` block exposing `pub const INPUT_TYPE` and
+  `pub const OUTPUT_TYPE` `&'static str`, sourced from the per-rpc
+  module-level proto-FQN consts. Lets generic code holding a typed
+  marker spell `<MarkerStruct>::INPUT_TYPE` to pull the wire type
+  name without going through the SDK's `ActivityDefinition` trait
+  (which doesn't expose this metadata). One new positive
+  parse_validate test pins the inherent-const emit on the
+  `activities_emit` fixture. Several fixture goldens reblessed
+  (every activities=true fixture's marker structs gained the
+  inherent impl block). 155 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` consts on `<Workflow>Definition` trait):
   the `<Workflow>Definition` trait under `workflows=true` already
   re-exposed `WORKFLOW_NAME` / `TASK_QUEUE` / `WORKFLOW_ALIASES` as

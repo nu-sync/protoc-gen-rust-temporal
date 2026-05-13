@@ -1213,6 +1213,26 @@ fn workflow_aliases_const_omitted_when_empty() {
 }
 
 #[test]
+fn activity_marker_struct_exposes_input_output_type_consts() {
+    // R4 — each activity marker struct gains inherent
+    // `INPUT_TYPE` / `OUTPUT_TYPE` `&'static str` consts (sourced
+    // from the per-rpc module-level proto-FQN consts) so generic
+    // code holding a typed marker can pull the wire type name
+    // without going through the SDK's `ActivityDefinition` trait.
+    let services = parse_and_validate("activities_emit");
+    let opts = load_fixture_options("activities_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const INPUT_TYPE: &'static str = self::"),
+        "activity marker struct must expose INPUT_TYPE: {source}"
+    );
+    assert!(
+        source.contains("pub const OUTPUT_TYPE: &'static str = self::"),
+        "activity marker struct must expose OUTPUT_TYPE: {source}"
+    );
+}
+
+#[test]
 fn workflow_definition_trait_exposes_input_output_type_consts() {
     // R4 — `<Workflow>Definition` trait re-exposes the per-rpc
     // `<RPC>_INPUT_TYPE` / `_OUTPUT_TYPE` proto FQN consts as

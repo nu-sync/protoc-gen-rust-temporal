@@ -251,6 +251,10 @@ pub mod workerfull_v1_orchestration_service_temporal {
         type Output = temporal_runtime::TypedProtoMessage<LoadOutput>;
         fn name() -> &'static str { LOAD_ACTIVITY_NAME }
     }
+    impl LoadActivity {
+        pub const INPUT_TYPE: &'static str = self::LOAD_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::LOAD_ACTIVITY_OUTPUT_TYPE;
+    }
     pub async fn execute_load<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: LoadInput,

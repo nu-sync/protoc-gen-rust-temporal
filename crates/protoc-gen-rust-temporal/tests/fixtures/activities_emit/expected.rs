@@ -203,6 +203,10 @@ pub mod acts_v1_chunk_service_temporal {
         type Output = temporal_runtime::TypedProtoMessage<ChunkOutput>;
         fn name() -> &'static str { PROCESS_ACTIVITY_NAME }
     }
+    impl ProcessActivity {
+        pub const INPUT_TYPE: &'static str = self::PROCESS_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::PROCESS_ACTIVITY_OUTPUT_TYPE;
+    }
     pub async fn execute_process<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: ChunkInput,
@@ -222,6 +226,10 @@ pub mod acts_v1_chunk_service_temporal {
         type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
         type Output = temporal_runtime::TypedProtoMessage<HeartbeatOutput>;
         fn name() -> &'static str { HEARTBEAT_ACTIVITY_NAME }
+    }
+    impl HeartbeatActivity {
+        pub const INPUT_TYPE: &'static str = self::HEARTBEAT_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::HEARTBEAT_ACTIVITY_OUTPUT_TYPE;
     }
     pub async fn execute_heartbeat<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
