@@ -1580,6 +1580,15 @@ fn render_activity_default_options_fn(
         let lit = retry_policy_literal(rp);
         builder_expr = format!("{builder_expr}.retry_policy(({lit}).into())");
     }
+    if spec.wait_for_cancellation {
+        // proto `wait_for_cancellation = true` maps to the
+        // `WaitCancellationCompleted` variant of the SDK's
+        // `ActivityCancellationType` enum. `false` (default) falls through
+        // to the SDK's default `TryCancel` — matching the Go plugin.
+        builder_expr = format!(
+            "{builder_expr}.cancellation_type(temporal_runtime::worker::ActivityCancellationType::WaitCancellationCompleted)",
+        );
+    }
     let _ = writeln!(out, "        {builder_expr}.build()");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);

@@ -587,6 +587,13 @@ pub mod temporal_runtime {
         pub enum WorkflowTermination {}
 
         #[derive(Debug, Clone, Copy)]
+        pub enum ActivityCancellationType {
+            TryCancel,
+            WaitCancellationCompleted,
+            Abandon,
+        }
+
+        #[derive(Debug, Clone, Copy)]
         pub enum ActivityCloseTimeouts {
             ScheduleToClose(std::time::Duration),
             StartToClose(std::time::Duration),
@@ -612,6 +619,9 @@ pub mod temporal_runtime {
                 self
             }
             pub fn retry_policy(self, _rp: super::RetryPolicy) -> Self {
+                self
+            }
+            pub fn cancellation_type(self, _t: ActivityCancellationType) -> Self {
                 self
             }
             pub fn build(self) -> ActivityOptions {

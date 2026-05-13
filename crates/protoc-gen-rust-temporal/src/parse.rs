@@ -671,27 +671,16 @@ fn reject_unsupported_workflow_query_ref(
     Ok(())
 }
 
-/// Most `ActivityOptions` fields now fold into the
-/// `<activity>_default_options()` factory under `activities=true` (see R3
-/// in ROADMAP.md). Only fields that have no clean Rust mapping yet stay
-/// rejected — currently just `wait_for_cancellation`, which maps to the
-/// SDK's `ActivityCancellationType` enum that we haven't surfaced.
+/// All `ActivityOptions` runtime fields now fold into the
+/// `<activity>_default_options()` factory under `activities=true`. This
+/// function stays as the rejection sink for future fields the schema
+/// grows.
 fn reject_unsupported_activity_options(
-    opts: &ActivityOptions,
-    service: &str,
-    rpc: &str,
+    _opts: &ActivityOptions,
+    _service: &str,
+    _rpc: &str,
 ) -> Result<()> {
-    let mut unsupported: Vec<&'static str> = Vec::new();
-    if opts.wait_for_cancellation {
-        unsupported.push("wait_for_cancellation");
-    }
-    if unsupported.is_empty() {
-        return Ok(());
-    }
-    Err(anyhow!(
-        "{service}.{rpc}: (temporal.v1.activity) sets runtime-affecting field(s) {} that the v1 Rust activity emit (activities=true) does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
-        unsupported.join(", "),
-    ))
+    Ok(())
 }
 
 fn activity_options_spec_from_proto(
@@ -703,6 +692,7 @@ fn activity_options_spec_from_proto(
     let start_to_close_timeout = opts.start_to_close_timeout.and_then(duration_from_proto);
     let heartbeat_timeout = opts.heartbeat_timeout.and_then(duration_from_proto);
     let retry_policy = opts.retry_policy.clone().map(retry_policy_from_proto);
+    let wait_for_cancellation = opts.wait_for_cancellation;
     // The SDK's `ActivityOptions` requires `close_timeouts` (a non-Option
     // enum) at construction time, so we can't build a factory unless the
     // proto declares at least one of the close-timeout variants. If only
@@ -719,6 +709,7 @@ fn activity_options_spec_from_proto(
         start_to_close_timeout,
         heartbeat_timeout,
         retry_policy,
+        wait_for_cancellation,
     })
 }
 

@@ -89,7 +89,7 @@ issue or add the row. The diagnostic-coverage test
 | `schedule_to_start_timeout` | supported | Chains onto the factory builder. |
 | `start_to_close_timeout` | supported | Used as the `close_timeouts` kicker; preferred when paired (via `Both`). |
 | `heartbeat_timeout` | supported | Chains onto the factory builder. |
-| `wait_for_cancellation` | rejected | No clean mapping to the SDK's `ActivityCancellationType` enum yet. |
+| `wait_for_cancellation` | supported | `true` chains `.cancellation_type(ActivityCancellationType::WaitCancellationCompleted)` onto the factory builder; `false` (default) emits no setter so the SDK's `TryCancel` default stays. |
 | `retry_policy` | supported | The factory converts the proto retry policy to the SDK's `RetryPolicy` and chains it onto the builder. |
 
 ## SignalOptions (`(temporal.v1.signal)`)

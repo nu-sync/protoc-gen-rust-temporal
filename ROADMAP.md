@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R3 — last ActivityOptions rejection closes): proto
+  `wait_for_cancellation = true` now folds into the per-activity factory
+  as `.cancellation_type(ActivityCancellationType::WaitCancellationCompleted)`;
+  `false` (default) emits no setter so the SDK's `TryCancel` default
+  stays. Bridge re-exports `ActivityCancellationType` from
+  `temporalio_common::protos::coresdk::workflow_commands`. With this,
+  **no `ActivityOptions` field is rejected anymore** — all six runtime
+  fields fold into the factory. Two new positive tests; old rejection
+  test deleted; support-status drift table loses its last activity row.
 - 2026-05-13 (R3 — activity option builders): every activity that
   declares at least one close-timeout in `(temporal.v1.activity)` now
   also ships `pub fn <rpc>_default_options() -> ActivityOptions` that
@@ -512,7 +521,7 @@ toward majority parity.
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` factory shipped 2026-05-13 (non-Empty in/out only); Empty-input/output helpers still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
-| Activity runtime options | Five of six fields graduate to `<activity>_default_options()` 2026-05-13; `wait_for_cancellation` still rejected. | R5/R3 |
+| Activity runtime options | All six fields graduated to `<activity>_default_options()` 2026-05-13 (incl. `wait_for_cancellation` → `ActivityCancellationType::WaitCancellationCompleted`). | R5/R3 |
 | Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |

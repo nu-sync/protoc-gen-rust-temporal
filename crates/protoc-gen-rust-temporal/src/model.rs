@@ -205,6 +205,13 @@ pub struct ActivityOptionsSpec {
     pub start_to_close_timeout: Option<Duration>,
     pub heartbeat_timeout: Option<Duration>,
     pub retry_policy: Option<RetryPolicySpec>,
+    /// `true` when the proto declares `wait_for_cancellation = true`.
+    /// Render chains
+    /// `.cancellation_type(ActivityCancellationType::WaitCancellationCompleted)`
+    /// onto the factory builder. `false` (default) maps to the SDK's
+    /// default `TryCancel` and emits no setter — matching Go-plugin
+    /// behaviour.
+    pub wait_for_cancellation: bool,
 }
 
 /// A proto type reference, resolved to its fully-qualified name.

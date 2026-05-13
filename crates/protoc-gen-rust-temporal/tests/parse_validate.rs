@@ -582,30 +582,69 @@ fn activity_default_options_omitted_when_proto_skips_close_timeouts() {
 }
 
 #[test]
-fn activity_with_only_wait_for_cancellation_is_still_rejected() {
-    // After the activity-options graduation, the only remaining
-    // ActivityOptions rejection is `wait_for_cancellation` (no clean
-    // mapping to the SDK's `ActivityCancellationType` enum yet).
+fn activity_default_options_honours_wait_for_cancellation() {
+    // R3 — `wait_for_cancellation = true` now folds into the per-activity
+    // factory as `.cancellation_type(WaitCancellationCompleted)`. `false`
+    // (proto default) emits no setter so the SDK's `TryCancel` default
+    // stays — matches Go-plugin behaviour.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package act_reject.v1;
+        package act_wait.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
           rpc Work(In) returns (Out) {
-            option (temporal.v1.activity) = { wait_for_cancellation: true };
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+              wait_for_cancellation:   true
+            };
           }
         }
         message In {} message Out {}
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        activities: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
     assert!(
-        err.contains("wait_for_cancellation"),
-        "must still reject wait_for_cancellation: {err}"
+        source.contains(
+            ".cancellation_type(temporal_runtime::worker::ActivityCancellationType::WaitCancellationCompleted)"
+        ),
+        "wait_for_cancellation=true must chain WaitCancellationCompleted onto the builder: {source}"
+    );
+}
+
+#[test]
+fn activity_default_options_omits_cancellation_setter_when_proto_omits_it() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package act_wait.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Work(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        activities: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        !source.contains(".cancellation_type("),
+        "wait_for_cancellation unset → no cancellation_type setter: {source}"
     );
 }
 
@@ -2146,20 +2185,6 @@ fn unsupported_field_support_status_table() {
               message In {} message Out {}
             "#,
             expect_field: "cli",
-        },
-        Case {
-            label: "ActivityOptions.wait_for_cancellation",
-            snippet: r#"
-              service Svc {
-                rpc Work(In) returns (Out) {
-                  option (temporal.v1.activity) = {
-                    wait_for_cancellation: true
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "wait_for_cancellation",
         },
         Case {
             label: "WorkflowOptions.patches",
