@@ -65,6 +65,51 @@ fn get_ext(pool: &DescriptorPool, name: &str) -> Result<ExtensionDescriptor> {
         .ok_or_else(|| anyhow!("missing extension definition: {name}"))
 }
 
+/// Resolve a fully-qualified rpc reference (e.g.
+/// `other.v1.OtherService.Cancel`) against the descriptor pool. Returns
+/// `Ok(())` if the target exists *and* carries an extension of the
+/// expected `kind` (`"signal"`, `"query"`, or `"update"`). Returns a
+/// diagnostic anyhow Err otherwise. Used by parse.rs to validate
+/// cross-service refs early — the validate.rs "not yet emitted"
+/// rejection still fires for these, but at least now we know the target
+/// is real and well-annotated.
+fn resolve_cross_service_ref(
+    pool: &DescriptorPool,
+    ext: &ExtensionSet,
+    parent_service: &str,
+    parent_rpc: &str,
+    target_path: &str,
+    kind: &'static str,
+) -> Result<()> {
+    // Walk every service in the pool and look for a method whose
+    // fully-qualified name matches `target_path`. prost-reflect doesn't
+    // expose a direct `get_method_by_name`, but services()+methods() is
+    // O(n) over a typically-small pool and runs once per cross-service
+    // ref at codegen time.
+    let target_method = pool
+        .services()
+        .flat_map(|svc| svc.methods().collect::<Vec<_>>())
+        .find(|m| m.full_name() == target_path);
+    let target_method = target_method.ok_or_else(|| {
+        anyhow!(
+            "{parent_service}.{parent_rpc}: cross-service {kind} ref `{target_path}` doesn't resolve to any rpc in the descriptor pool — check the spelling and confirm the target proto is in the buf module's import graph"
+        )
+    })?;
+    let target_opts = target_method.options();
+    let expected_ext = match kind {
+        "signal" => &ext.signal,
+        "query" => &ext.query,
+        "update" => &ext.update,
+        _ => unreachable!("only signal/query/update refs cross services"),
+    };
+    if !target_opts.has_extension(expected_ext) {
+        return Err(anyhow!(
+            "{parent_service}.{parent_rpc}: cross-service {kind} ref `{target_path}` resolves to a real rpc but the target method does not carry `(temporal.v1.{kind})`; either add the annotation on the target or fix the ref"
+        ));
+    }
+    Ok(())
+}
+
 pub fn parse(
     pool: &DescriptorPool,
     files_to_generate: &HashSet<String>,
@@ -95,7 +140,7 @@ pub fn parse(
             continue;
         }
         for service in file.services() {
-            if let Some(model) = parse_service(&file, &service, &ext)? {
+            if let Some(model) = parse_service(pool, &file, &service, &ext)? {
                 out.push(model);
             }
         }
@@ -104,6 +149,7 @@ pub fn parse(
 }
 
 fn parse_service(
+    pool: &DescriptorPool,
     file: &prost_reflect::FileDescriptor,
     service: &ServiceDescriptor,
     ext: &ExtensionSet,
@@ -148,6 +194,50 @@ fn parse_service(
         && activities.is_empty()
     {
         return Ok(None);
+    }
+
+    // R1 — cross-service ref pre-resolution. validate.rs still refuses
+    // dotted refs with the "emit not implemented" diagnostic, but parse
+    // catches structural problems (typos, missing imports, wrong-kind
+    // targets) first so the user sees what's actually wrong with the
+    // ref before the catch-all rejection fires.
+    for wf in &workflows {
+        for sref in &wf.attached_signals {
+            if sref.rpc_method.contains('.') {
+                resolve_cross_service_ref(
+                    pool,
+                    ext,
+                    &service_name,
+                    &wf.rpc_method,
+                    &sref.rpc_method,
+                    "signal",
+                )?;
+            }
+        }
+        for qref in &wf.attached_queries {
+            if qref.rpc_method.contains('.') {
+                resolve_cross_service_ref(
+                    pool,
+                    ext,
+                    &service_name,
+                    &wf.rpc_method,
+                    &qref.rpc_method,
+                    "query",
+                )?;
+            }
+        }
+        for uref in &wf.attached_updates {
+            if uref.rpc_method.contains('.') {
+                resolve_cross_service_ref(
+                    pool,
+                    ext,
+                    &service_name,
+                    &wf.rpc_method,
+                    &uref.rpc_method,
+                    "update",
+                )?;
+            }
+        }
     }
 
     Ok(Some(ServiceModel {

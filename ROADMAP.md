@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — cross-service ref parse-time resolution): dotted
+  refs (`xs.v1.OtherService.Cancel`) now resolve through the
+  DescriptorPool at parse. Typos produce
+  "doesn't resolve to any rpc in the descriptor pool" with the offending
+  ref echoed; targets that resolve but lack the expected
+  `(temporal.v1.{signal,query,update})` annotation produce a
+  wrong-kind diagnostic. validate.rs's "cross-service refs are not yet
+  supported" rejection still fires for well-formed cross-service refs —
+  full emit support remains the last R1 step. Two new positive tests
+  cover the typo and wrong-kind paths.
 - 2026-05-13 (R1 — co-annotation support): the rejection diagnostic
   relaxes into actual support for the combinations cludden's Go plugin
   permits. `parse.rs::method_kinds` (formerly `method_kind`) now returns
@@ -584,7 +594,7 @@ toward majority parity.
 | Area | Current behavior | Roadmap |
 |---|---|---|
 | Method co-annotations | Shipped 2026-05-13: `activity` co-occurs with `workflow` / `signal` / `update`; both buckets populate. Two-primary combinations (workflow+signal etc.) still refused because their generated symbols would collide. | R1 |
-| Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
+| Cross-service refs | Same-service emit only; parse-time DescriptorPool resolution catches typos and wrong-kind targets with pinpoint diagnostics (2026-05-13); validate still rejects well-formed cross-service refs with "emit not yet implemented". | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks still pending. | R2 |
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` shipped 2026-05-13. Empty-input/output sides supported via `temporal_runtime::ProtoEmpty` wrapping; helper signatures hide the wrapper (no input arg for Empty-input, `()` return for Empty-output). | R3 |

@@ -2658,6 +2658,86 @@ fn support_status_doc_lists_every_rejected_field() {
     }
 }
 
+#[test]
+fn cross_service_ref_with_typo_fails_at_parse() {
+    // R1 — parse-time resolution catches typos before validate's
+    // emit-not-implemented rejection fires. `Notifictions` (with the
+    // deliberate typo) doesn't resolve to any rpc in the pool.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "xs.v1.Notifictions.Cancel" }]
+            };
+          }
+        }
+
+        service Notifications {
+          rpc Cancel(In) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+
+        message In {} message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("doesn't resolve to any rpc in the descriptor pool"),
+        "typo must produce an unresolved-target diagnostic: {err}"
+    );
+    assert!(
+        err.contains("xs.v1.Notifictions.Cancel"),
+        "diagnostic must echo the offending ref so users can search it: {err}"
+    );
+}
+
+#[test]
+fn cross_service_ref_to_wrong_annotation_kind_fails_at_parse() {
+    // The target rpc exists but is annotated as a workflow, not a
+    // signal. Parse must catch the wrong-kind mismatch before validate.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "xs.v1.Notifications.RunIt" }]
+            };
+          }
+        }
+
+        service Notifications {
+          rpc RunIt(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "n" };
+          }
+        }
+
+        message In {} message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("does not carry `(temporal.v1.signal)`"),
+        "wrong-kind target must surface the missing annotation: {err}"
+    );
+}
+
 /// Cross-service refs — Go's plugin resolves `ref: "other.v1.OtherService.Cancel"`
 /// against any sibling service in the descriptor pool. The Rust plugin does
 /// not yet (R1). Users porting from Go must see an explicit "cross-service
