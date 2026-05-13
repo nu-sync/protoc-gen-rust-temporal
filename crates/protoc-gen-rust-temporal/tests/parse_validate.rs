@@ -2876,6 +2876,25 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_with_run_id_consuming_builder() {
+    // R6 ergonomics — `<Wf>Handle::with_run_id(self, Option<String>)
+    // -> Self` lets callers branch from a current handle to a known
+    // historical execution while keeping the same workflow_id
+    // binding. Common in audit/debug paths. Bridge gained the
+    // matching consuming builder; the typed wrapper passes through.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn with_run_id(self, run_id: Option<String>) -> Self {"),
+        "missing with_run_id consuming builder: {source}"
+    );
+    assert!(
+        source.contains("Self { inner: self.inner.with_run_id(run_id) }"),
+        "with_run_id body must passthrough to bridge: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_client_passthrough() {
     // R6 ergonomics — `<Wf>Handle::client(&self) -> &TemporalClient`
     // borrows the bound bridge client. Lets callers construct

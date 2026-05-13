@@ -342,6 +342,10 @@ pub mod full_v1_full_service_temporal {
             self.inner.client()
         }
 
+        pub fn with_run_id(self, run_id: Option<String>) -> Self {
+            Self { inner: self.inner.with_run_id(run_id) }
+        }
+
         pub fn same_workflow_as(&self, other: &Self) -> bool {
             self.inner.workflow_id() == other.inner.workflow_id()
         }

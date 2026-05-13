@@ -274,6 +274,9 @@ pub mod temporal_runtime {
             static STUB: std::sync::OnceLock<TemporalClient> = std::sync::OnceLock::new();
             STUB.get_or_init(TemporalClient::default)
         }
+        pub fn with_run_id(self, _run_id: Option<String>) -> Self {
+            self
+        }
         pub fn workflow_id(&self) -> &str {
             "stub-workflow-id"
         }

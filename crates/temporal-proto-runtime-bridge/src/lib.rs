@@ -150,6 +150,14 @@ impl WorkflowHandle {
         &self.client
     }
 
+    /// Return a new handle pointing at the same workflow id but a
+    /// specific run id (or `None` to target "latest"). Lets callers
+    /// branch from a current handle to a known historical execution
+    /// without re-deriving the workflow_id binding.
+    pub fn with_run_id(self, run_id: Option<String>) -> Self {
+        Self { run_id, ..self }
+    }
+
     fn untyped(&self) -> UntypedWorkflowHandle<Client> {
         self.client
             .inner

@@ -318,6 +318,18 @@ Progress:
   parse_validate test pins the fn signature + body. Several
   fixture goldens reblessed (every Handle gained the accessor).
   189 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::with_run_id()` consuming builder):
+  every generated `<Wf>Handle` now exposes `with_run_id(self,
+  Option<String>) -> Self` letting callers branch from a current
+  handle to a specific historical execution while keeping the
+  same workflow_id binding. Common in audit / debug paths that
+  want to drive operations against a known prior run instead of
+  the latest. Bridge `WorkflowHandle` gained the matching
+  consuming builder; the typed wrapper passes through. Stub
+  runtime updated. One new positive parse_validate test pins
+  the fn signature + bridge passthrough. Several fixture
+  goldens reblessed (every Handle gained the builder). 194
+  parse_validate tests green. Bridge change is additive.
 - 2026-05-13 (R6 — `<Wf>Handle::client()` passthrough):
   every generated `<Wf>Handle` now exposes
   `client(&self) -> &TemporalClient` borrowing the bound bridge
