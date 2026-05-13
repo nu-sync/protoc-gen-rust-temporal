@@ -21,7 +21,7 @@ pub mod jobs_v1_job_service_temporal {
         const MESSAGE_TYPE: &'static str = "jobs.v1.JobStatusOutput";
     }
 
-    pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService/RunJob";
+    pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
 
     fn run_job_id(input: &JobInput) -> String {
@@ -41,7 +41,7 @@ pub mod jobs_v1_job_service_temporal {
             &self.client
         }
 
-        /// Start a new `jobs.v1.JobService/RunJob` workflow.
+        /// Start a new `jobs.v1.JobService.RunJob` workflow.
         pub async fn run_job(
             &self,
             input: JobInput,
@@ -51,21 +51,25 @@ pub mod jobs_v1_job_service_temporal {
                 run_job_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "jobs".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(3600)));
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_JOB_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(RunJobHandle { inner })
         }
 
-        /// Attach to a running `jobs.v1.JobService/RunJob` workflow by id.
+        /// Attach to a running `jobs.v1.JobService.RunJob` workflow by id.
         pub fn run_job_handle(&self, workflow_id: impl Into<String>) -> RunJobHandle {
             RunJobHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
@@ -104,19 +108,19 @@ pub mod jobs_v1_job_service_temporal {
             temporal_runtime::wait_result_proto::<JobOutput>(&self.inner).await
         }
 
-        /// Send the `CancelJob` signal.
+        /// Send the `jobs.v1.JobService.CancelJob` signal.
         pub async fn cancel_job(&self, input: CancelJobInput) -> Result<()> {
-            temporal_runtime::signal_proto(&self.inner, "CancelJob", &input).await
+            temporal_runtime::signal_proto(&self.inner, "jobs.v1.JobService.CancelJob", &input).await
         }
 
-        /// Run the `GetStatus` query.
+        /// Run the `jobs.v1.JobService.GetStatus` query.
         pub async fn get_status(&self) -> Result<JobStatusOutput> {
-            temporal_runtime::query_proto_empty::<JobStatusOutput>(&self.inner, "GetStatus").await
+            temporal_runtime::query_proto_empty::<JobStatusOutput>(&self.inner, "jobs.v1.JobService.GetStatus").await
         }
 
     }
 
-    /// Start `jobs.v1.JobService/RunJob` and atomically deliver the `CancelJob` signal.
+    /// Start `jobs.v1.JobService.RunJob` and atomically deliver the `jobs.v1.JobService.CancelJob` signal.
     pub async fn cancel_job_with_start(
         client: &temporal_runtime::TemporalClient,
         signal_input: CancelJobInput,
@@ -127,20 +131,72 @@ pub mod jobs_v1_job_service_temporal {
             run_job_id(&workflow_input)
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "jobs".to_string());
+        let id_reuse_policy = opts.id_reuse_policy;
+        let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(3600)));
+        let run_timeout = opts.run_timeout;
+        let task_timeout = opts.task_timeout;
         let inner = temporal_runtime::signal_with_start_workflow_proto(
             client,
             RUN_JOB_WORKFLOW_NAME,
             &workflow_id,
             &task_queue,
             &workflow_input,
-            "CancelJob",
+            "jobs.v1.JobService.CancelJob",
             &signal_input,
-            opts.id_reuse_policy,
-            opts.execution_timeout,
-            opts.run_timeout,
-            opts.task_timeout,
+            id_reuse_policy,
+            execution_timeout,
+            run_timeout,
+            task_timeout,
         ).await?;
         Ok(RunJobHandle { inner })
+    }
+
+
+    // ── Activities ────────────────────────────────────────────
+    // Phase 2 (activities=true): typed trait + name consts. Wire to
+    // your worker via temporalio-sdk's #[activities] macro;
+    // see temporal-proto-runtime-bridge README for the adapter pattern.
+
+    pub const PROCESS_CHUNK_ACTIVITY_NAME: &str = "jobs.v1.JobService.ProcessChunk";
+
+    pub trait JobServiceActivities: Send + Sync + 'static {
+        fn process_chunk(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;
+    }
+
+    pub fn register_job_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
+    where
+        I: JobServiceActivities + temporal_runtime::worker::ActivityImplementer,
+    {
+        worker.register_activities(impl_)
+    }
+
+    // ── Workflow handler names ──────────────────────────────
+    // Phase 3.0 (workflows=true): per-rpc registration name consts.
+    // Reference these from your hand-rolled #[workflow] setup so
+    // signal/query/update names stay in sync with the proto.
+
+    pub const CANCEL_JOB_SIGNAL_NAME: &str = "jobs.v1.JobService.CancelJob";
+    pub const GET_STATUS_QUERY_NAME: &str = "jobs.v1.JobService.GetStatus";
+
+    // -- Workflow definitions --------------------------------
+    // workflows=true: typed proto contracts + registration helpers.
+    // The consumer owns the temporalio-sdk #[workflow] body and
+    // implements the matching <Workflow>Definition trait on it.
+
+    pub trait RunJobDefinition: 'static {
+        type Input;
+        type Output;
+        const WORKFLOW_NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;
+        const TASK_QUEUE: &'static str = self::RUN_JOB_TASK_QUEUE;
+        const CANCEL_JOB_SIGNAL_NAME: &'static str = self::CANCEL_JOB_SIGNAL_NAME;
+        const GET_STATUS_QUERY_NAME: &'static str = self::GET_STATUS_QUERY_NAME;
+    }
+
+    pub fn register_run_job_workflow<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker
+    where
+        W: temporal_runtime::worker::WorkflowImplementer + RunJobDefinition<Input = JobInput, Output = JobOutput>,
+    {
+        worker.register_workflow::<W>()
     }
 
 }

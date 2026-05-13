@@ -104,7 +104,7 @@ fn minimal_workflow_parses_and_validates() {
     assert_eq!(svc.workflows.len(), 1);
     let wf = &svc.workflows[0];
     assert_eq!(wf.rpc_method, "RunJob");
-    assert_eq!(wf.registered_name, "jobs.v1.JobService/RunJob");
+    assert_eq!(wf.registered_name, "jobs.v1.JobService.RunJob");
     assert_eq!(wf.input_type.full_name, "jobs.v1.JobInput");
     assert_eq!(wf.output_type.full_name, "jobs.v1.JobOutput");
     {
@@ -144,6 +144,71 @@ fn minimal_workflow_parses_and_validates() {
     assert_eq!(svc.activities[0].rpc_method, "ProcessChunk");
 }
 
+// Regression guard for cross-language interop with cludden's Go plugin.
+// Default registration name must be the fully-qualified proto method name
+// (`<package>.<Service>.<Rpc>`), matching the Go plugin's
+// `string(method.Desc.FullName())` default — not the bare rpc name and
+// *not* the `<package>.<Service>/<Rpc>` slash form. Mixed-language workers
+// where one side has an explicit `name:` and the other relies on the
+// default would silently never connect otherwise.
+#[test]
+fn default_registration_names_match_go_full_name() {
+    let services = parse_and_validate("minimal_workflow");
+    let svc = &services[0];
+    assert_eq!(
+        svc.workflows[0].registered_name,
+        "jobs.v1.JobService.RunJob"
+    );
+    assert_eq!(
+        svc.signals[0].registered_name,
+        "jobs.v1.JobService.CancelJob"
+    );
+    assert_eq!(
+        svc.queries[0].registered_name,
+        "jobs.v1.JobService.GetStatus"
+    );
+    assert_eq!(
+        svc.updates[0].registered_name,
+        "jobs.v1.JobService.Reconfigure"
+    );
+    assert_eq!(
+        svc.activities[0].registered_name,
+        "jobs.v1.JobService.ProcessChunk"
+    );
+}
+
+#[test]
+fn explicit_name_overrides_default() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package ex.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              name: "custom.workflow.name"
+              signal: [{ ref: "Cancel" }]
+            };
+          }
+          rpc Cancel(In) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = { name: "custom.signal.name" };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let services = protoc_gen_rust_temporal::parse::parse(&pool, &files_to_generate)
+        .expect("parse should succeed");
+    let svc = &services[0];
+    assert_eq!(svc.workflows[0].registered_name, "custom.workflow.name");
+    assert_eq!(svc.signals[0].registered_name, "custom.signal.name");
+}
+
 #[test]
 fn workflow_with_bad_signal_ref_fails_validation() {
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
@@ -172,6 +237,102 @@ fn workflow_with_bad_signal_ref_fails_validation() {
     assert!(
         err.contains("NoSuchSignal"),
         "validation error should name the missing ref, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_signal_ref_with_xns_is_rejected_at_parse() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Tick", xns: { task_queue: "other" } }]
+            };
+          }
+          rpc Tick(In) returns (In) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("xns on signal ref must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("xns") && err.contains("signal[ref=Tick]"),
+        "parse error must surface xns + signal ref name, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_update_ref_with_cli_is_rejected_at_parse() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Touch", cli: {} }]
+            };
+          }
+          rpc Touch(In) returns (Out) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("cli on update ref must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("cli") && err.contains("update[ref=Touch]"),
+        "parse error must surface cli + update ref name, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_query_ref_with_xns_is_rejected_at_parse() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              query: [{ ref: "Status", xns: { task_queue: "other" } }]
+            };
+          }
+          rpc Status(In) returns (Out) {
+            option (temporal.v1.query) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .expect_err("xns on query ref must be rejected at parse")
+        .to_string();
+    assert!(
+        err.contains("xns") && err.contains("query[ref=Status]"),
+        "parse error must surface xns + query ref name, got: {err}"
     );
 }
 
@@ -233,6 +394,37 @@ fn empty_input_workflow_render_golden() {
 }
 
 #[test]
+fn empty_output_query_update_render_golden() {
+    assert_golden("empty_output_query_update");
+}
+
+/// Sanity: confirm the new empty-output fixture parses and validates
+/// cleanly — so any future render-time breakage (e.g. dropping the
+/// `_unit` dispatch in `render_query_method`) shows up here.
+#[test]
+fn empty_output_query_update_parses_and_validates() {
+    let services = parse_and_validate("empty_output_query_update");
+    assert_eq!(services.len(), 1);
+    let svc = &services[0];
+    assert_eq!(svc.queries.len(), 2);
+    assert_eq!(svc.updates.len(), 3);
+    for q in &svc.queries {
+        assert!(
+            q.output_type.is_empty,
+            "fixture invariant: every query must have Empty output (got {})",
+            q.output_type.full_name
+        );
+    }
+    for u in &svc.updates {
+        assert!(
+            u.output_type.is_empty,
+            "fixture invariant: every update must have Empty output (got {})",
+            u.output_type.full_name
+        );
+    }
+}
+
+#[test]
 fn activity_only_render_golden() {
     assert_golden("activity_only");
 }
@@ -240,6 +432,11 @@ fn activity_only_render_golden() {
 #[test]
 fn activities_emit_render_golden() {
     assert_golden("activities_emit");
+}
+
+#[test]
+fn worker_activities_only_render_golden() {
+    assert_golden("worker_activities_only");
 }
 
 #[test]
@@ -273,6 +470,15 @@ fn activities_emit_renders_trait_and_consts() {
         source.contains("fn heartbeat(&self, ctx: temporal_runtime::ActivityContext, input: ())"),
         "Heartbeat (Empty input) trait method signature wrong: {source}"
     );
+    assert!(
+        source.contains("pub fn register_chunk_service_activities<I>("),
+        "missing activities registration helper: {source}"
+    );
+    assert!(
+        source
+            .contains("I: ChunkServiceActivities + temporal_runtime::worker::ActivityImplementer"),
+        "registration helper should require both generated trait and SDK implementer: {source}"
+    );
 }
 
 #[test]
@@ -290,6 +496,16 @@ fn workflows_emit_render_golden() {
 }
 
 #[test]
+fn worker_workflow_only_render_golden() {
+    assert_golden("worker_workflow_only");
+}
+
+#[test]
+fn worker_full_render_golden() {
+    assert_golden("worker_full");
+}
+
+#[test]
 fn workflows_emit_renders_handler_name_consts() {
     let services = parse_and_validate("workflows_emit");
     let opts = load_fixture_options("workflows_emit");
@@ -299,16 +515,36 @@ fn workflows_emit_renders_handler_name_consts() {
     );
     let source = render::render(&services[0], &opts);
     assert!(
-        source.contains("pub const CANCEL_SIGNAL_NAME: &str = \"Cancel\";"),
+        source.contains("pub const CANCEL_SIGNAL_NAME: &str = \"wf.v1.OrderService.Cancel\";"),
         "missing Cancel signal name const: {source}"
     );
     assert!(
-        source.contains("pub const STATUS_QUERY_NAME: &str = \"Status\";"),
+        source.contains("pub const STATUS_QUERY_NAME: &str = \"wf.v1.OrderService.Status\";"),
         "missing Status query name const"
     );
     assert!(
-        source.contains("pub const CONFIRM_UPDATE_NAME: &str = \"Confirm\";"),
+        source.contains("pub const CONFIRM_UPDATE_NAME: &str = \"wf.v1.OrderService.Confirm\";"),
         "missing Confirm update name const"
+    );
+    assert!(
+        source.contains("pub trait RunDefinition: 'static"),
+        "missing workflow definition trait: {source}"
+    );
+    assert!(
+        source.contains("const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;"),
+        "missing workflow name associated const"
+    );
+    assert!(
+        source.contains("const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;"),
+        "missing task queue associated const"
+    );
+    assert!(
+        source.contains("pub fn register_run_workflow<W>("),
+        "missing workflow registration helper"
+    );
+    assert!(
+        source.contains("W: temporal_runtime::worker::WorkflowImplementer + RunDefinition<Input = OrderInput, Output = OrderOutput>"),
+        "registration helper should bind SDK implementer to generated definition trait: {source}"
     );
 }
 
@@ -478,7 +714,7 @@ fn minimal_workflow_render_smoke() {
         "// Code generated by protoc-gen-rust-temporal. DO NOT EDIT.",
         "pub mod jobs_v1_job_service_temporal {",
         "use crate::jobs::v1::*;",
-        "pub const RUN_JOB_WORKFLOW_NAME: &str = \"jobs.v1.JobService/RunJob\";",
+        "pub const RUN_JOB_WORKFLOW_NAME: &str = \"jobs.v1.JobService.RunJob\";",
         "pub const RUN_JOB_TASK_QUEUE: &str = \"jobs\";",
         "pub struct JobServiceClient {",
         "pub async fn run_job(",
@@ -568,5 +804,283 @@ fn signal_returning_non_empty_fails_validation() {
     assert!(
         err.contains("google.protobuf.Empty"),
         "validation error should mention Empty constraint, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_with_retry_policy_is_rejected() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              retry_policy: { max_attempts: 3 }
+            };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("retry_policy") && err.contains("does not yet honour"),
+        "expected unsupported-field diagnostic mentioning retry_policy, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_with_multiple_unsupported_fields_lists_all() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:           "tq"
+              search_attributes:    "string.foo = \"bar\""
+              wait_for_cancellation: true
+              enable_eager_start:    true
+            };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    for field in [
+        "search_attributes",
+        "wait_for_cancellation",
+        "enable_eager_start",
+    ] {
+        assert!(
+            err.contains(field),
+            "diagnostic should list {field}, got: {err}"
+        );
+    }
+}
+
+#[test]
+fn update_with_id_template_is_rejected() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Patch" }]
+            };
+          }
+          rpc Patch(In) returns (Out) {
+            option (temporal.v1.update) = { id: "patch-{{ .Field }}" };
+          }
+        }
+        message In { string field = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("temporal.v1.update") && err.contains("id"),
+        "expected update-id diagnostic, got: {err}"
+    );
+}
+
+#[test]
+fn update_with_deprecated_wait_policy_is_rejected() {
+    // The deprecated `wait_policy` field on UpdateOptions still appears on
+    // legacy protos ported from cludden's Go plugin. Silently ignoring it
+    // would let a user lose their default WaitPolicy on the Rust client.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Patch" }]
+            };
+          }
+          rpc Patch(In) returns (Out) {
+            option (temporal.v1.update) = { wait_policy: WAIT_POLICY_ACCEPTED };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("wait_policy"),
+        "expected deprecated-wait_policy diagnostic, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_update_ref_with_conflict_policy_is_rejected() {
+    // The bridge's update-with-start path hardcodes UseExisting; a per-
+    // update conflict_policy override on WorkflowOptions.update[] would
+    // be silently dropped. Refuse the proto rather than ship the wrong
+    // policy.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Patch" workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_FAIL }]
+            };
+          }
+          rpc Patch(In) returns (Out) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("workflow_id_conflict_policy") && err.contains("Patch"),
+        "expected nested-update conflict_policy diagnostic, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_id_with_bloblang_expression_is_rejected() {
+    // Bloblang `${! ... }` is cludden's search-attribute templating dialect
+    // and looks like literal text to the `{{...}}` scanner. Without an
+    // explicit reject, every workflow under such an annotation would ship
+    // with the same literal ID and collide on every execution.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              id: "user-${! name.or(\"anon\") }"
+            };
+          }
+        }
+        message In { string name = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate).unwrap_err();
+    let full = format!("{err:#}");
+    assert!(
+        full.contains("Bloblang"),
+        "expected Bloblang-rejection diagnostic, got: {full}"
+    );
+}
+
+#[test]
+fn activity_with_timeouts_is_rejected() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Work(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              task_queue: "workers"
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("task_queue") && err.contains("start_to_close_timeout"),
+        "expected activity diagnostic listing both unsupported fields, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_schema_defaults_apply_at_start() {
+    // full_workflow declares id_reuse_policy + 3 timeouts on the proto;
+    // the start path must fold those defaults in when the caller leaves
+    // the StartOptions field as `None`, so mixed Rust/Go workers driving
+    // the same workflow get the same effective options.
+    let services = parse_and_validate("full_workflow");
+    let source = render::render(&services[0], &Default::default());
+    for fragment in [
+        "let id_reuse_policy = opts.id_reuse_policy.or(Some(temporal_runtime::WorkflowIdReusePolicy::AllowDuplicateFailedOnly));",
+        "let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(7200)));",
+        "let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(3600)));",
+        "let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));",
+    ] {
+        assert!(
+            source.contains(fragment),
+            "start path should fold proto default in: {fragment}\n--- source ---\n{source}"
+        );
+    }
+    // Three start paths (Client::run, bootstrap_with_start, reconfigure_with_start)
+    // each get their own resolution block — guard against accidental dedup.
+    let occurrences = source
+        .matches("let id_reuse_policy = opts.id_reuse_policy")
+        .count();
+    assert_eq!(
+        occurrences, 3,
+        "expected id_reuse_policy default applied in all 3 start paths, got {occurrences}"
+    );
+}
+
+#[test]
+fn workflow_without_schema_defaults_passes_through() {
+    // minimal_workflow declares no id_reuse_policy / timeouts on the proto,
+    // so the start path should pass `opts.<field>` through unchanged (no
+    // synthesized default that the proto didn't request).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("let id_reuse_policy = opts.id_reuse_policy;"),
+        "no-default fields should still bind locals so the trailing call site stays uniform"
+    );
+    assert!(
+        !source.contains("opts.id_reuse_policy.or(Some("),
+        "no proto-level id_reuse_policy declared — must not synthesize a default"
     );
 }

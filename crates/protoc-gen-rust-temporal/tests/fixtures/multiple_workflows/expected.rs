@@ -21,9 +21,9 @@ pub mod multi_v1_multi_service_temporal {
         const MESSAGE_TYPE: &'static str = "multi.v1.BetaOutput";
     }
 
-    pub const ALPHA_WORKFLOW_NAME: &str = "multi.v1.MultiService/Alpha";
+    pub const ALPHA_WORKFLOW_NAME: &str = "multi.v1.MultiService.Alpha";
     pub const ALPHA_TASK_QUEUE: &str = "multi";
-    pub const BETA_WORKFLOW_NAME: &str = "multi.v1.MultiService/Beta";
+    pub const BETA_WORKFLOW_NAME: &str = "multi.v1.MultiService.Beta";
     pub const BETA_TASK_QUEUE: &str = "multi-beta";
 
     fn alpha_id(input: &AlphaInput) -> String {
@@ -43,7 +43,7 @@ pub mod multi_v1_multi_service_temporal {
             &self.client
         }
 
-        /// Start a new `multi.v1.MultiService/Alpha` workflow.
+        /// Start a new `multi.v1.MultiService.Alpha` workflow.
         pub async fn alpha(
             &self,
             input: AlphaInput,
@@ -53,28 +53,32 @@ pub mod multi_v1_multi_service_temporal {
                 alpha_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "multi".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 ALPHA_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(AlphaHandle { inner })
         }
 
-        /// Attach to a running `multi.v1.MultiService/Alpha` workflow by id.
+        /// Attach to a running `multi.v1.MultiService.Alpha` workflow by id.
         pub fn alpha_handle(&self, workflow_id: impl Into<String>) -> AlphaHandle {
             AlphaHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
         }
 
-        /// Start a new `multi.v1.MultiService/Beta` workflow.
+        /// Start a new `multi.v1.MultiService.Beta` workflow.
         pub async fn beta(
             &self,
             input: BetaInput,
@@ -84,21 +88,25 @@ pub mod multi_v1_multi_service_temporal {
                 temporal_runtime::random_workflow_id()
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "multi-beta".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(900)));
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 BETA_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(BetaHandle { inner })
         }
 
-        /// Attach to a running `multi.v1.MultiService/Beta` workflow by id.
+        /// Attach to a running `multi.v1.MultiService.Beta` workflow by id.
         pub fn beta_handle(&self, workflow_id: impl Into<String>) -> BetaHandle {
             BetaHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),

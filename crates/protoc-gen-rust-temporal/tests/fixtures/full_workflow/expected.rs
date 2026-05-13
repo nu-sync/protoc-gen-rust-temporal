@@ -30,7 +30,7 @@ pub mod full_v1_full_service_temporal {
         const MESSAGE_TYPE: &'static str = "full.v1.StatusOutput";
     }
 
-    pub const RUN_WORKFLOW_NAME: &str = "full.v1.FullService/Run";
+    pub const RUN_WORKFLOW_NAME: &str = "full.v1.FullService.Run";
     pub const RUN_TASK_QUEUE: &str = "full";
 
     fn run_id(input: &RunInput) -> String {
@@ -50,7 +50,7 @@ pub mod full_v1_full_service_temporal {
             &self.client
         }
 
-        /// Start a new `full.v1.FullService/Run` workflow.
+        /// Start a new `full.v1.FullService.Run` workflow.
         pub async fn run(
             &self,
             input: RunInput,
@@ -60,21 +60,25 @@ pub mod full_v1_full_service_temporal {
                 run_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
+            let id_reuse_policy = opts.id_reuse_policy.or(Some(temporal_runtime::WorkflowIdReusePolicy::AllowDuplicateFailedOnly));
+            let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(7200)));
+            let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(3600)));
+            let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(RunHandle { inner })
         }
 
-        /// Attach to a running `full.v1.FullService/Run` workflow by id.
+        /// Attach to a running `full.v1.FullService.Run` workflow by id.
         pub fn run_handle(&self, workflow_id: impl Into<String>) -> RunHandle {
             RunHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
@@ -122,29 +126,29 @@ pub mod full_v1_full_service_temporal {
             temporal_runtime::wait_result_proto::<RunOutput>(&self.inner).await
         }
 
-        /// Send the `Cancel` signal.
+        /// Send the `full.v1.FullService.Cancel` signal.
         pub async fn cancel(&self, input: CancelInput) -> Result<()> {
-            temporal_runtime::signal_proto(&self.inner, "Cancel", &input).await
+            temporal_runtime::signal_proto(&self.inner, "full.v1.FullService.Cancel", &input).await
         }
 
-        /// Send the `Bootstrap` signal.
+        /// Send the `full.v1.FullService.Bootstrap` signal.
         pub async fn bootstrap(&self, input: BootstrapInput) -> Result<()> {
-            temporal_runtime::signal_proto(&self.inner, "Bootstrap", &input).await
+            temporal_runtime::signal_proto(&self.inner, "full.v1.FullService.Bootstrap", &input).await
         }
 
-        /// Run the `Status` query.
+        /// Run the `full.v1.FullService.Status` query.
         pub async fn status(&self) -> Result<StatusOutput> {
-            temporal_runtime::query_proto_empty::<StatusOutput>(&self.inner, "Status").await
+            temporal_runtime::query_proto_empty::<StatusOutput>(&self.inner, "full.v1.FullService.Status").await
         }
 
-        /// Run the `Reconfigure` update.
+        /// Run the `full.v1.FullService.Reconfigure` update.
         pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput> {
-            temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&self.inner, "Reconfigure", &input, wait_policy).await
+            temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&self.inner, "full.v1.FullService.Reconfigure", &input, wait_policy).await
         }
 
     }
 
-    /// Start `full.v1.FullService/Run` and atomically deliver the `Bootstrap` signal.
+    /// Start `full.v1.FullService.Run` and atomically deliver the `full.v1.FullService.Bootstrap` signal.
     pub async fn bootstrap_with_start(
         client: &temporal_runtime::TemporalClient,
         signal_input: BootstrapInput,
@@ -155,23 +159,27 @@ pub mod full_v1_full_service_temporal {
             run_id(&workflow_input)
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
+        let id_reuse_policy = opts.id_reuse_policy.or(Some(temporal_runtime::WorkflowIdReusePolicy::AllowDuplicateFailedOnly));
+        let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(7200)));
+        let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(3600)));
+        let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));
         let inner = temporal_runtime::signal_with_start_workflow_proto(
             client,
             RUN_WORKFLOW_NAME,
             &workflow_id,
             &task_queue,
             &workflow_input,
-            "Bootstrap",
+            "full.v1.FullService.Bootstrap",
             &signal_input,
-            opts.id_reuse_policy,
-            opts.execution_timeout,
-            opts.run_timeout,
-            opts.task_timeout,
+            id_reuse_policy,
+            execution_timeout,
+            run_timeout,
+            task_timeout,
         ).await?;
         Ok(RunHandle { inner })
     }
 
-    /// Start `full.v1.FullService/Run` and atomically deliver the `Reconfigure` update.
+    /// Start `full.v1.FullService.Run` and atomically deliver the `full.v1.FullService.Reconfigure` update.
     pub async fn reconfigure_with_start(
         client: &temporal_runtime::TemporalClient,
         update_input: ReconfigureInput,
@@ -183,19 +191,23 @@ pub mod full_v1_full_service_temporal {
             run_id(&workflow_input)
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
+        let id_reuse_policy = opts.id_reuse_policy.or(Some(temporal_runtime::WorkflowIdReusePolicy::AllowDuplicateFailedOnly));
+        let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(7200)));
+        let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(3600)));
+        let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));
         let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<RunInput, ReconfigureInput, ReconfigureOutput>(
             client,
             RUN_WORKFLOW_NAME,
             &workflow_id,
             &task_queue,
             &workflow_input,
-            "Reconfigure",
+            "full.v1.FullService.Reconfigure",
             &update_input,
             wait_policy,
-            opts.id_reuse_policy,
-            opts.execution_timeout,
-            opts.run_timeout,
-            opts.task_timeout,
+            id_reuse_policy,
+            execution_timeout,
+            run_timeout,
+            task_timeout,
         ).await?;
         Ok((RunHandle { inner }, update_result))
     }

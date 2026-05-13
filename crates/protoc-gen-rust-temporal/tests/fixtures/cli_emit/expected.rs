@@ -21,9 +21,9 @@ pub mod cli_v1_report_service_temporal {
         const MESSAGE_TYPE: &'static str = "cli.v1.GenerateOutput";
     }
 
-    pub const GENERATE_WORKFLOW_NAME: &str = "cli.v1.ReportService/Generate";
+    pub const GENERATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Generate";
     pub const GENERATE_TASK_QUEUE: &str = "reports";
-    pub const AGGREGATE_WORKFLOW_NAME: &str = "cli.v1.ReportService/Aggregate";
+    pub const AGGREGATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Aggregate";
     pub const AGGREGATE_TASK_QUEUE: &str = "reports";
 
     fn generate_id(input: &GenerateInput) -> String {
@@ -43,7 +43,7 @@ pub mod cli_v1_report_service_temporal {
             &self.client
         }
 
-        /// Start a new `cli.v1.ReportService/Generate` workflow.
+        /// Start a new `cli.v1.ReportService.Generate` workflow.
         pub async fn generate(
             &self,
             input: GenerateInput,
@@ -53,28 +53,32 @@ pub mod cli_v1_report_service_temporal {
                 generate_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "reports".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 GENERATE_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(GenerateHandle { inner })
         }
 
-        /// Attach to a running `cli.v1.ReportService/Generate` workflow by id.
+        /// Attach to a running `cli.v1.ReportService.Generate` workflow by id.
         pub fn generate_handle(&self, workflow_id: impl Into<String>) -> GenerateHandle {
             GenerateHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
         }
 
-        /// Start a new `cli.v1.ReportService/Aggregate` workflow.
+        /// Start a new `cli.v1.ReportService.Aggregate` workflow.
         pub async fn aggregate(
             &self,
             input: AggregateInput,
@@ -84,21 +88,25 @@ pub mod cli_v1_report_service_temporal {
                 temporal_runtime::random_workflow_id()
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "reports".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 AGGREGATE_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(AggregateHandle { inner })
         }
 
-        /// Attach to a running `cli.v1.ReportService/Aggregate` workflow by id.
+        /// Attach to a running `cli.v1.ReportService.Aggregate` workflow by id.
         pub fn aggregate_handle(&self, workflow_id: impl Into<String>) -> AggregateHandle {
             AggregateHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
@@ -177,13 +185,13 @@ pub mod report_service_cli {
 
     #[derive(temporal_runtime::clap::Subcommand)]
     pub enum Command {
-        /// Start a new `cli.v1.ReportService/Generate` workflow.
+        /// Start a new `cli.v1.ReportService.Generate` workflow.
         StartGenerate(StartGenerateArgs),
-        /// Attach to a running `cli.v1.ReportService/Generate` workflow by id.
+        /// Attach to a running `cli.v1.ReportService.Generate` workflow by id.
         AttachGenerate(AttachGenerateArgs),
-        /// Start a new `cli.v1.ReportService/Aggregate` workflow.
+        /// Start a new `cli.v1.ReportService.Aggregate` workflow.
         StartAggregate(StartAggregateArgs),
-        /// Attach to a running `cli.v1.ReportService/Aggregate` workflow by id.
+        /// Attach to a running `cli.v1.ReportService.Aggregate` workflow by id.
         AttachAggregate(AttachAggregateArgs),
     }
 

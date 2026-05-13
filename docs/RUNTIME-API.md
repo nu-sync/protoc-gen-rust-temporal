@@ -28,7 +28,7 @@ This document is **pinned to a plugin version**. Each row notes the
 plugin version in which the call site was introduced; nothing here is
 removed without a major bump (post-1.0) or a deprecation cycle (pre-1.0).
 
-Current pin: **protoc-gen-rust-temporal 0.1.0**.
+Current pin: **protoc-gen-rust-temporal 0.1.1**.
 
 ## Types
 
@@ -61,18 +61,52 @@ service that has at least one workflow.
 | `wait_result_unit` | workflow handle `result()`, **Empty** output | `async fn(&WorkflowHandle) -> Result<()>` | 0.1.0 |
 | `signal_proto<I>` | `handle.<signal>()` for signals with **non-Empty** input | `async fn(&WorkflowHandle, signal_name: &str, input: &I) -> Result<()>` | 0.1.0 |
 | `signal_unit` | `handle.<signal>()` for signals with **Empty** input | `async fn(&WorkflowHandle, signal_name: &str) -> Result<()>` | 0.1.0 |
-| `query_proto<I, O>` | `handle.<query>()` with **non-Empty** input | `async fn(&WorkflowHandle, query_name: &str, input: &I) -> Result<O>` where both: `TemporalProtoMessage` | 0.1.0 |
-| `query_proto_empty<O>` | `handle.<query>()` with **Empty** input | `async fn(&WorkflowHandle, query_name: &str) -> Result<O>` where `O: TemporalProtoMessage` | 0.1.0 |
-| `update_proto<I, O>` | `handle.<update>()` with **non-Empty** input | `async fn(&WorkflowHandle, update_name: &str, input: &I, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
-| `update_proto_empty<O>` | `handle.<update>()` with **Empty** input | `async fn(&WorkflowHandle, update_name: &str, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
+| `query_proto<I, O>` | `handle.<query>()` with **non-Empty** input and **non-Empty** output | `async fn(&WorkflowHandle, query_name: &str, input: &I) -> Result<O>` where both: `TemporalProtoMessage` | 0.1.0 |
+| `query_proto_empty<O>` | `handle.<query>()` with **Empty** input, **non-Empty** output | `async fn(&WorkflowHandle, query_name: &str) -> Result<O>` where `O: TemporalProtoMessage` | 0.1.0 |
+| `query_unit<I>` | `handle.<query>()` with **non-Empty** input, **Empty** output | `async fn(&WorkflowHandle, query_name: &str, input: &I) -> Result<()>` where `I: TemporalProtoMessage` | 0.1.1 |
+| `query_proto_empty_unit` | `handle.<query>()` with **Empty** input **and** **Empty** output | `async fn(&WorkflowHandle, query_name: &str) -> Result<()>` | 0.1.1 |
+| `update_proto<I, O>` | `handle.<update>()` with **non-Empty** input and **non-Empty** output | `async fn(&WorkflowHandle, update_name: &str, input: &I, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
+| `update_proto_empty<O>` | `handle.<update>()` with **Empty** input, **non-Empty** output | `async fn(&WorkflowHandle, update_name: &str, wait_policy: WaitPolicy) -> Result<O>` | 0.1.0 |
+| `update_unit<I>` | `handle.<update>()` with **non-Empty** input, **Empty** output | `async fn(&WorkflowHandle, update_name: &str, input: &I, wait_policy: WaitPolicy) -> Result<()>` where `I: TemporalProtoMessage` | 0.1.1 |
+| `update_proto_empty_unit` | `handle.<update>()` with **Empty** input **and** **Empty** output | `async fn(&WorkflowHandle, update_name: &str, wait_policy: WaitPolicy) -> Result<()>` | 0.1.1 |
 | `signal_with_start_workflow_proto<W, S>` | `<signal>_with_start` free fn (signal has `start: true`) | `async fn(client, workflow_name, workflow_id, task_queue, workflow_input: &W, signal_name, signal_input: &S, …) -> Result<WorkflowHandle>` | 0.1.0 |
-| `update_with_start_workflow_proto<W, U, O>` | `<update>_with_start` free fn (update has `start: true`) | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<(WorkflowHandle, O)>` | 0.1.0 |
+| `update_with_start_workflow_proto<W, U, O>` | `<update>_with_start` free fn, **non-Empty** update output | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<(WorkflowHandle, O)>` | 0.1.0 |
+| `update_with_start_workflow_proto_unit<W, U>` | `<update>_with_start` free fn, **Empty** update output | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<WorkflowHandle>` | 0.1.1 |
 
 ### Removed since 0.0.x
 
 | Function | Removed in | Replacement |
 |---|---|---|
 | `eval_id_expression(template: &str) -> String` | 0.1.0 | Plugin now materialises the `id` template into a private `<rpc>_id(input: &Input) -> String` function alongside the start method. Generated code calls `<rpc>_id(&input)` directly; the runtime no longer sees the template string. Consumers can delete any local `eval_id_expression` they had. |
+
+## `Empty`-input contract for `_empty` variants
+
+The plugin emits `start_workflow_proto_empty` / `signal_unit` /
+`query_proto_empty` / `query_unit` / `query_proto_empty_unit` /
+`update_proto_empty` / `update_unit` / `update_proto_empty_unit` /
+`wait_result_unit` / `update_with_start_workflow_proto_unit` whenever a
+workflow / signal / query / update has a `google.protobuf.Empty` input or
+output. Those variants exist purely so the generated call site doesn't need
+to express `()` as a `TemporalProtoMessage` — they do **not** mean "send no
+payload."
+
+A correct bridge implementation MUST encode the wire-format triple from
+[`WIRE-FORMAT.md`](../WIRE-FORMAT.md) on every Empty boundary:
+
+| Slot                | Value                                |
+|---------------------|--------------------------------------|
+| `metadata.encoding` | `"binary/protobuf"`                  |
+| `metadata.messageType` | `"google.protobuf.Empty"`         |
+| `data`              | `[]` (Empty has zero wire bytes)     |
+
+This is what cludden's Go SDK `ProtoPayloadConverter` produces for an
+`Empty` message and what mixed-language workflows expect to see on the
+wire. Sending a payload-less `RawValue` (i.e. `vec![]` with no `Payload`
+inside) looks like "no input" on the wire, which silently breaks
+Go ↔ Rust interop. The default bridge crate
+(`temporal-proto-runtime-bridge`) implements this — see
+`encode_empty_payload` and the
+`empty_payload_carries_the_full_triple` regression test.
 
 ## Note on `Empty` inputs and `_with_start`
 
@@ -85,10 +119,16 @@ v1.
 
 The plugin's validate step **rejects** workflows that combine
 `signal: [{ start: true }]` or `update: [{ start: true }]` with any
-Empty side, asking users to wrap the empty payload in a single-field
-message instead. So in practice, generated code never calls
-`signal_with_start_workflow_proto` or `update_with_start_workflow_proto`
-with `&()` arguments.
+Empty **input** side, asking users to wrap the empty payload in a
+single-field message instead. So in practice, generated code never calls
+`signal_with_start_workflow_proto` or
+`update_with_start_workflow_proto{,_unit}` with `&()` workflow-input or
+signal/update-input arguments.
+
+Empty **update outputs** on `_with_start` are supported — render dispatches
+to the `_unit` variant, which validates the canonical Empty payload server-
+side. The typed variant can't be reused because `()` does not implement
+`TemporalProtoMessage` and so cannot satisfy the `O` generic.
 
 ## Phase 2 — Activities (opt-in via `activities=true`)
 
@@ -99,41 +139,50 @@ service with activity-annotated methods:
 |---|---|
 | `<METHOD>_ACTIVITY_NAME` | `pub const &'static str` per annotated activity. Value matches what the activity is registered under server-side (defaults to the rpc method name). |
 | `<Service>Activities` | `pub trait <Service>Activities: Send + Sync + 'static` with one method per activity. Signature: `fn <method>(&self, ctx: temporal_runtime::ActivityContext, input: <Input>) -> impl Future<Output = Result<<Output>>> + Send`. |
+| `register_<service>_activities<I>` | `pub fn(&mut temporal_runtime::worker::Worker, I) -> &mut temporal_runtime::worker::Worker` where `I: <Service>Activities + temporal_runtime::worker::ActivityImplementer`. Delegates to `worker.register_activities(impl_)`. |
 
 The trait method takes `&self`. The consumer's adapter (which wires the trait
-to a `temporalio-sdk` Worker via `#[activity_definitions]`) does the
-`Arc<Self>` dance — see the `temporal-proto-runtime-bridge` README for the
-pattern.
+to a `temporalio-sdk` Worker via `#[activities]`) does the SDK marker
+generation. The generated register helper intentionally requires both the
+generated trait and the SDK macro-produced `ActivityImplementer`, so the
+compiler checks the proto-shaped trait and the SDK registration shape at the
+same call site. See the `temporal-proto-runtime-bridge` README for the
+adapter pattern.
 
 Required runtime symbols (only when `activities=true` is set):
 
 | Symbol | Provided by | Notes |
 |---|---|---|
 | `temporal_runtime::ActivityContext` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::activities::ActivityContext`. |
+| `temporal_runtime::worker::Worker` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::Worker`. |
+| `temporal_runtime::worker::ActivityImplementer` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::activities::ActivityImplementer`. |
 
-The plugin does NOT emit a `register_<service>_activities(...)` function in
-Phase 2 — the consumer-side adapter pattern handles registration. This is the
-trait-only emit per the [Phase 2 spike findings](../docs/superpowers/specs/2026-05-12-phase-2-spike-findings.md).
-
-## Phase 3.0 — Workflow handler name consts (opt-in via `workflows=true`)
+## Phase 3.0 — Workflow contracts (opt-in via `workflows=true`)
 
 When invoked with `--rust-temporal_opt=workflows=true`, the plugin emits, per
-service with at least one signal / query / update rpc:
+service with at least one workflow rpc:
 
 | Symbol | Shape |
 |---|---|
 | `<METHOD>_SIGNAL_NAME` | `pub const &'static str` per signal-annotated rpc. Value is the cross-language registration name (defaults to the rpc method name). |
 | `<METHOD>_QUERY_NAME` | Same shape, for query-annotated rpcs. |
 | `<METHOD>_UPDATE_NAME` | Same shape, for update-annotated rpcs. |
+| `<Workflow>Definition` | `pub trait` with associated `Input` / `Output` types and default associated consts for `WORKFLOW_NAME`, `TASK_QUEUE`, and attached signal/query/update names. Consumers implement this trait on their SDK `#[workflow]` struct. |
+| `register_<workflow>_workflow<W>` | `pub fn(&mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker` where `W: temporal_runtime::worker::WorkflowImplementer + <Workflow>Definition<Input = <Input>, Output = <Output>>`. Delegates to `worker.register_workflow::<W>()`. |
 
-No workflow trait is emitted in Phase 3.0 — that's the Option C cut from
-the [Phase 3 spike findings](../docs/superpowers/specs/2026-05-12-phase-3-spike-findings.md).
-Consumers wire their hand-rolled `#[workflow]` setup to reference these consts
-instead of string literals, keeping registration names in sync with the proto
-without an adapter prototype yet.
+The consumer still owns the `temporalio-sdk` `#[workflow]` /
+`#[workflow_methods]` body. The generated trait does not define `run`,
+signal, query, or update methods because the SDK's macro-generated
+`WorkflowImplementation` shape is static and type-specific. The trait is a
+proto contract for names and input/output types, and the register helper ties
+that contract to the SDK's `WorkflowImplementer` at compile time.
 
-Trait emit lands in Phase 3.1 once the consume-self adapter shape is
-verified end-to-end against `temporalio-sdk`'s `#[workflow]` macro.
+Required runtime symbols (only when `workflows=true` is set):
+
+| Symbol | Provided by | Notes |
+|---|---|---|
+| `temporal_runtime::worker::Worker` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::Worker`. |
+| `temporal_runtime::worker::WorkflowImplementer` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::workflows::WorkflowImplementer`. |
 
 ## Phase 4.0 — CLI scaffold (opt-in via `cli=true`)
 
@@ -158,6 +207,14 @@ Consumers parse the CLI, match on `Command`, and call into the generated
 `<Service>Client` themselves. Phase 4.1 will add `Cli::run(self, &client)`
 once the JSON-input → prost-message deserialize path is decided (the open
 question is `pbjson` vs plain `prost::Message::decode` from a binary file).
+
+## Phase 8 — Test client
+
+No `test_client` emit is produced for `temporalio-sdk` 0.4.0. The SDK probe in
+`docs/sdk-shape-worker.md` found no `TestWorkflowEnvironment` equivalent to
+wrap. The closest upstream pieces are low-level `temporalio-sdk-core`
+`ephemeral_server` support and raw `temporalio-client` TestService RPCs, which
+would require this project to own a separate test harness.
 
 ## Future direction (post-1.0)
 

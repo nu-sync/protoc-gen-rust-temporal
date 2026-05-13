@@ -122,16 +122,16 @@ fn parse_service(
                 workflows.push(workflow_from(&method, *opts, &package, &service_name)?);
             }
             MethodKind::Signal(opts) => {
-                signals.push(signal_from(&method, opts));
+                signals.push(signal_from(&method, opts, &package, &service_name));
             }
             MethodKind::Query(opts) => {
-                queries.push(query_from(&method, opts));
+                queries.push(query_from(&method, opts, &package, &service_name));
             }
             MethodKind::Update(opts) => {
-                updates.push(update_from(&method, opts));
+                updates.push(update_from(&method, opts, &package, &service_name)?);
             }
             MethodKind::Activity(opts) => {
-                activities.push(activity_from(&method, *opts));
+                activities.push(activity_from(&method, *opts, &package, &service_name)?);
             }
             MethodKind::None => continue,
         }
@@ -258,6 +258,10 @@ fn workflow_from(
     service_name: &str,
 ) -> Result<WorkflowModel> {
     let rpc_method = method.name().to_string();
+    reject_unsupported_workflow_options(&opts, service_name, &rpc_method)?;
+    reject_unsupported_workflow_signal_ref(&opts.signal, service_name, &rpc_method)?;
+    reject_unsupported_workflow_query_ref(&opts.query, service_name, &rpc_method)?;
+    reject_unsupported_workflow_update_ref(&opts.update, service_name, &rpc_method)?;
     let registered_name = if opts.name.is_empty() {
         default_registered_name(package, service_name, &rpc_method)
     } else {
@@ -313,10 +317,15 @@ fn workflow_from(
     })
 }
 
-fn signal_from(method: &MethodDescriptor, opts: SignalOptions) -> SignalModel {
+fn signal_from(
+    method: &MethodDescriptor,
+    opts: SignalOptions,
+    package: &str,
+    service: &str,
+) -> SignalModel {
     let rpc_method = method.name().to_string();
     let registered_name = if opts.name.is_empty() {
-        rpc_method.clone()
+        default_registered_name(package, service, &rpc_method)
     } else {
         opts.name
     };
@@ -328,10 +337,15 @@ fn signal_from(method: &MethodDescriptor, opts: SignalOptions) -> SignalModel {
     }
 }
 
-fn query_from(method: &MethodDescriptor, opts: QueryOptions) -> QueryModel {
+fn query_from(
+    method: &MethodDescriptor,
+    opts: QueryOptions,
+    package: &str,
+    service: &str,
+) -> QueryModel {
     let rpc_method = method.name().to_string();
     let registered_name = if opts.name.is_empty() {
-        rpc_method.clone()
+        default_registered_name(package, service, &rpc_method)
     } else {
         opts.name
     };
@@ -343,42 +357,264 @@ fn query_from(method: &MethodDescriptor, opts: QueryOptions) -> QueryModel {
     }
 }
 
-fn update_from(method: &MethodDescriptor, opts: UpdateOptions) -> UpdateModel {
+fn update_from(
+    method: &MethodDescriptor,
+    opts: UpdateOptions,
+    package: &str,
+    service: &str,
+) -> Result<UpdateModel> {
     let rpc_method = method.name().to_string();
+    reject_unsupported_update_options(&opts, service, &rpc_method)?;
     let registered_name = if opts.name.is_empty() {
-        rpc_method.clone()
+        default_registered_name(package, service, &rpc_method)
     } else {
         opts.name
     };
-    UpdateModel {
+    Ok(UpdateModel {
         rpc_method,
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
         validate: opts.validate,
-    }
+    })
 }
 
-fn activity_from(method: &MethodDescriptor, opts: ActivityOptions) -> ActivityModel {
+fn activity_from(
+    method: &MethodDescriptor,
+    opts: ActivityOptions,
+    package: &str,
+    service: &str,
+) -> Result<ActivityModel> {
     let rpc_method = method.name().to_string();
+    reject_unsupported_activity_options(&opts, service, &rpc_method)?;
     let registered_name = if opts.name.is_empty() {
-        rpc_method.clone()
+        default_registered_name(package, service, &rpc_method)
     } else {
         opts.name
     };
-    ActivityModel {
+    Ok(ActivityModel {
         rpc_method,
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
-    }
+    })
 }
 
+/// v1 client emit honours a deliberate subset of `WorkflowOptions`. Fields
+/// that would change runtime behaviour but are *not* yet plumbed through
+/// the generator must be a hard error — silent drops cause hard-to-debug
+/// production divergences (the user sets `retry_policy` in the proto,
+/// observes the generated client compiling clean, and ships a workflow
+/// with no retry policy at all). The Go plugin honours every field below;
+/// this Rust plugin will too, once each lands in the emit pipeline.
+fn reject_unsupported_workflow_options(
+    opts: &WorkflowOptions,
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    let mut unsupported: Vec<&'static str> = Vec::new();
+    if opts.retry_policy.is_some() {
+        unsupported.push("retry_policy");
+    }
+    if !opts.search_attributes.is_empty() {
+        unsupported.push("search_attributes");
+    }
+    if !opts.typed_search_attributes.is_empty() {
+        unsupported.push("typed_search_attributes");
+    }
+    if opts.parent_close_policy != 0 {
+        unsupported.push("parent_close_policy");
+    }
+    if opts.workflow_id_conflict_policy != 0 {
+        unsupported.push("workflow_id_conflict_policy");
+    }
+    if opts.wait_for_cancellation {
+        unsupported.push("wait_for_cancellation");
+    }
+    if opts.enable_eager_start {
+        unsupported.push("enable_eager_start");
+    }
+    if opts.versioning_behavior != 0 {
+        unsupported.push("versioning_behavior");
+    }
+    if unsupported.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "{service}.{rpc}: (temporal.v1.workflow) sets runtime-affecting field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+        unsupported.join(", "),
+    ))
+}
+
+/// `UpdateOptions.id` (a workflow-id template targeting the *parent* workflow)
+/// and `wait_for_stage` (default `WaitPolicy` for the update) are runtime-
+/// affecting but not threaded through the v1 emit. Error out so users don't
+/// ship updates that silently default to `Completed` waits or random ids.
+///
+/// `wait_policy` is the deprecated predecessor of `wait_for_stage`. cludden's
+/// Go plugin still honours it on legacy protos; ignoring it here would let a
+/// user port a Go service over and silently lose their default policy.
+fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &str) -> Result<()> {
+    let mut unsupported: Vec<&'static str> = Vec::new();
+    if !opts.id.is_empty() {
+        unsupported.push("id");
+    }
+    if opts.wait_for_stage != 0 {
+        unsupported.push("wait_for_stage");
+    }
+    #[allow(deprecated)] // intentional: see doc comment.
+    if opts.wait_policy != 0 {
+        unsupported.push("wait_policy (deprecated)");
+    }
+    if unsupported.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "{service}.{rpc}: (temporal.v1.update) sets runtime-affecting field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+        unsupported.join(", "),
+    ))
+}
+
+/// Per-update fields nested inside `WorkflowOptions.update[]` that the v1
+/// emit drops. The bridge's `update-with-start` path hardcodes
+/// `WorkflowIdConflictPolicy::UseExisting`, so a proto-level override would
+/// be silently ignored — refuse the proto rather than ship the wrong policy.
+///
+/// **Why this lives in parse, not model:** rejection must run against the
+/// raw `WorkflowOptions.Update` proto, before [`workflow_from`] projects
+/// it into the narrower [`crate::model::UpdateRef`] (which intentionally
+/// drops `cli` / `xns` / `workflow_id_conflict_policy`). Any future
+/// "reject unsupported X" fix on nested refs belongs here too.
+fn reject_unsupported_workflow_update_ref(
+    refs: &[crate::temporal::v1::workflow_options::Update],
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    for r in refs {
+        let mut unsupported: Vec<&'static str> = Vec::new();
+        if r.workflow_id_conflict_policy != 0 {
+            unsupported.push("workflow_id_conflict_policy");
+        }
+        if r.cli.is_some() {
+            unsupported.push("cli");
+        }
+        if r.xns.is_some() {
+            unsupported.push("xns");
+        }
+        if unsupported.is_empty() {
+            continue;
+        }
+        return Err(anyhow!(
+            "{service}.{rpc}: (temporal.v1.workflow).update[ref={}] sets field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+            r.r#ref,
+            unsupported.join(", "),
+        ));
+    }
+    Ok(())
+}
+
+/// Sibling of [`reject_unsupported_workflow_update_ref`] for `signal` refs
+/// nested in `WorkflowOptions.signal[]`. The model layer projects only
+/// `ref` and `start`, dropping `cli` and `xns` silently.
+fn reject_unsupported_workflow_signal_ref(
+    refs: &[crate::temporal::v1::workflow_options::Signal],
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    for r in refs {
+        let mut unsupported: Vec<&'static str> = Vec::new();
+        if r.cli.is_some() {
+            unsupported.push("cli");
+        }
+        if r.xns.is_some() {
+            unsupported.push("xns");
+        }
+        if unsupported.is_empty() {
+            continue;
+        }
+        return Err(anyhow!(
+            "{service}.{rpc}: (temporal.v1.workflow).signal[ref={}] sets field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+            r.r#ref,
+            unsupported.join(", "),
+        ));
+    }
+    Ok(())
+}
+
+/// Sibling of [`reject_unsupported_workflow_update_ref`] for `query` refs
+/// nested in `WorkflowOptions.query[]`. The model layer projects only
+/// `ref`, dropping `xns` silently. (Queries have no `cli` field on the
+/// nested ref.)
+fn reject_unsupported_workflow_query_ref(
+    refs: &[crate::temporal::v1::workflow_options::Query],
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    for r in refs {
+        if r.xns.is_some() {
+            return Err(anyhow!(
+                "{service}.{rpc}: (temporal.v1.workflow).query[ref={}] sets field(s) xns that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+                r.r#ref,
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// In v1 the plugin only emits a name-const + trait surface for activities
+/// (under `activities=true`); none of `ActivityOptions`' runtime fields
+/// (timeouts, task_queue override, retry policy, wait-for-cancellation)
+/// flow into generated code. Refuse silent drops here for the same reason
+/// as workflow options.
+fn reject_unsupported_activity_options(
+    opts: &ActivityOptions,
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    let mut unsupported: Vec<&'static str> = Vec::new();
+    if !opts.task_queue.is_empty() {
+        unsupported.push("task_queue");
+    }
+    if opts.schedule_to_close_timeout.is_some() {
+        unsupported.push("schedule_to_close_timeout");
+    }
+    if opts.schedule_to_start_timeout.is_some() {
+        unsupported.push("schedule_to_start_timeout");
+    }
+    if opts.start_to_close_timeout.is_some() {
+        unsupported.push("start_to_close_timeout");
+    }
+    if opts.heartbeat_timeout.is_some() {
+        unsupported.push("heartbeat_timeout");
+    }
+    if opts.wait_for_cancellation {
+        unsupported.push("wait_for_cancellation");
+    }
+    if opts.retry_policy.is_some() {
+        unsupported.push("retry_policy");
+    }
+    if unsupported.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "{service}.{rpc}: (temporal.v1.activity) sets runtime-affecting field(s) {} that the v1 Rust activity emit (activities=true) does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
+        unsupported.join(", "),
+    ))
+}
+
+/// Default cross-language registration name for any annotated rpc.
+///
+/// Mirrors `protoreflect.FullName` semantics used by
+/// `cludden/protoc-gen-go-temporal`: `"<package>.<Service>.<Rpc>"` (dots
+/// only — *no* slash). The Go plugin defaults workflow / signal / query /
+/// update / activity names to `string(method.Desc.FullName())`, so we must
+/// produce the same string for mixed-language workers (Rust workflow, Go
+/// signal sender; or vice versa) to find each other on the wire.
 fn default_registered_name(package: &str, service: &str, rpc: &str) -> String {
     if package.is_empty() {
-        format!("{service}/{rpc}")
+        format!("{service}.{rpc}")
     } else {
-        format!("{package}.{service}/{rpc}")
+        format!("{package}.{service}.{rpc}")
     }
 }
 
@@ -412,6 +648,11 @@ fn duration_from_proto(d: prost_types::Duration) -> Option<Duration> {
 /// whitespace inside the braces). More complex Go-template syntax
 /// (conditionals, functions, ranges) returns an error so users see the
 /// limitation up front rather than at runtime.
+///
+/// Bloblang expressions (`${! ... }`) — used by cludden's Go plugin for
+/// search-attribute mappings — are rejected here. They look like literal
+/// text to the `{{...}}` scanner, which would otherwise let them through
+/// as a static workflow ID and silently collide every execution.
 fn parse_id_template(
     template: &str,
     input: &prost_reflect::MessageDescriptor,
@@ -420,7 +661,9 @@ fn parse_id_template(
     let mut rest = template;
     while let Some(open) = rest.find("{{") {
         if open > 0 {
-            out.push(IdTemplateSegment::Literal(rest[..open].to_string()));
+            let literal = &rest[..open];
+            reject_bloblang(literal, template)?;
+            out.push(IdTemplateSegment::Literal(literal.to_string()));
         }
         let after_open = &rest[open + 2..];
         let close = after_open
@@ -461,7 +704,24 @@ fn parse_id_template(
         rest = &after_open[close + 2..];
     }
     if !rest.is_empty() {
+        reject_bloblang(rest, template)?;
         out.push(IdTemplateSegment::Literal(rest.to_string()));
     }
     Ok(out)
+}
+
+/// Bloblang `${...}` and `${! ...}` expressions are an unrelated templating
+/// dialect cludden's Go plugin uses for search-attribute mappings. The id
+/// template scanner only knows `{{...}}`, so a Bloblang expression slips
+/// through as a literal — which would compile clean and ship, then collide
+/// every workflow under the same literal ID at runtime. Refuse them up-front
+/// so users see the limitation at codegen time.
+fn reject_bloblang(literal: &str, template: &str) -> Result<()> {
+    if literal.contains("${") {
+        anyhow::bail!(
+            "id template {template:?} contains a Bloblang expression (`${{...}}`); \
+             only Go-template `{{{{ .Field }}}}` references are supported in workflow ids"
+        );
+    }
+    Ok(())
 }

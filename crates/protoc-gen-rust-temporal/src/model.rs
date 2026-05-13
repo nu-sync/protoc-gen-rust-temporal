@@ -5,6 +5,20 @@
 //! fields needed for v1 Rust client emit. Anything we read but ignore (XNS,
 //! patches, CLI options) lives in the descriptor pool and is silently
 //! dropped here.
+//!
+//! # Adding "reject unsupported X" rules
+//!
+//! Validation that should refuse a proto field must run **before** that
+//! field is projected away. The model layer narrows the schema — rejection
+//! code added at a call site that runs after projection has no visibility
+//! into the fields the projection threw away, so the user's proto-level
+//! setting silently disappears instead of erroring.
+//!
+//! Concretely: rejection of fields nested inside `WorkflowOptions.signal[]`,
+//! `WorkflowOptions.query[]`, and `WorkflowOptions.update[]` lives in
+//! `parse::reject_unsupported_workflow_{signal,query,update}_ref`, which
+//! runs in `workflow_from` against the raw proto, not against
+//! `attached_signals` / `attached_queries` / `attached_updates`.
 
 use std::time::Duration;
 
@@ -32,7 +46,10 @@ pub struct WorkflowModel {
     /// Rpc method name as declared in proto (e.g. `"RunJob"`).
     pub rpc_method: String,
     /// Cross-language workflow registration name. Defaults to
-    /// `"<package>.<Service>/<rpc>"` when `WorkflowOptions.name` is empty.
+    /// `"<package>.<Service>.<Rpc>"` (the proto method's fully-qualified
+    /// name) when `WorkflowOptions.name` is empty, matching
+    /// `cludden/protoc-gen-go-temporal`'s `method.Desc.FullName()` so
+    /// Rust + Go workers register against the same Temporal name.
     pub registered_name: String,
     pub input_type: ProtoType,
     pub output_type: ProtoType,
@@ -83,7 +100,10 @@ pub struct UpdateRef {
 #[derive(Debug)]
 pub struct SignalModel {
     pub rpc_method: String,
-    /// Cross-language signal name. Defaults to `rpc_method`.
+    /// Cross-language signal name. Defaults to the proto method's
+    /// fully-qualified name `"<package>.<Service>.<Rpc>"` when
+    /// `SignalOptions.name` is empty, matching the Go plugin's
+    /// `string(method.Desc.FullName())` default.
     pub registered_name: String,
     pub input_type: ProtoType,
     /// Must be `google.protobuf.Empty` — validated.

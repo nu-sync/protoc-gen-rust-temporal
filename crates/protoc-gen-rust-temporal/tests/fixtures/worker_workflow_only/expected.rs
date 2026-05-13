@@ -2,27 +2,27 @@
 // source: input.proto
 
 #[allow(clippy::all, unused_imports, dead_code)]
-pub mod solo_v1_solo_service_temporal {
+pub mod workerwf_v1_worker_workflow_service_temporal {
     use anyhow::Result;
     use std::time::Duration;
     use crate::temporal_runtime;
-    use crate::solo::v1::*;
+    use crate::workerwf::v1::*;
 
     impl temporal_runtime::TemporalProtoMessage for WorkInput {
-        const MESSAGE_TYPE: &'static str = "solo.v1.WorkInput";
+        const MESSAGE_TYPE: &'static str = "workerwf.v1.WorkInput";
     }
     impl temporal_runtime::TemporalProtoMessage for WorkOutput {
-        const MESSAGE_TYPE: &'static str = "solo.v1.WorkOutput";
+        const MESSAGE_TYPE: &'static str = "workerwf.v1.WorkOutput";
     }
 
-    pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService.DoWork";
-    pub const DO_WORK_TASK_QUEUE: &str = "solo-tq";
+    pub const RUN_WORKFLOW_NAME: &str = "workerwf.v1.WorkerWorkflowService.Run";
+    pub const RUN_TASK_QUEUE: &str = "worker-workflows";
 
-    pub struct SoloServiceClient {
+    pub struct WorkerWorkflowServiceClient {
         client: temporal_runtime::TemporalClient,
     }
 
-    impl SoloServiceClient {
+    impl WorkerWorkflowServiceClient {
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }
@@ -31,23 +31,23 @@ pub mod solo_v1_solo_service_temporal {
             &self.client
         }
 
-        /// Start a new `solo.v1.SoloService.DoWork` workflow.
-        pub async fn do_work(
+        /// Start a new `workerwf.v1.WorkerWorkflowService.Run` workflow.
+        pub async fn run(
             &self,
             input: WorkInput,
-            opts: DoWorkStartOptions,
-        ) -> Result<DoWorkHandle> {
+            opts: RunStartOptions,
+        ) -> Result<RunHandle> {
             let workflow_id = opts.workflow_id.unwrap_or_else(|| {
                 temporal_runtime::random_workflow_id()
             });
-            let task_queue = opts.task_queue.unwrap_or_else(|| "solo-tq".to_string());
+            let task_queue = opts.task_queue.unwrap_or_else(|| "worker-workflows".to_string());
             let id_reuse_policy = opts.id_reuse_policy;
-            let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(3600)));
+            let execution_timeout = opts.execution_timeout;
             let run_timeout = opts.run_timeout;
             let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
-                DO_WORK_WORKFLOW_NAME,
+                RUN_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
@@ -56,12 +56,12 @@ pub mod solo_v1_solo_service_temporal {
                 run_timeout,
                 task_timeout,
             ).await?;
-            Ok(DoWorkHandle { inner })
+            Ok(RunHandle { inner })
         }
 
-        /// Attach to a running `solo.v1.SoloService.DoWork` workflow by id.
-        pub fn do_work_handle(&self, workflow_id: impl Into<String>) -> DoWorkHandle {
-            DoWorkHandle {
+        /// Attach to a running `workerwf.v1.WorkerWorkflowService.Run` workflow by id.
+        pub fn run_handle(&self, workflow_id: impl Into<String>) -> RunHandle {
+            RunHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
         }
@@ -69,7 +69,7 @@ pub mod solo_v1_solo_service_temporal {
     }
 
     #[derive(Debug, Default, Clone)]
-    pub struct DoWorkStartOptions {
+    pub struct RunStartOptions {
         pub workflow_id: Option<String>,
         pub task_queue: Option<String>,
         pub id_reuse_policy: Option<temporal_runtime::WorkflowIdReusePolicy>,
@@ -78,17 +78,11 @@ pub mod solo_v1_solo_service_temporal {
         pub task_timeout: Option<Duration>,
     }
 
-    impl DoWorkStartOptions {
-        pub fn default_execution_timeout() -> Duration {
-            Duration::from_secs(3600)
-        }
-    }
-
-    pub struct DoWorkHandle {
+    pub struct RunHandle {
         inner: temporal_runtime::WorkflowHandle,
     }
 
-    impl DoWorkHandle {
+    impl RunHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }
@@ -98,6 +92,26 @@ pub mod solo_v1_solo_service_temporal {
             temporal_runtime::wait_result_proto::<WorkOutput>(&self.inner).await
         }
 
+    }
+
+
+    // -- Workflow definitions --------------------------------
+    // workflows=true: typed proto contracts + registration helpers.
+    // The consumer owns the temporalio-sdk #[workflow] body and
+    // implements the matching <Workflow>Definition trait on it.
+
+    pub trait RunDefinition: 'static {
+        type Input;
+        type Output;
+        const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;
+        const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+    }
+
+    pub fn register_run_workflow<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker
+    where
+        W: temporal_runtime::worker::WorkflowImplementer + RunDefinition<Input = WorkInput, Output = WorkOutput>,
+    {
+        worker.register_workflow::<W>()
     }
 
 }

@@ -14,8 +14,17 @@ pub mod acts_v1_chunk_service_temporal {
     impl temporal_runtime::TemporalProtoMessage for BatchOutput {
         const MESSAGE_TYPE: &'static str = "acts.v1.BatchOutput";
     }
+    impl temporal_runtime::TemporalProtoMessage for ChunkInput {
+        const MESSAGE_TYPE: &'static str = "acts.v1.ChunkInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for ChunkOutput {
+        const MESSAGE_TYPE: &'static str = "acts.v1.ChunkOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for HeartbeatOutput {
+        const MESSAGE_TYPE: &'static str = "acts.v1.HeartbeatOutput";
+    }
 
-    pub const RUN_BATCH_WORKFLOW_NAME: &str = "acts.v1.ChunkService/RunBatch";
+    pub const RUN_BATCH_WORKFLOW_NAME: &str = "acts.v1.ChunkService.RunBatch";
     pub const RUN_BATCH_TASK_QUEUE: &str = "chunks";
 
     fn run_batch_id(input: &BatchInput) -> String {
@@ -35,7 +44,7 @@ pub mod acts_v1_chunk_service_temporal {
             &self.client
         }
 
-        /// Start a new `acts.v1.ChunkService/RunBatch` workflow.
+        /// Start a new `acts.v1.ChunkService.RunBatch` workflow.
         pub async fn run_batch(
             &self,
             input: BatchInput,
@@ -45,21 +54,25 @@ pub mod acts_v1_chunk_service_temporal {
                 run_batch_id(&input)
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "chunks".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_BATCH_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
                 &input,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(RunBatchHandle { inner })
         }
 
-        /// Attach to a running `acts.v1.ChunkService/RunBatch` workflow by id.
+        /// Attach to a running `acts.v1.ChunkService.RunBatch` workflow by id.
         pub fn run_batch_handle(&self, workflow_id: impl Into<String>) -> RunBatchHandle {
             RunBatchHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
@@ -97,14 +110,21 @@ pub mod acts_v1_chunk_service_temporal {
 
     // ── Activities ────────────────────────────────────────────
     // Phase 2 (activities=true): typed trait + name consts. Wire to
-    // your worker via temporalio-sdk's #[activity_definitions] macro;
+    // your worker via temporalio-sdk's #[activities] macro;
     // see temporal-proto-runtime-bridge README for the adapter pattern.
 
-    pub const PROCESS_ACTIVITY_NAME: &str = "Process";
-    pub const HEARTBEAT_ACTIVITY_NAME: &str = "Heartbeat";
+    pub const PROCESS_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Process";
+    pub const HEARTBEAT_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Heartbeat";
 
     pub trait ChunkServiceActivities: Send + Sync + 'static {
         fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;
         fn heartbeat(&self, ctx: temporal_runtime::ActivityContext, input: ()) -> impl ::std::future::Future<Output = Result<HeartbeatOutput>> + Send;
+    }
+
+    pub fn register_chunk_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
+    where
+        I: ChunkServiceActivities + temporal_runtime::worker::ActivityImplementer,
+    {
+        worker.register_activities(impl_)
     }
 }

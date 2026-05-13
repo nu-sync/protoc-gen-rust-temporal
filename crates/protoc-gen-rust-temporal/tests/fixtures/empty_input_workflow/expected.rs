@@ -8,7 +8,7 @@ pub mod empty_v1_nop_service_temporal {
     use crate::temporal_runtime;
     use crate::empty::v1::*;
 
-    pub const TICK_WORKFLOW_NAME: &str = "empty.v1.NopService/Tick";
+    pub const TICK_WORKFLOW_NAME: &str = "empty.v1.NopService.Tick";
     pub const TICK_TASK_QUEUE: &str = "nop";
 
     pub struct NopServiceClient {
@@ -24,7 +24,7 @@ pub mod empty_v1_nop_service_temporal {
             &self.client
         }
 
-        /// Start a new `empty.v1.NopService/Tick` workflow.
+        /// Start a new `empty.v1.NopService.Tick` workflow.
         pub async fn tick(
             &self,
             opts: TickStartOptions,
@@ -33,20 +33,24 @@ pub mod empty_v1_nop_service_temporal {
                 temporal_runtime::random_workflow_id()
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "nop".to_string());
+            let id_reuse_policy = opts.id_reuse_policy;
+            let execution_timeout = opts.execution_timeout;
+            let run_timeout = opts.run_timeout;
+            let task_timeout = opts.task_timeout;
             let inner = temporal_runtime::start_workflow_proto_empty(
                 &self.client,
                 TICK_WORKFLOW_NAME,
                 &workflow_id,
                 &task_queue,
-                opts.id_reuse_policy,
-                opts.execution_timeout,
-                opts.run_timeout,
-                opts.task_timeout,
+                id_reuse_policy,
+                execution_timeout,
+                run_timeout,
+                task_timeout,
             ).await?;
             Ok(TickHandle { inner })
         }
 
-        /// Attach to a running `empty.v1.NopService/Tick` workflow by id.
+        /// Attach to a running `empty.v1.NopService.Tick` workflow by id.
         pub fn tick_handle(&self, workflow_id: impl Into<String>) -> TickHandle {
             TickHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),

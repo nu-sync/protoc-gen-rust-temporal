@@ -46,7 +46,7 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
     let _ = writeln!(out, "    use {proto_mod}::*;");
     let _ = writeln!(out);
 
-    render_message_type_impls(&mut out, svc);
+    render_message_type_impls(&mut out, svc, options);
     render_constants(&mut out, svc);
     render_id_fns(&mut out, svc);
     render_client_struct(&mut out, svc, &client_struct);
@@ -63,15 +63,12 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
         render_activities_trait(&mut out, svc);
     }
 
-    // Phase 3.0 (Option C): per-rpc signal/query/update name consts. Only
-    // emitted when `workflows=true` AND the service has at least one
-    // signal/query/update rpc. Lets consumer-side `#[workflow]` setups
-    // reference generated names instead of string literals; trait emit
-    // deferred to Phase 3.1.
-    if options.workflows
-        && (!svc.signals.is_empty() || !svc.queries.is_empty() || !svc.updates.is_empty())
-    {
-        render_workflow_handler_name_consts(&mut out, svc);
+    // Worker workflow contracts. Only emitted when `workflows=true` AND the
+    // service has at least one workflow rpc. The consumer still writes the
+    // SDK macro-bearing workflow body; this emit owns the proto-derived names,
+    // task queues, typed contract, and registration helper.
+    if options.workflows && !svc.workflows.is_empty() {
+        render_workflow_contracts(&mut out, svc);
     }
 
     let _ = writeln!(out, "}}");
@@ -94,7 +91,11 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
 /// what lets `start_workflow_proto::<I>` / `signal_proto::<I>` etc. resolve
 /// at the call site. `google.protobuf.Empty` types are skipped — the
 /// `_empty` runtime variants take no payload generic.
-fn render_message_type_impls(out: &mut String, svc: &ServiceModel) {
+fn render_message_type_impls(
+    out: &mut String,
+    svc: &ServiceModel,
+    options: &crate::options::RenderOptions,
+) {
     use std::collections::BTreeMap;
 
     let mut by_rust_name: BTreeMap<String, String> = BTreeMap::new();
@@ -123,8 +124,12 @@ fn render_message_type_impls(out: &mut String, svc: &ServiceModel) {
         record(&u.input_type);
         record(&u.output_type);
     }
-    // Activities are validate-only — their message types are not used by the
-    // emitted client surface, so they do not need impls.
+    if options.activities {
+        for a in &svc.activities {
+            record(&a.input_type);
+            record(&a.output_type);
+        }
+    }
 
     if by_rust_name.is_empty() {
         return;
@@ -369,6 +374,8 @@ fn render_start_body(
         );
     }
 
+    render_default_resolutions(out, wf, ind);
+
     if wf.input_type.is_empty {
         // Empty workflow input — route to a separate runtime function that
         // skips the payload arg. Avoids `&()` not impl'ing
@@ -392,11 +399,46 @@ fn render_start_body(
         let _ = writeln!(out, "{ind}    &task_queue,");
         let _ = writeln!(out, "{ind}    &input,");
     }
-    let _ = writeln!(out, "{ind}    opts.id_reuse_policy,");
-    let _ = writeln!(out, "{ind}    opts.execution_timeout,");
-    let _ = writeln!(out, "{ind}    opts.run_timeout,");
-    let _ = writeln!(out, "{ind}    opts.task_timeout,");
+    let _ = writeln!(out, "{ind}    id_reuse_policy,");
+    let _ = writeln!(out, "{ind}    execution_timeout,");
+    let _ = writeln!(out, "{ind}    run_timeout,");
+    let _ = writeln!(out, "{ind}    task_timeout,");
     let _ = writeln!(out, "{ind}).await?;");
+}
+
+/// Emit `let <field> = opts.<field>.or(Some(<default>));` for every
+/// `WorkflowOptions` field that has a schema-declared default, and a
+/// plain rebind for the rest. This folds the proto-level defaults into
+/// the start call so callers who leave a `StartOptions` field as `None`
+/// still get the workflow's declared default — `default_*()` helpers
+/// on `StartOptions` are no longer enough on their own because the start
+/// path used `opts.<field>` directly.
+fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
+    let id_reuse_default = wf.id_reuse_policy.map(|p| {
+        format!(
+            "temporal_runtime::WorkflowIdReusePolicy::{}",
+            p.rust_variant()
+        )
+    });
+    let resolutions: [(&'static str, Option<String>); 4] = [
+        ("id_reuse_policy", id_reuse_default),
+        (
+            "execution_timeout",
+            wf.execution_timeout.map(duration_literal),
+        ),
+        ("run_timeout", wf.run_timeout.map(duration_literal)),
+        ("task_timeout", wf.task_timeout.map(duration_literal)),
+    ];
+    for (field, default) in resolutions {
+        match default {
+            Some(value) => {
+                let _ = writeln!(out, "{ind}let {field} = opts.{field}.or(Some({value}));");
+            }
+            None => {
+                let _ = writeln!(out, "{ind}let {field} = opts.{field};");
+            }
+        }
+    }
 }
 
 fn render_start_options(out: &mut String, wf: &WorkflowModel) {
@@ -552,29 +594,57 @@ fn render_query_method(out: &mut String, q: &QueryModel) {
     let method_snake = q.rpc_method.to_snake_case();
     let out_ty = q.output_type.rust_name();
     let _ = writeln!(out, "        /// Run the `{}` query.", q.registered_name);
-    if q.input_type.is_empty {
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::query_proto_empty::<{out_ty}>(&self.inner, \"{}\").await",
-            q.registered_name
-        );
-        let _ = writeln!(out, "        }}");
-    } else {
-        let in_ty = q.input_type.rust_name();
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self, input: {in_ty}) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::query_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input).await",
-            q.registered_name
-        );
-        let _ = writeln!(out, "        }}");
+    match (q.input_type.is_empty, q.output_type.is_empty) {
+        (true, true) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto_empty_unit(&self.inner, \"{}\").await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (true, false) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto_empty::<{out_ty}>(&self.inner, \"{}\").await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, true) => {
+            let in_ty = q.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_unit::<{in_ty}>(&self.inner, \"{}\", &input).await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, false) => {
+            let in_ty = q.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input).await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
     }
     let _ = writeln!(out);
 }
@@ -583,29 +653,57 @@ fn render_update_method(out: &mut String, u: &UpdateModel) {
     let method_snake = u.rpc_method.to_snake_case();
     let out_ty = u.output_type.rust_name();
     let _ = writeln!(out, "        /// Run the `{}` update.", u.registered_name);
-    if u.input_type.is_empty {
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::update_proto_empty::<{out_ty}>(&self.inner, \"{}\", wait_policy).await",
-            u.registered_name
-        );
-        let _ = writeln!(out, "        }}");
-    } else {
-        let in_ty = u.input_type.rust_name();
-        let _ = writeln!(
-            out,
-            "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
-        );
-        let _ = writeln!(
-            out,
-            "            temporal_runtime::update_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
-            u.registered_name
-        );
-        let _ = writeln!(out, "        }}");
+    match (u.input_type.is_empty, u.output_type.is_empty) {
+        (true, true) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto_empty_unit(&self.inner, \"{}\", wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (true, false) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto_empty::<{out_ty}>(&self.inner, \"{}\", wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, true) => {
+            let in_ty = u.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_unit::<{in_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, false) => {
+            let in_ty = u.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
     }
     let _ = writeln!(out);
 }
@@ -702,6 +800,7 @@ fn render_signal_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
+    render_default_resolutions(out, wf, "        ");
     let _ = writeln!(
         out,
         "        let inner = temporal_runtime::signal_with_start_workflow_proto("
@@ -713,10 +812,10 @@ fn render_signal_with_start_fn(
     let _ = writeln!(out, "            {workflow_input_expr},");
     let _ = writeln!(out, "            \"{}\",", sig.registered_name);
     let _ = writeln!(out, "            {signal_input_expr},");
-    let _ = writeln!(out, "            opts.id_reuse_policy,");
-    let _ = writeln!(out, "            opts.execution_timeout,");
-    let _ = writeln!(out, "            opts.run_timeout,");
-    let _ = writeln!(out, "            opts.task_timeout,");
+    let _ = writeln!(out, "            id_reuse_policy,");
+    let _ = writeln!(out, "            execution_timeout,");
+    let _ = writeln!(out, "            run_timeout,");
+    let _ = writeln!(out, "            task_timeout,");
     let _ = writeln!(out, "        ).await?;");
     let _ = writeln!(out, "        Ok({handle_struct} {{ inner }})");
     let _ = writeln!(out, "    }}");
@@ -753,11 +852,15 @@ fn render_update_with_start_fn(
     }
     let _ = writeln!(out, "        opts: {opts_struct},");
     let _ = writeln!(out, "        wait_policy: temporal_runtime::WaitPolicy,");
-    let _ = writeln!(
-        out,
-        "    ) -> Result<({handle_struct}, {})> {{",
-        u.output_type.rust_name()
-    );
+    if u.output_type.is_empty {
+        let _ = writeln!(out, "    ) -> Result<{handle_struct}> {{");
+    } else {
+        let _ = writeln!(
+            out,
+            "    ) -> Result<({handle_struct}, {})> {{",
+            u.output_type.rust_name()
+        );
+    }
 
     let update_input_expr = if u.input_type.is_empty {
         "&()".to_string()
@@ -791,17 +894,31 @@ fn render_update_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
-    // Three explicit generics: workflow input (W), update input (U),
-    // update output (O). All three appear in distinct argument positions
-    // so they could in principle be inferred, but spelling them out keeps
-    // generated code grep-able and immune to inference brittleness.
-    let _ = writeln!(
-        out,
-        "        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<{}, {}, {}>(",
-        wf.input_type.rust_name(),
-        u.input_type.rust_name(),
-        u.output_type.rust_name(),
-    );
+    render_default_resolutions(out, wf, "        ");
+    // Output type is Empty → route through the `_unit` sibling, which
+    // validates the canonical Empty payload server-side instead of decoding
+    // it into a `()` (the typed `update_with_start_workflow_proto` requires
+    // `O: TemporalProtoMessage`, which `()` cannot satisfy).
+    if u.output_type.is_empty {
+        let _ = writeln!(
+            out,
+            "        let inner = temporal_runtime::update_with_start_workflow_proto_unit::<{}, {}>(",
+            wf.input_type.rust_name(),
+            u.input_type.rust_name(),
+        );
+    } else {
+        // Three explicit generics: workflow input (W), update input (U),
+        // update output (O). All three appear in distinct argument positions
+        // so they could in principle be inferred, but spelling them out keeps
+        // generated code grep-able and immune to inference brittleness.
+        let _ = writeln!(
+            out,
+            "        let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<{}, {}, {}>(",
+            wf.input_type.rust_name(),
+            u.input_type.rust_name(),
+            u.output_type.rust_name(),
+        );
+    }
     let _ = writeln!(out, "            client,");
     let _ = writeln!(out, "            {const_name},");
     let _ = writeln!(out, "            &workflow_id,");
@@ -810,15 +927,19 @@ fn render_update_with_start_fn(
     let _ = writeln!(out, "            \"{}\",", u.registered_name);
     let _ = writeln!(out, "            {update_input_expr},");
     let _ = writeln!(out, "            wait_policy,");
-    let _ = writeln!(out, "            opts.id_reuse_policy,");
-    let _ = writeln!(out, "            opts.execution_timeout,");
-    let _ = writeln!(out, "            opts.run_timeout,");
-    let _ = writeln!(out, "            opts.task_timeout,");
+    let _ = writeln!(out, "            id_reuse_policy,");
+    let _ = writeln!(out, "            execution_timeout,");
+    let _ = writeln!(out, "            run_timeout,");
+    let _ = writeln!(out, "            task_timeout,");
     let _ = writeln!(out, "        ).await?;");
-    let _ = writeln!(
-        out,
-        "        Ok(({handle_struct} {{ inner }}, update_result))"
-    );
+    if u.output_type.is_empty {
+        let _ = writeln!(out, "        Ok({handle_struct} {{ inner }})");
+    } else {
+        let _ = writeln!(
+            out,
+            "        Ok(({handle_struct} {{ inner }}, update_result))"
+        );
+    }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 }
@@ -866,7 +987,7 @@ fn proto_module_path(package: &str) -> String {
 ///
 /// Trait method signature uses `impl Future<Output = Result<O>> + Send` rather
 /// than `async fn` so the `Send` bound is explicit (the consumer's adapter to
-/// `temporalio-sdk`'s `#[activity_definitions]` macro needs a Send future to
+/// `temporalio-sdk`'s `#[activities]` macro needs a Send future to
 /// satisfy `tokio::task::spawn`-style boundaries).
 fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     use heck::{ToShoutySnakeCase, ToSnakeCase};
@@ -884,7 +1005,7 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     );
     let _ = writeln!(
         out,
-        "    // your worker via temporalio-sdk's #[activity_definitions] macro;"
+        "    // your worker via temporalio-sdk's #[activities] macro;"
     );
     let _ = writeln!(
         out,
@@ -922,13 +1043,115 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         );
     }
     let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    let fn_name = format!("register_{}_activities", svc.service.to_snake_case());
+    let _ = writeln!(
+        out,
+        "    pub fn {fn_name}<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker"
+    );
+    let _ = writeln!(out, "    where");
+    let _ = writeln!(
+        out,
+        "        I: {trait_name} + temporal_runtime::worker::ActivityImplementer,"
+    );
+    let _ = writeln!(out, "    {{");
+    let _ = writeln!(out, "        worker.register_activities(impl_)");
+    let _ = writeln!(out, "    }}");
 }
 
-/// Phase 3.0 (Option C from the spike findings): per-rpc signal/query/update
-/// name consts. Emitted under the existing service module so a consumer's
-/// hand-rolled `#[workflow]` impl can reference `generated::CANCEL_SIGNAL_NAME`
-/// instead of the string `"Cancel"`. Doesn't emit a workflow trait — that's
-/// deferred to Phase 3.1.
+/// Worker workflow contracts emitted under `workflows=true`. The output is a
+/// proto-derived trait per workflow plus a thin registration helper that
+/// delegates to the SDK macro-generated `WorkflowImplementer`.
+fn render_workflow_contracts(out: &mut String, svc: &ServiceModel) {
+    let has_handlers =
+        !svc.signals.is_empty() || !svc.queries.is_empty() || !svc.updates.is_empty();
+    if has_handlers {
+        render_workflow_handler_name_consts(out, svc);
+    }
+
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "    // -- Workflow definitions --------------------------------"
+    );
+    let _ = writeln!(
+        out,
+        "    // workflows=true: typed proto contracts + registration helpers."
+    );
+    let _ = writeln!(
+        out,
+        "    // The consumer owns the temporalio-sdk #[workflow] body and"
+    );
+    let _ = writeln!(
+        out,
+        "    // implements the matching <Workflow>Definition trait on it."
+    );
+    let _ = writeln!(out);
+
+    for wf in &svc.workflows {
+        render_workflow_definition(out, svc, wf);
+    }
+}
+
+fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
+    let trait_name = format!("{}Definition", wf.rpc_method);
+    let register_fn = format!("register_{}_workflow", wf.rpc_method.to_snake_case());
+    let workflow_const = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
+    let task_queue_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
+    let input_ty = wf.input_type.rust_name();
+    let output_ty = wf.output_type.rust_name();
+
+    let _ = writeln!(out, "    pub trait {trait_name}: 'static {{");
+    let _ = writeln!(out, "        type Input;");
+    let _ = writeln!(out, "        type Output;");
+    let _ = writeln!(
+        out,
+        "        const WORKFLOW_NAME: &'static str = self::{workflow_const};"
+    );
+    let _ = writeln!(
+        out,
+        "        const TASK_QUEUE: &'static str = self::{task_queue_const};"
+    );
+
+    for sref in &wf.attached_signals {
+        if svc.signals.iter().any(|s| s.rpc_method == sref.rpc_method) {
+            let ident = format!("{}_SIGNAL_NAME", sref.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(out, "        const {ident}: &'static str = self::{ident};");
+        }
+    }
+    for qref in &wf.attached_queries {
+        if svc.queries.iter().any(|q| q.rpc_method == qref.rpc_method) {
+            let ident = format!("{}_QUERY_NAME", qref.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(out, "        const {ident}: &'static str = self::{ident};");
+        }
+    }
+    for uref in &wf.attached_updates {
+        if svc.updates.iter().any(|u| u.rpc_method == uref.rpc_method) {
+            let ident = format!("{}_UPDATE_NAME", uref.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(out, "        const {ident}: &'static str = self::{ident};");
+        }
+    }
+
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "    pub fn {register_fn}<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker"
+    );
+    let _ = writeln!(out, "    where");
+    let _ = writeln!(
+        out,
+        "        W: temporal_runtime::worker::WorkflowImplementer + {trait_name}<Input = {input_ty}, Output = {output_ty}>,"
+    );
+    let _ = writeln!(out, "    {{");
+    let _ = writeln!(out, "        worker.register_workflow::<W>()");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// Per-rpc signal/query/update name consts. Emitted under the existing
+/// service module so a consumer's hand-rolled `#[workflow]` impl can reference
+/// generated constants instead of string literals.
 fn render_workflow_handler_name_consts(out: &mut String, svc: &ServiceModel) {
     use heck::ToShoutySnakeCase;
 

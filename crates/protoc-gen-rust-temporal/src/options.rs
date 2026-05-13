@@ -4,20 +4,22 @@
 //! Strict by design: any unknown key is rejected so that typos like
 //! `opt: [worker=true]` (missing `s`) fail loudly instead of silently
 //! emitting nothing. See the cludden-parity reframe design doc for the
-//! full surface; Phase 2 wires only `activities`.
+//! full surface; the worker flags intentionally emit contracts and thin
+//! registration helpers, leaving SDK macro-bearing worker bodies to the
+//! consumer.
 
 use anyhow::{Result, anyhow};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RenderOptions {
     /// Emit the per-service `<Service>Activities` async trait + per-activity
-    /// name consts when the service has activity-annotated methods.
+    /// name consts plus a thin register helper when the service has
+    /// activity-annotated methods.
     pub activities: bool,
-    /// Emit per-rpc signal/query/update name consts at module level so the
-    /// consumer's hand-rolled `#[workflow]` setup can reference them instead
-    /// of string literals. Phase 3.0 (Option C from the spike findings) ships
-    /// name consts only; the workflow trait emit is deferred to Phase 3.1
-    /// pending an adapter prototype against the SDK's `#[workflow]` macro.
+    /// Emit one `<Workflow>Definition` trait per workflow rpc, per-rpc
+    /// signal/query/update name consts, and a thin register helper. The
+    /// consumer still owns the SDK `#[workflow]` / `#[workflow_methods]`
+    /// implementation.
     pub workflows: bool,
     /// Emit a per-service `<service>_cli` module with clap-derive `Cli` +
     /// per-workflow `Start<Workflow>` / `Attach<Workflow>` subcommands.
@@ -71,8 +73,10 @@ mod tests {
 
     #[test]
     fn comma_separated_pairs() {
-        let opts = parse_options("activities=true").unwrap();
+        let opts = parse_options("activities=true,workflows=true,cli=true").unwrap();
         assert!(opts.activities);
+        assert!(opts.workflows);
+        assert!(opts.cli);
     }
 
     #[test]

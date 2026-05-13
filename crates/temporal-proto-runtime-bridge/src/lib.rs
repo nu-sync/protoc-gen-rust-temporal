@@ -173,14 +173,57 @@ fn encode_proto_payload<T: TemporalProtoMessage>(msg: &T) -> Payload {
     }
 }
 
-/// Convenience: decode a single `binary/protobuf` payload back into a prost
-/// message. Metadata mismatch is *not* checked here — the wire-format invariant
-/// is asserted by `temporal-proto-runtime`'s `TemporalDeserializable` impl;
-/// this helper is only reached after the SDK has already validated metadata.
-fn decode_proto_payload<T: TemporalProtoMessage>(
-    payload: &Payload,
-) -> std::result::Result<T, prost::DecodeError> {
-    T::decode(payload.data.as_slice())
+/// Decode a single `binary/protobuf` payload back into a prost message,
+/// enforcing the `WIRE-FORMAT.md` triple. Generated client code calls this
+/// directly — it does NOT go through the SDK's `TemporalDeserializable`
+/// path (which would validate metadata for us), because the SDK returns
+/// raw `Payloads` for the workflow/query/update result helpers we use here.
+/// Skipping the check would let a misconfigured worker hand back arbitrary
+/// bytes that decode as garbage instead of failing loudly.
+fn decode_proto_payload<T: TemporalProtoMessage>(payload: &Payload) -> Result<T> {
+    let encoding = payload.metadata.get("encoding").map(Vec::as_slice);
+    if encoding != Some(ENCODING.as_bytes()) {
+        anyhow::bail!(
+            "payload encoding mismatch: expected {ENCODING:?}, got {:?}",
+            encoding.map(String::from_utf8_lossy),
+        );
+    }
+    let msg_type = payload.metadata.get("messageType").map(Vec::as_slice);
+    if msg_type != Some(T::MESSAGE_TYPE.as_bytes()) {
+        anyhow::bail!(
+            "payload messageType mismatch: expected {:?}, got {:?}",
+            T::MESSAGE_TYPE,
+            msg_type.map(String::from_utf8_lossy),
+        );
+    }
+    T::decode(payload.data.as_slice()).context("decode payload bytes")
+}
+
+/// Build the `(binary/protobuf, google.protobuf.Empty, data=[])` payload
+/// triple that `WIRE-FORMAT.md` mandates for every `google.protobuf.Empty`
+/// input.
+///
+/// **Do NOT replace this with `RawValue::new(vec![])`.** Sending a
+/// payload-less `RawValue` looks like "no input" on the wire, which the
+/// Go SDK's `ProtoPayloadConverter` does not produce for an `Empty`
+/// message — cludden's Go workers and clients always emit the Empty
+/// triple even when the message has no fields. Mixed-language workflows
+/// would silently fail to encode/decode otherwise.
+const EMPTY_MESSAGE_TYPE: &str = "google.protobuf.Empty";
+fn encode_empty_payload() -> Payload {
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("encoding".to_string(), ENCODING.as_bytes().to_vec());
+    metadata.insert(
+        "messageType".to_string(),
+        EMPTY_MESSAGE_TYPE.as_bytes().to_vec(),
+    );
+    Payload {
+        metadata,
+        // google.protobuf.Empty has no fields — wire-bytes are empty by
+        // construction, NOT because the payload itself is missing.
+        data: vec![],
+        external_payloads: vec![],
+    }
 }
 
 // ── Client construction ────────────────────────────────────────────────
@@ -281,7 +324,7 @@ pub async fn start_workflow_proto_empty(
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
 ) -> Result<WorkflowHandle> {
-    let raw = RawValue::new(vec![]);
+    let raw = RawValue::new(vec![encode_empty_payload()]);
     let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
         .maybe_execution_timeout(execution_timeout)
         .maybe_run_timeout(run_timeout)
@@ -321,12 +364,46 @@ where
 }
 
 /// Wait variant for workflows that return `google.protobuf.Empty`.
+/// Validates the returned payload carries the `(binary/protobuf,
+/// google.protobuf.Empty, data=[])` triple — same wire-format invariant as
+/// the typed path, applied to the empty case so a worker that returns a
+/// non-empty result can't silently round-trip as success.
 pub async fn wait_result_unit(handle: &WorkflowHandle) -> Result<()> {
-    handle
+    let raw = handle
         .untyped()
         .get_result(WorkflowGetResultOptions::builder().build())
         .await
         .context("await workflow result")?;
+    let payload = raw
+        .payloads
+        .first()
+        .context("workflow returned no payloads")?;
+    validate_empty_payload(payload).context("validate workflow output")
+}
+
+/// Enforce the `(binary/protobuf, google.protobuf.Empty, data=[])` triple
+/// that `WIRE-FORMAT.md` mandates for any `google.protobuf.Empty` payload.
+fn validate_empty_payload(payload: &Payload) -> Result<()> {
+    let encoding = payload.metadata.get("encoding").map(Vec::as_slice);
+    if encoding != Some(ENCODING.as_bytes()) {
+        anyhow::bail!(
+            "empty payload encoding mismatch: expected {ENCODING:?}, got {:?}",
+            encoding.map(String::from_utf8_lossy),
+        );
+    }
+    let msg_type = payload.metadata.get("messageType").map(Vec::as_slice);
+    if msg_type != Some(EMPTY_MESSAGE_TYPE.as_bytes()) {
+        anyhow::bail!(
+            "empty payload messageType mismatch: expected {EMPTY_MESSAGE_TYPE:?}, got {:?}",
+            msg_type.map(String::from_utf8_lossy),
+        );
+    }
+    if !payload.data.is_empty() {
+        anyhow::bail!(
+            "empty payload carried {} byte(s) of data — google.protobuf.Empty has no fields",
+            payload.data.len(),
+        );
+    }
     Ok(())
 }
 
@@ -353,7 +430,7 @@ where
 
 /// Send a signal whose input is `google.protobuf.Empty`.
 pub async fn signal_unit(handle: &WorkflowHandle, name: &str) -> Result<()> {
-    let raw = RawValue::new(vec![]);
+    let raw = RawValue::new(vec![encode_empty_payload()]);
     handle
         .untyped()
         .signal(
@@ -397,7 +474,7 @@ pub async fn query_proto_empty<O>(handle: &WorkflowHandle, name: &str) -> Result
 where
     O: TemporalProtoMessage,
 {
-    let raw_input = RawValue::new(vec![]);
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
     let raw_out: RawValue = handle
         .untyped()
         .query(
@@ -412,6 +489,50 @@ where
         .first()
         .context("query returned no payloads")?;
     decode_proto_payload::<O>(payload).context("decode query output")
+}
+
+/// Run a query whose output is `google.protobuf.Empty`. Mirrors
+/// [`wait_result_unit`] — the response payload must be the canonical Empty
+/// triple, so a non-empty result can't silently round-trip as success.
+pub async fn query_unit<I>(handle: &WorkflowHandle, name: &str, input: &I) -> Result<()>
+where
+    I: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw_input = RawValue::new(vec![payload]);
+    let raw_out: RawValue = handle
+        .untyped()
+        .query(
+            UntypedQuery::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowQueryOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("run query {name}"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("query returned no payloads")?;
+    validate_empty_payload(payload).context("validate query output")
+}
+
+/// Run a query whose input and output are both `google.protobuf.Empty`.
+pub async fn query_proto_empty_unit(handle: &WorkflowHandle, name: &str) -> Result<()> {
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
+    let raw_out: RawValue = handle
+        .untyped()
+        .query(
+            UntypedQuery::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowQueryOptions::builder().build(),
+        )
+        .await
+        .with_context(|| format!("run query {name}"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("query returned no payloads")?;
+    validate_empty_payload(payload).context("validate query output")
 }
 
 // ── Updates ────────────────────────────────────────────────────────────
@@ -468,7 +589,7 @@ pub async fn update_proto_empty<O>(
 where
     O: TemporalProtoMessage,
 {
-    let raw_input = RawValue::new(vec![]);
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
     let update_handle = handle
         .untyped()
         .start_update(
@@ -489,6 +610,70 @@ where
         .first()
         .context("update returned no payloads")?;
     decode_proto_payload::<O>(payload).context("decode update output")
+}
+
+/// Send an update whose output is `google.protobuf.Empty`. Mirrors
+/// [`wait_result_unit`].
+pub async fn update_unit<I>(
+    handle: &WorkflowHandle,
+    name: &str,
+    input: &I,
+    wait_policy: WaitPolicy,
+) -> Result<()>
+where
+    I: TemporalProtoMessage,
+{
+    let payload = encode_proto_payload(input);
+    let raw_input = RawValue::new(vec![payload]);
+    let update_handle = handle
+        .untyped()
+        .start_update(
+            UntypedUpdate::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowStartUpdateOptions::builder()
+                .wait_for_stage(wait_stage_from(wait_policy))
+                .build(),
+        )
+        .await
+        .with_context(|| format!("start update {name}"))?;
+    let raw_out: RawValue = update_handle
+        .get_result()
+        .await
+        .with_context(|| format!("await update {name} result"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("update returned no payloads")?;
+    validate_empty_payload(payload).context("validate update output")
+}
+
+/// Send an update whose input and output are both `google.protobuf.Empty`.
+pub async fn update_proto_empty_unit(
+    handle: &WorkflowHandle,
+    name: &str,
+    wait_policy: WaitPolicy,
+) -> Result<()> {
+    let raw_input = RawValue::new(vec![encode_empty_payload()]);
+    let update_handle = handle
+        .untyped()
+        .start_update(
+            UntypedUpdate::<UntypedWorkflow>::new(name),
+            raw_input,
+            WorkflowStartUpdateOptions::builder()
+                .wait_for_stage(wait_stage_from(wait_policy))
+                .build(),
+        )
+        .await
+        .with_context(|| format!("start update {name}"))?;
+    let raw_out: RawValue = update_handle
+        .get_result()
+        .await
+        .with_context(|| format!("await update {name} result"))?;
+    let payload = raw_out
+        .payloads
+        .first()
+        .context("update returned no payloads")?;
+    validate_empty_payload(payload).context("validate update output")
 }
 
 // ── With-start helpers ─────────────────────────────────────────────────
@@ -707,6 +892,156 @@ where
     ))
 }
 
+/// Sibling of [`update_with_start_workflow_proto`] for updates whose output
+/// is `google.protobuf.Empty`. The plugin routes here when the update rpc's
+/// return type is Empty, since `()` does not implement [`TemporalProtoMessage`]
+/// and cannot be substituted for the `O` generic on the typed variant.
+#[allow(clippy::too_many_arguments)]
+pub async fn update_with_start_workflow_proto_unit<W, U>(
+    client: &TemporalClient,
+    workflow_name: &'static str,
+    workflow_id: &str,
+    task_queue: &str,
+    workflow_input: &W,
+    update_name: &str,
+    update_input: &U,
+    wait_policy: WaitPolicy,
+    id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    execution_timeout: Option<Duration>,
+    run_timeout: Option<Duration>,
+    task_timeout: Option<Duration>,
+) -> Result<WorkflowHandle>
+where
+    W: TemporalProtoMessage,
+    U: TemporalProtoMessage,
+{
+    let sdk_client = client.sdk();
+    let namespace = sdk_client.namespace();
+    let identity = sdk_client.identity();
+
+    let workflow_payload = encode_proto_payload(workflow_input);
+    let update_payload = encode_proto_payload(update_input);
+
+    let id_reuse = id_reuse_policy
+        .map(sdk_enums::WorkflowIdReusePolicy::from)
+        .unwrap_or(sdk_enums::WorkflowIdReusePolicy::Unspecified) as i32;
+
+    let start = StartWorkflowExecutionRequest {
+        namespace: namespace.clone(),
+        workflow_id: workflow_id.to_string(),
+        workflow_type: Some(WorkflowType {
+            name: workflow_name.to_string(),
+        }),
+        task_queue: Some(TaskQueue {
+            name: task_queue.to_string(),
+            kind: TaskQueueKind::Unspecified as i32,
+            normal_name: String::new(),
+        }),
+        input: Some(Payloads {
+            payloads: vec![workflow_payload],
+        }),
+        workflow_execution_timeout: execution_timeout.and_then(|d| d.try_into().ok()),
+        workflow_run_timeout: run_timeout.and_then(|d| d.try_into().ok()),
+        workflow_task_timeout: task_timeout.and_then(|d| d.try_into().ok()),
+        workflow_id_reuse_policy: id_reuse,
+        workflow_id_conflict_policy: WorkflowIdConflictPolicy::UseExisting as i32,
+        request_id: uuid::Uuid::new_v4().to_string(),
+        identity: identity.clone(),
+        ..Default::default()
+    };
+
+    let update_request = UpdateWorkflowExecutionRequest {
+        namespace: namespace.clone(),
+        workflow_execution: Some(WorkflowExecution {
+            workflow_id: workflow_id.to_string(),
+            run_id: String::new(),
+        }),
+        wait_policy: Some(ProtoWaitPolicy {
+            lifecycle_stage: sdk_enums::UpdateWorkflowExecutionLifecycleStage::from(wait_policy)
+                as i32,
+        }),
+        request: Some(update::Request {
+            meta: Some(update::Meta {
+                update_id: uuid::Uuid::new_v4().to_string(),
+                identity: identity.clone(),
+            }),
+            input: Some(update::Input {
+                header: None,
+                name: update_name.to_string(),
+                args: Some(Payloads {
+                    payloads: vec![update_payload],
+                }),
+            }),
+        }),
+        ..Default::default()
+    };
+
+    let req = ExecuteMultiOperationRequest {
+        namespace: namespace.clone(),
+        operations: vec![
+            Operation {
+                operation: Some(OperationKind::StartWorkflow(start)),
+            },
+            Operation {
+                operation: Some(OperationKind::UpdateWorkflow(update_request)),
+            },
+        ],
+        resource_id: workflow_id.to_string(),
+    };
+
+    let response =
+        WorkflowService::execute_multi_operation(&mut sdk_client.clone(), req.into_request())
+            .await
+            .with_context(|| format!("update-with-start workflow {workflow_name}"))?
+            .into_inner();
+
+    let start_resp = response
+        .responses
+        .first()
+        .and_then(|r| r.response.as_ref())
+        .context("execute_multi_operation: missing start response")?;
+    let update_resp = response
+        .responses
+        .get(1)
+        .and_then(|r| r.response.as_ref())
+        .context("execute_multi_operation: missing update response")?;
+
+    let run_id = match start_resp {
+        RespKind::StartWorkflow(r) => r.run_id.clone(),
+        RespKind::UpdateWorkflow(_) => {
+            anyhow::bail!("execute_multi_operation: response[0] was not StartWorkflow")
+        }
+    };
+    let update_payloads = match update_resp {
+        RespKind::UpdateWorkflow(r) => r
+            .outcome
+            .as_ref()
+            .and_then(|o| match &o.value {
+                Some(update::outcome::Value::Success(s)) => Some(s.payloads.clone()),
+                _ => None,
+            })
+            .context("execute_multi_operation: update outcome had no success payloads")?,
+        RespKind::StartWorkflow(_) => {
+            anyhow::bail!("execute_multi_operation: response[1] was not UpdateWorkflow")
+        }
+    };
+
+    let update_payload = update_payloads
+        .first()
+        .context("update returned no payloads")?;
+    validate_empty_payload(update_payload).context("validate update output")?;
+
+    Ok(WorkflowHandle {
+        client: client.clone(),
+        workflow_id: workflow_id.to_string(),
+        run_id: if run_id.is_empty() {
+            None
+        } else {
+            Some(run_id)
+        },
+    })
+}
+
 // ── Worker primitives (feature = "worker") ─────────────────────────────
 
 /// Re-exports of the SDK worker primitives used by consumers wiring the
@@ -724,6 +1059,7 @@ pub mod worker {
     pub use temporalio_sdk::activities::{
         ActivityContext, ActivityDefinitions, ActivityError, ActivityImplementer,
     };
+    pub use temporalio_sdk::workflows::WorkflowImplementer;
 }
 
 /// Top-level re-export so plugin-emitted code can resolve
@@ -753,6 +1089,32 @@ mod tests {
         const MESSAGE_TYPE: &'static str = "test.v1.Sample";
     }
 
+    // Regression guard for the wire-format contract: every empty-input
+    // bridge helper MUST emit the `(binary/protobuf, google.protobuf.Empty,
+    // data=[])` payload triple — *not* an absent payload. A previous
+    // implementation passed `RawValue::new(vec![])` and silently dropped
+    // the metadata, which broke mixed-language interop with cludden's Go
+    // workers (they always emit the Empty triple).
+    #[test]
+    fn empty_payload_carries_the_full_triple() {
+        let payload = encode_empty_payload();
+        assert_eq!(
+            payload.metadata.get("encoding").map(Vec::as_slice),
+            Some(b"binary/protobuf".as_slice()),
+            "encoding metadata must be present"
+        );
+        assert_eq!(
+            payload.metadata.get("messageType").map(Vec::as_slice),
+            Some(b"google.protobuf.Empty".as_slice()),
+            "messageType must name google.protobuf.Empty"
+        );
+        assert!(
+            payload.data.is_empty(),
+            "Empty's serialized wire bytes are zero length by construction"
+        );
+        assert!(payload.external_payloads.is_empty());
+    }
+
     #[test]
     fn encode_decode_round_trip() {
         let original = Sample {
@@ -769,6 +1131,89 @@ mod tests {
         );
         let decoded: Sample = decode_proto_payload(&payload).expect("decode");
         assert_eq!(decoded, original);
+    }
+
+    // Regression guards for the bridge's wire-format decode contract. The
+    // SDK hands us raw `Payloads` for workflow/query/update results — it
+    // does NOT run them through `TemporalDeserializable`, so the metadata
+    // check has to live in the bridge or it doesn't run at all.
+    #[test]
+    fn decode_rejects_wrong_encoding() {
+        let mut payload = encode_proto_payload(&Sample { name: "x".into() });
+        payload
+            .metadata
+            .insert("encoding".to_string(), b"json/plain".to_vec());
+        let err = decode_proto_payload::<Sample>(&payload)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("encoding mismatch"),
+            "expected encoding-mismatch diagnostic, got: {err}"
+        );
+    }
+
+    #[test]
+    fn decode_rejects_wrong_message_type() {
+        let mut payload = encode_proto_payload(&Sample { name: "x".into() });
+        payload
+            .metadata
+            .insert("messageType".to_string(), b"other.v1.Wrong".to_vec());
+        let err = decode_proto_payload::<Sample>(&payload)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("messageType mismatch"),
+            "expected messageType-mismatch diagnostic, got: {err}"
+        );
+    }
+
+    #[test]
+    fn decode_rejects_missing_metadata() {
+        let payload = Payload {
+            metadata: std::collections::HashMap::new(),
+            data: prost::Message::encode_to_vec(&Sample { name: "x".into() }),
+            external_payloads: vec![],
+        };
+        let err = decode_proto_payload::<Sample>(&payload)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("encoding mismatch"),
+            "expected diagnostic when metadata is missing, got: {err}"
+        );
+    }
+
+    // Regression guards for `wait_result_unit`'s payload validation. A
+    // worker that returns a non-empty payload from a workflow declared to
+    // return Empty must fail the wait, not silently round-trip as success.
+    #[test]
+    fn validate_empty_accepts_canonical_triple() {
+        let payload = encode_empty_payload();
+        validate_empty_payload(&payload).expect("canonical Empty triple must validate");
+    }
+
+    #[test]
+    fn validate_empty_rejects_non_empty_data() {
+        let mut payload = encode_empty_payload();
+        payload.data = vec![0x01];
+        let err = validate_empty_payload(&payload).unwrap_err().to_string();
+        assert!(
+            err.contains("byte"),
+            "expected non-empty-data diagnostic, got: {err}"
+        );
+    }
+
+    #[test]
+    fn validate_empty_rejects_typed_message_type() {
+        let mut payload = encode_empty_payload();
+        payload
+            .metadata
+            .insert("messageType".to_string(), b"test.v1.Sample".to_vec());
+        let err = validate_empty_payload(&payload).unwrap_err().to_string();
+        assert!(
+            err.contains("messageType mismatch"),
+            "expected messageType-mismatch diagnostic, got: {err}"
+        );
     }
 
     #[test]

@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package workerfull.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service OrchestrationService {
+  option (temporal.v1.service) = {
+    task_queue: "worker-full"
+  };
+
+  rpc Run(RunInput) returns (RunOutput) {
+    option (temporal.v1.workflow) = {
+      signal: [{ ref: "Cancel" }]
+      query:  [{ ref: "Status" }]
+      update: [{ ref: "Confirm" }]
+    };
+  }
+
+  rpc Cancel(CancelInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc Confirm(ConfirmInput) returns (ConfirmOutput) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc Load(LoadInput) returns (LoadOutput) {
+    option (temporal.v1.activity) = {};
+  }
+}
+
+message RunInput {
+  string id = 1;
+}
+
+message RunOutput {
+  string result = 1;
+}
+
+message CancelInput {
+  string reason = 1;
+}
+
+message StatusOutput {
+  string state = 1;
+}
+
+message ConfirmInput {
+  string token = 1;
+}
+
+message ConfirmOutput {
+  bool accepted = 1;
+}
+
+message LoadInput {
+  string key = 1;
+}
+
+message LoadOutput {
+  bytes value = 1;
+}

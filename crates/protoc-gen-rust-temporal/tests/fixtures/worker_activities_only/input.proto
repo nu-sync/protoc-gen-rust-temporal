@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package workeract.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+service ActivityWorkerService {
+  rpc Fetch(FetchInput) returns (FetchOutput) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {};
+  }
+}
+
+message FetchInput {
+  string key = 1;
+}
+
+message FetchOutput {
+  bytes value = 1;
+}

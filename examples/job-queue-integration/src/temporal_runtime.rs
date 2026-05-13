@@ -16,6 +16,26 @@ use std::time::Duration;
 use anyhow::Result;
 pub use temporal_proto_runtime::{TemporalProtoMessage, TypedProtoMessage};
 
+pub struct ActivityContext;
+
+pub mod worker {
+    pub struct Worker;
+
+    pub trait ActivityImplementer {}
+
+    pub trait WorkflowImplementer {}
+
+    impl Worker {
+        pub fn register_activities<I: ActivityImplementer>(&mut self, _impl: I) -> &mut Self {
+            self
+        }
+
+        pub fn register_workflow<W: WorkflowImplementer>(&mut self) -> &mut Self {
+            self
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct TemporalClient {
     // e.g. inner: temporalio_client::Client,
@@ -78,6 +98,16 @@ pub async fn start_workflow_proto<I: TemporalProtoMessage>(
 /// Empty-input variant of [`start_workflow_proto`]. The plugin emits a call
 /// to this function when a workflow's input is `google.protobuf.Empty`,
 /// avoiding the need to express `()` as a `TemporalProtoMessage`.
+///
+/// **Wire-format contract:** even though there is no `&I` payload arg,
+/// the bridge MUST encode an `(encoding="binary/protobuf",
+/// messageType="google.protobuf.Empty", data=[])` payload onto the
+/// outgoing `StartWorkflow` request. See `docs/RUNTIME-API.md` →
+/// "Empty-input contract" and `WIRE-FORMAT.md` for why a payload-less
+/// `RawValue` is not equivalent and silently breaks mixed-language
+/// (Rust + Go) interop. The default bridge crate
+/// (`temporal-proto-runtime-bridge`) gets this right out of the box;
+/// hand-rolled bridges must too.
 #[allow(clippy::too_many_arguments)]
 pub async fn start_workflow_proto_empty(
     _client: &TemporalClient,
@@ -127,6 +157,18 @@ pub async fn query_proto_empty<O: TemporalProtoMessage>(
     todo!("handle.query(name, Empty).await")
 }
 
+pub async fn query_unit<I: TemporalProtoMessage>(
+    _handle: &WorkflowHandle,
+    _query_name: &str,
+    _input: &I,
+) -> Result<()> {
+    todo!("handle.query(name, input).await — validate Empty response")
+}
+
+pub async fn query_proto_empty_unit(_handle: &WorkflowHandle, _query_name: &str) -> Result<()> {
+    todo!("handle.query(name, Empty).await — validate Empty response")
+}
+
 pub async fn update_proto<I: TemporalProtoMessage, O: TemporalProtoMessage>(
     _handle: &WorkflowHandle,
     _update_name: &str,
@@ -142,6 +184,23 @@ pub async fn update_proto_empty<O: TemporalProtoMessage>(
     _wait_policy: WaitPolicy,
 ) -> Result<O> {
     todo!("handle.update(name, Empty, wait_policy).await")
+}
+
+pub async fn update_unit<I: TemporalProtoMessage>(
+    _handle: &WorkflowHandle,
+    _update_name: &str,
+    _input: &I,
+    _wait_policy: WaitPolicy,
+) -> Result<()> {
+    todo!("handle.update(name, input, wait_policy).await — validate Empty response")
+}
+
+pub async fn update_proto_empty_unit(
+    _handle: &WorkflowHandle,
+    _update_name: &str,
+    _wait_policy: WaitPolicy,
+) -> Result<()> {
+    todo!("handle.update(name, Empty, wait_policy).await — validate Empty response")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -181,4 +240,25 @@ pub async fn update_with_start_workflow_proto<
     _task_timeout: Option<Duration>,
 ) -> Result<(WorkflowHandle, O)> {
     todo!("client.update_with_start_workflow_execution(...)")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn update_with_start_workflow_proto_unit<
+    W: TemporalProtoMessage,
+    U: TemporalProtoMessage,
+>(
+    _client: &TemporalClient,
+    _workflow_name: &'static str,
+    _workflow_id: &str,
+    _task_queue: &str,
+    _workflow_input: &W,
+    _update_name: &str,
+    _update_input: &U,
+    _wait_policy: WaitPolicy,
+    _id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    _execution_timeout: Option<Duration>,
+    _run_timeout: Option<Duration>,
+    _task_timeout: Option<Duration>,
+) -> Result<WorkflowHandle> {
+    todo!("client.update_with_start_workflow_execution(...) — validate Empty response")
 }

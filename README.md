@@ -1,6 +1,6 @@
 # protoc-gen-rust-temporal
 
-[![status](https://img.shields.io/badge/status-Phase%200%20bootstrap-orange)](./SPEC.md)
+[![status](https://img.shields.io/badge/status-Phase%205%20validated-green)](./SPEC.md)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 A `protoc` plugin that reads
@@ -8,9 +8,10 @@ A `protoc` plugin that reads
 annotations (`temporal.v1.*`) from a proto service definition and emits a
 typed **Rust** [Temporal](https://temporal.io) client.
 
-> **Status:** Phase 0 / bootstrap. The repo carries the scaffolding,
-> vendored annotation schema, and wire-format spec. Code-emission is wired
-> in later phases — see [`SPEC.md`](./SPEC.md) for the delivery plan.
+> **Status:** Phase 5 complete. The plugin emits typed client, update,
+> signal-with-start, activity, workflow-registration, and CLI scaffold code;
+> the job-queue external consumer has migrated to the generated contracts.
+> BSR remote-plugin distribution is still in progress — see [`SPEC.md`](./SPEC.md).
 
 ## What it does
 
@@ -58,8 +59,9 @@ into `bufbuild/plugins`.
 
 ```yaml
 # buf.gen.yaml
+version: v2
 plugins:
-  - local: protoc-gen-rust-temporal
+  - remote: buf.build/nu-sync/rust-temporal
     out: src/gen
 ```
 
@@ -67,7 +69,7 @@ Add the runtime helper to your crate's `Cargo.toml`:
 
 ```toml
 [dependencies]
-temporal-proto-runtime = "0.0"
+temporal-proto-runtime = "0.1"
 ```
 
 ## Wire format

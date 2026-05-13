@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package eoqu.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// Pins the emit path for query/update rpcs whose **output** is
+// `google.protobuf.Empty`. Previously the model layer mapped `Empty` to
+// `()` via `ProtoType::rust_name()` and render emitted
+// `query_proto::<I, ()>` / `update_proto::<I, ()>` /
+// `update_with_start_workflow_proto::<W, U, ()>`. Those helpers require
+// `O: TemporalProtoMessage`, which `()` cannot satisfy — so the generated
+// code did not compile in the empty-output case.
+//
+// The fix is empty-output sibling helpers (`query_unit`, `update_unit`,
+// `update_with_start_workflow_proto_unit`) that validate the canonical
+// Empty payload, plus matching render-time dispatch on
+// `output_type.is_empty`. This fixture covers all four corners
+// (typed/empty × typed/empty for input/output) on both query and update,
+// plus an update-with-start whose update output is Empty.
+service EoquService {
+  rpc Run(RunInput) returns (RunOutput) {
+    option (temporal.v1.workflow) = {
+      task_queue: "eoqu"
+      query:  [
+        { ref: "Ack" },
+        { ref: "AckEmpty" }
+      ]
+      update: [
+        { ref: "Touch" },
+        { ref: "TouchEmpty" },
+        { ref: "TouchEmptyStart", start: true }
+      ]
+    };
+  }
+
+  // Empty output, typed input.
+  rpc Ack(AckInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.query) = {};
+  }
+
+  // Empty output, empty input.
+  rpc AckEmpty(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.query) = {};
+  }
+
+  // Empty output, typed input.
+  rpc Touch(TouchInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.update) = {};
+  }
+
+  // Empty output, empty input.
+  rpc TouchEmpty(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.update) = {};
+  }
+
+  // Empty output update with start — exercises the
+  // `update_with_start_workflow_proto_unit` emit arm.
+  rpc TouchEmptyStart(TouchInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.update) = {};
+  }
+}
+
+message RunInput   { string name = 1; }
+message RunOutput  { string id   = 1; }
+message AckInput   { string tag  = 1; }
+message TouchInput { int32  step = 1; }
