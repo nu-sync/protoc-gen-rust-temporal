@@ -2194,6 +2194,63 @@ fn matching_signal_ref_cli_overrides_across_workflows_pass_validation() {
 }
 
 #[test]
+fn workflow_task_queue_with_space_fails_validation() {
+    // Task queue names with embedded whitespace make worker
+    // assignment nearly impossible to diagnose. Reject at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package tq_ws.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "my queue" };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("whitespace in task_queue must be rejected")
+        .to_string();
+    assert!(
+        err.contains("task_queue") && err.contains("whitespace") && err.contains("Run"),
+        "diagnostic must name site + flavour + workflow, got: {err}"
+    );
+}
+
+#[test]
+fn service_level_task_queue_with_newline_fails_validation() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package tq_nl.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "bad\nqueue" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {};
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("control char in service task_queue must be rejected")
+        .to_string();
+    assert!(
+        err.contains("service-level") && err.contains("control"),
+        "diagnostic must name site + control flavour, got: {err}"
+    );
+}
+
+#[test]
 fn workflow_cli_name_with_space_fails_validation() {
     // clap subcommand names must be a single shell token — a value
     // with a space splits into two args at runtime. Reject at codegen.

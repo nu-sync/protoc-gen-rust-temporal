@@ -18,9 +18,57 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
     reject_workflow_cli_name_collisions(model)?;
     reject_unprintable_registered_names(model)?;
     reject_unusable_cli_overrides(model)?;
+    reject_unprintable_task_queues(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
+    Ok(())
+}
+
+/// Reject `task_queue:` values that contain whitespace or control
+/// characters. Temporal accepts them on the wire, but task-queue
+/// names with embedded newlines / tabs make worker assignments
+/// near-impossible to diagnose ("worker on queue \"foo\\nbar\"
+/// didn't pick up the task" doesn't render readably anywhere).
+/// Service-level and workflow-level task queues, plus per-activity
+/// task_queue overrides, all flow through this check.
+fn reject_unprintable_task_queues(model: &ServiceModel) -> Result<()> {
+    fn check(model_service: &str, site: &str, value: &str) -> Result<()> {
+        if value.is_empty() {
+            bail!(
+                "{model_service}: {site} task_queue is empty — set a non-empty value or omit the field",
+            );
+        }
+        for c in value.chars() {
+            if c.is_whitespace() || c.is_control() {
+                bail!(
+                    "{model_service}: {site} task_queue {value:?} contains whitespace / control character `{c:?}` — Temporal task queue names must be a single visible token",
+                );
+            }
+        }
+        Ok(())
+    }
+    if let Some(tq) = model.default_task_queue.as_deref() {
+        check(&model.service, "service-level", tq)?;
+    }
+    for wf in &model.workflows {
+        if let Some(tq) = wf.task_queue.as_deref() {
+            check(&model.service, &format!("workflow `{}`", wf.rpc_method), tq)?;
+        }
+    }
+    for act in &model.activities {
+        if let Some(tq) = act
+            .default_options
+            .as_ref()
+            .and_then(|s| s.task_queue.as_deref())
+        {
+            check(
+                &model.service,
+                &format!("activity `{}`", act.rpc_method),
+                tq,
+            )?;
+        }
+    }
     Ok(())
 }
 

@@ -358,6 +358,21 @@ Progress:
   goldens reblessed (every workflows=true fixture's Definition trait
   gained the two new const lines). 154 parse_validate tests green.
   No bridge signature change.
+- 2026-05-13 (R1 — reject unprintable / empty task_queue values):
+  parallel of the registered-name printable-token check, applied to
+  every `task_queue:` site: service-level
+  `(temporal.v1.service).task_queue`, per-workflow
+  `(temporal.v1.workflow).task_queue`, and per-activity
+  `(temporal.v1.activity).task_queue`. Empty values get a clear
+  "set a non-empty value or omit the field" diagnostic; values
+  containing `is_whitespace()` or `is_control()` characters get
+  the offending character debug-quoted so the bad value is
+  immediately visible. Temporal accepts these on the wire but they
+  break worker-assignment debugging — "worker on queue 'foo\nbar'
+  didn't pick up the task" doesn't render readably anywhere. Two
+  new positive parse_validate tests pin a workflow-level space and
+  a service-level newline rejection. 173 parse_validate tests
+  green. No bridge signature change; no fixture goldens touched.
 - 2026-05-13 (R6/R1 — reject unusable cli override values):
   every CLI override site now goes through a printable-token check
   at validate. Rejects empty strings (clap can't use them as
