@@ -1698,6 +1698,87 @@ fn workflow_attached_handler_name_consts_emit() {
 }
 
 #[test]
+fn duplicate_activity_registered_name_fails_validation() {
+    // Two activities registering under the same Temporal name would
+    // silently dedupe at the worker — refuse at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package dup_act.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc AlphaWork(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              name: "shared-activity"
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+          rpc BetaWork(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              name: "shared-activity"
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("duplicate activity registered_name must be rejected")
+        .to_string();
+    assert!(
+        err.contains("activity")
+            && err.contains("shared-activity")
+            && err.contains("AlphaWork")
+            && err.contains("BetaWork"),
+        "diagnostic must name kind + value + both rpcs, got: {err}"
+    );
+}
+
+#[test]
+fn duplicate_signal_registered_name_fails_validation() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package dup_sig.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Halt" }, { ref: "Stop" }]
+            };
+          }
+          rpc Halt(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = { name: "shared-signal" };
+          }
+          rpc Stop(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = { name: "shared-signal" };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("duplicate signal registered_name must be rejected")
+        .to_string();
+    assert!(
+        err.contains("signal")
+            && err.contains("shared-signal")
+            && err.contains("Halt")
+            && err.contains("Stop"),
+        "diagnostic must name kind + value + both rpcs, got: {err}"
+    );
+}
+
+#[test]
 fn workflow_alias_collision_across_workflows_fails_validation() {
     // Two workflows on the same service can't share a Temporal name —
     // would register both under the same name and route to either at

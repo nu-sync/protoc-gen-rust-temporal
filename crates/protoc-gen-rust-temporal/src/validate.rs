@@ -13,10 +13,109 @@ use crate::model::ServiceModel;
 pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) -> Result<()> {
     reject_rpc_collisions(model)?;
     reject_workflow_alias_collisions_across_workflows(model)?;
+    reject_handler_registered_name_collisions(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
     Ok(())
+}
+
+/// Two activities (or signals, queries, updates) on the same service
+/// cannot share a `registered_name` — workers would silently dispatch
+/// one or the other depending on registration order. Cross-kind
+/// collisions are fine (workflow "Foo" + signal "Foo" are distinct
+/// Temporal namespaces); we only enforce intra-kind uniqueness here.
+/// Workflow registered_name collisions are caught by the broader
+/// alias-collision check above.
+fn reject_handler_registered_name_collisions(model: &ServiceModel) -> Result<()> {
+    fn check_kind<'a, I, F>(model: &ServiceModel, kind: &str, items: I, get: F) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a (dyn HandlerName + 'a)>,
+        F: Fn(&dyn HandlerName) -> &str,
+    {
+        let _ = get; // kept for symmetry with the closure-based pattern.
+        let mut seen: HashMap<&str, &str> = HashMap::new();
+        for item in items {
+            let name = item.registered_name();
+            if let Some(prior) = seen.insert(name, item.rpc_method()) {
+                bail!(
+                    "{}: two distinct {kind} rpcs (`{prior}` and `{later}`) register under the same Temporal name `{name}` — rename one or remove the duplicate",
+                    model.service,
+                    later = item.rpc_method(),
+                );
+            }
+        }
+        Ok(())
+    }
+    let acts: Vec<&dyn HandlerName> = model
+        .activities
+        .iter()
+        .map(|a| a as &dyn HandlerName)
+        .collect();
+    let sigs: Vec<&dyn HandlerName> = model
+        .signals
+        .iter()
+        .map(|s| s as &dyn HandlerName)
+        .collect();
+    let qs: Vec<&dyn HandlerName> = model
+        .queries
+        .iter()
+        .map(|q| q as &dyn HandlerName)
+        .collect();
+    let us: Vec<&dyn HandlerName> = model
+        .updates
+        .iter()
+        .map(|u| u as &dyn HandlerName)
+        .collect();
+    check_kind(model, "activity", acts.iter().copied(), |h| {
+        h.registered_name()
+    })?;
+    check_kind(model, "signal", sigs.iter().copied(), |h| {
+        h.registered_name()
+    })?;
+    check_kind(model, "query", qs.iter().copied(), |h| h.registered_name())?;
+    check_kind(model, "update", us.iter().copied(), |h| h.registered_name())?;
+    Ok(())
+}
+
+/// Small trait so the registered-name collision check can iterate
+/// over each handler kind uniformly without duplicating the loop body.
+trait HandlerName {
+    fn rpc_method(&self) -> &str;
+    fn registered_name(&self) -> &str;
+}
+
+impl HandlerName for crate::model::ActivityModel {
+    fn rpc_method(&self) -> &str {
+        &self.rpc_method
+    }
+    fn registered_name(&self) -> &str {
+        &self.registered_name
+    }
+}
+impl HandlerName for crate::model::SignalModel {
+    fn rpc_method(&self) -> &str {
+        &self.rpc_method
+    }
+    fn registered_name(&self) -> &str {
+        &self.registered_name
+    }
+}
+impl HandlerName for crate::model::QueryModel {
+    fn rpc_method(&self) -> &str {
+        &self.rpc_method
+    }
+    fn registered_name(&self) -> &str {
+        &self.registered_name
+    }
+}
+impl HandlerName for crate::model::UpdateModel {
+    fn rpc_method(&self) -> &str {
+        &self.rpc_method
+    }
+    fn registered_name(&self) -> &str {
+        &self.registered_name
+    }
 }
 
 /// Reject when two workflows on the same service register under the

@@ -239,6 +239,20 @@ Progress:
   total. Several fixture goldens reblessed (every fixture with
   workflow-attached handlers gained the corresponding const block).
   No bridge signature change.
+- 2026-05-13 (R1 — handler `registered_name` collision validation):
+  extends the workflow-side collision check to activities, signals,
+  queries, and updates. Two rpcs of the same kind on the same
+  service can no longer register under the same Temporal name —
+  either both omitting `name` and collapsing to the same default,
+  or both setting the same explicit name. Refused at codegen with
+  a diagnostic naming the kind, both offending rpcs, and the
+  colliding literal. Cross-kind collisions stay allowed (workflow
+  "Foo" and signal "Foo" are distinct Temporal namespaces). New
+  `reject_handler_registered_name_collisions` in `validate.rs`
+  iterates each kind via a small `HandlerName` trait so the loop
+  body stays single-source. Two new positive parse_validate tests
+  pin activity and signal collision rejections. 136 parse_validate
+  tests green.
 - 2026-05-13 (R1 — cross-workflow alias collision validation):
   extends the per-workflow alias-collision parse check (previous
   commit) to a service-wide validation pass: two workflows on the
