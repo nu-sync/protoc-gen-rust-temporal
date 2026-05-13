@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — service-level name aggregates on `<Service>Client`):
+  the generated `<Service>Client` now exposes five aggregate
+  `&'static [&'static str]` consts: `WORKFLOW_NAMES`, `SIGNAL_NAMES`,
+  `QUERY_NAMES`, `UPDATE_NAMES`, `ACTIVITY_NAMES`. Each only emits
+  when the corresponding model list is non-empty (so a workflow-only
+  service doesn't get four empty consts). Lets tooling enumerate
+  every registered name without reproducing the snake-case +
+  default-name resolution logic the plugin does at codegen. Two new
+  parse_validate tests pin the positive emit and the
+  empty-omission behaviour. 14 of the 16 fixture goldens reblessed
+  (every fixture with at least one workflow gained a const block on
+  the Client impl). No bridge signature change.
 - 2026-05-13 (R6 — `(temporal.v1.query).cli` + `(temporal.v1.update).cli` method-level honoured):
   parallel of the signal-method-level work. Both `QueryOptions.cli`
   and `UpdateOptions.cli` move from intentionally-ignored to supported.

@@ -36,6 +36,9 @@ pub mod acts_v1_chunk_service_temporal {
     }
 
     impl ChunkServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.RunBatch"];
+        pub const ACTIVITY_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.Process", "acts.v1.ChunkService.Heartbeat"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

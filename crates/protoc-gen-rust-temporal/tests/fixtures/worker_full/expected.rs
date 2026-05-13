@@ -41,6 +41,12 @@ pub mod workerfull_v1_orchestration_service_temporal {
     }
 
     impl OrchestrationServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Run"];
+        pub const SIGNAL_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Cancel"];
+        pub const QUERY_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Status"];
+        pub const UPDATE_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Confirm"];
+        pub const ACTIVITY_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Load"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

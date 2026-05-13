@@ -39,6 +39,11 @@ pub mod wf_v1_order_service_temporal {
     }
 
     impl OrderServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Run"];
+        pub const SIGNAL_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Cancel"];
+        pub const QUERY_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Status"];
+        pub const UPDATE_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Confirm"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

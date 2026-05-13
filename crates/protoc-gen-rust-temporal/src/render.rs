@@ -297,6 +297,66 @@ fn compile_id_template(segments: &[IdTemplateSegment]) -> (String, Vec<String>) 
     (fmt, args)
 }
 
+/// Emit service-level aggregate `&'static [&'static str]` constants
+/// exposing every workflow / signal / query / update / activity name
+/// registered on the service. Each kind only emits a const when at
+/// least one of that kind is in the model (so a workflow-only service
+/// doesn't get an empty `SIGNAL_NAMES`).
+fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
+    let emit = |out: &mut String, ident: &str, names: &[&str]| {
+        if names.is_empty() {
+            return;
+        }
+        let joined = names
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const {ident}: &'static [&'static str] = &[{joined}];"
+        );
+    };
+    let wf_names: Vec<&str> = svc
+        .workflows
+        .iter()
+        .map(|w| w.registered_name.as_str())
+        .collect();
+    let sig_names: Vec<&str> = svc
+        .signals
+        .iter()
+        .map(|s| s.registered_name.as_str())
+        .collect();
+    let q_names: Vec<&str> = svc
+        .queries
+        .iter()
+        .map(|q| q.registered_name.as_str())
+        .collect();
+    let u_names: Vec<&str> = svc
+        .updates
+        .iter()
+        .map(|u| u.registered_name.as_str())
+        .collect();
+    let act_names: Vec<&str> = svc
+        .activities
+        .iter()
+        .map(|a| a.registered_name.as_str())
+        .collect();
+    emit(out, "WORKFLOW_NAMES", &wf_names);
+    emit(out, "SIGNAL_NAMES", &sig_names);
+    emit(out, "QUERY_NAMES", &q_names);
+    emit(out, "UPDATE_NAMES", &u_names);
+    emit(out, "ACTIVITY_NAMES", &act_names);
+    if !wf_names.is_empty()
+        || !sig_names.is_empty()
+        || !q_names.is_empty()
+        || !u_names.is_empty()
+        || !act_names.is_empty()
+    {
+        let _ = writeln!(out);
+    }
+}
+
 fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &str) {
     let _ = writeln!(out, "    pub struct {client_struct} {{");
     let _ = writeln!(out, "        client: temporal_runtime::TemporalClient,");
@@ -304,6 +364,11 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out);
 
     let _ = writeln!(out, "    impl {client_struct} {{");
+    // Service-level aggregate name consts — let tooling enumerate
+    // every workflow / signal / query / update / activity registered
+    // by this service without re-implementing the snake-case + name
+    // resolution logic the plugin does at codegen.
+    render_service_name_aggregates(out, svc);
     let _ = writeln!(
         out,
         "        pub fn new(client: temporal_runtime::TemporalClient) -> Self {{"

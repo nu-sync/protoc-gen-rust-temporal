@@ -16,6 +16,8 @@ pub mod empty_v1_nop_service_temporal {
     }
 
     impl NopServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["empty.v1.NopService.Tick"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

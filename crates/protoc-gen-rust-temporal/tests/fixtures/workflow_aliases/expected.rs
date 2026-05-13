@@ -24,6 +24,8 @@ pub mod aliases_v1_alias_service_temporal {
     }
 
     impl AliasServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["aliases.v1.AliasService.Run"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

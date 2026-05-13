@@ -35,6 +35,8 @@ pub mod cli_v1_report_service_temporal {
     }
 
     impl ReportServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["cli.v1.ReportService.Generate", "cli.v1.ReportService.Internal"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

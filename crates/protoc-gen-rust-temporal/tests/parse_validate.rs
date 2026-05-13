@@ -1620,6 +1620,109 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn client_exposes_service_level_name_aggregates() {
+    // R4 — `<Service>Client` exposes `WORKFLOW_NAMES` / `SIGNAL_NAMES`
+    // / `QUERY_NAMES` / `UPDATE_NAMES` / `ACTIVITY_NAMES` aggregate
+    // `&'static [&'static str]` consts so tooling can enumerate
+    // every name a generated service registers without reproducing
+    // the snake-case + default-name resolution logic the plugin does
+    // at codegen. Each const only emits when the corresponding kind
+    // is non-empty.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package agg.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+          rpc DoWork(In) returns (Out) {
+            option (temporal.v1.activity) = { start_to_close_timeout: { seconds: 30 } };
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source
+            .contains("pub const WORKFLOW_NAMES: &'static [&'static str] = &[\"agg.v1.Svc.Run\"];"),
+        "WORKFLOW_NAMES const missing: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const SIGNAL_NAMES: &'static [&'static str] = &[\"agg.v1.Svc.Cancel\"];"
+        ),
+        "SIGNAL_NAMES const missing: {source}"
+    );
+    assert!(
+        source
+            .contains("pub const QUERY_NAMES: &'static [&'static str] = &[\"agg.v1.Svc.Status\"];"),
+        "QUERY_NAMES const missing: {source}"
+    );
+    assert!(
+        source
+            .contains("pub const UPDATE_NAMES: &'static [&'static str] = &[\"agg.v1.Svc.Touch\"];"),
+        "UPDATE_NAMES const missing: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const ACTIVITY_NAMES: &'static [&'static str] = &[\"agg.v1.Svc.DoWork\"];"
+        ),
+        "ACTIVITY_NAMES const missing: {source}"
+    );
+}
+
+#[test]
+fn workflow_only_service_omits_empty_aggregates() {
+    // A workflow-only service must NOT emit `SIGNAL_NAMES` /
+    // `QUERY_NAMES` / `UPDATE_NAMES` / `ACTIVITY_NAMES` (no empty
+    // consts).
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const WORKFLOW_NAMES:"),
+        "workflow_only must still emit WORKFLOW_NAMES: {source}"
+    );
+    assert!(
+        !source.contains("SIGNAL_NAMES:"),
+        "must not emit empty SIGNAL_NAMES: {source}"
+    );
+    assert!(
+        !source.contains("QUERY_NAMES:"),
+        "must not emit empty QUERY_NAMES: {source}"
+    );
+    assert!(
+        !source.contains("UPDATE_NAMES:"),
+        "must not emit empty UPDATE_NAMES: {source}"
+    );
+    assert!(
+        !source.contains("ACTIVITY_NAMES:"),
+        "must not emit empty ACTIVITY_NAMES: {source}"
+    );
+}
+
+#[test]
 fn query_options_cli_threads_into_subcommand() {
     // R6 — method-level `(temporal.v1.query).cli` overrides flow into
     // the `Query<Name>` clap subcommand's `#[command(name, alias,

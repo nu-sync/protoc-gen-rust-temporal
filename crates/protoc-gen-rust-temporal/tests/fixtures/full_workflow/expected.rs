@@ -42,6 +42,12 @@ pub mod full_v1_full_service_temporal {
     }
 
     impl FullServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["full.v1.FullService.Run"];
+        pub const SIGNAL_NAMES: &'static [&'static str] = &["full.v1.FullService.Cancel", "full.v1.FullService.Bootstrap"];
+        pub const QUERY_NAMES: &'static [&'static str] = &["full.v1.FullService.Status"];
+        pub const UPDATE_NAMES: &'static [&'static str] = &["full.v1.FullService.Reconfigure"];
+        pub const ACTIVITY_NAMES: &'static [&'static str] = &["full.v1.FullService.DoChunk"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

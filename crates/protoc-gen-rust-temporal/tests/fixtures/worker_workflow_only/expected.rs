@@ -23,6 +23,8 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     }
 
     impl WorkerWorkflowServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

@@ -35,6 +35,9 @@ pub mod multi_v1_multi_service_temporal {
     }
 
     impl MultiServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Alpha", "multi.v1.MultiService.Beta"];
+        pub const SIGNAL_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Ping"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

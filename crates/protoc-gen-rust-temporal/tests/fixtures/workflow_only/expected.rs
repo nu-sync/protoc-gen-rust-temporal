@@ -23,6 +23,8 @@ pub mod solo_v1_solo_service_temporal {
     }
 
     impl SoloServiceClient {
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["solo.v1.SoloService.DoWork"];
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }
