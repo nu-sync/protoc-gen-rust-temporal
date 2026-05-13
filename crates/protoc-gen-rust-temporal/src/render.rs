@@ -186,6 +186,21 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
             let tq_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
             let _ = writeln!(out, "    pub const {tq_const}: &str = \"{tq}\";");
         }
+        // Verbatim id template source — preserved for tooling that
+        // needs the original template (debug inspectors, doc
+        // generators) without reconstructing it from the parsed
+        // segments.
+        if let Some(tpl) = wf.id_template_source.as_deref() {
+            let id_const = format!(
+                "{}_WORKFLOW_ID_TEMPLATE",
+                wf.rpc_method.to_shouty_snake_case()
+            );
+            let _ = writeln!(
+                out,
+                "    pub const {id_const}: &str = \"{}\";",
+                tpl.escape_default()
+            );
+        }
         // Workflow aliases from `(temporal.v1.workflow).aliases`. Only emitted
         // when at least one alias is declared so existing goldens stay clean.
         // Consumers register the workflow under each name; the Go plugin does
@@ -257,6 +272,15 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
             "    pub const {out_const}: &str = \"{}\";",
             u.output_type.full_name
         );
+        // Verbatim id template, parallel of the workflow-side const.
+        if let Some(tpl) = u.id_template_source.as_deref() {
+            let id_const = format!("{}_UPDATE_ID_TEMPLATE", u.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(
+                out,
+                "    pub const {id_const}: &str = \"{}\";",
+                tpl.escape_default()
+            );
+        }
     }
     for act in &svc.activities {
         let in_const = format!(
@@ -1601,6 +1625,7 @@ fn fabricate_update_model(
         // step might thread it through.
         validate: false,
         id_expression: None,
+        id_template_source: None,
         default_wait_policy: None,
         cli_name: None,
         cli_aliases: Vec::new(),

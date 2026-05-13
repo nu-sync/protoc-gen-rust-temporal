@@ -138,6 +138,21 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `<RPC>_WORKFLOW_ID_TEMPLATE` / `_UPDATE_ID_TEMPLATE` consts):
+  every workflow / update that declares `id:` now emits a
+  `pub const <RPC>_<KIND>_ID_TEMPLATE: &str = "..."` carrying the
+  verbatim template source from the proto. Lets debug inspectors,
+  doc generators, and other tooling read the original template
+  without reconstructing from the parsed segments (which discards
+  case + literal whitespace). Rpcs without `id:` produce no const
+  so workflow-only-with-no-template fixtures stay surface-clean.
+  `WorkflowModel` and `UpdateModel` each gain an
+  `id_template_source: Option<String>` field; the cross-service
+  `fabricate_*` paths emit `None`. Two new positive parse_validate
+  tests pin the emit and the omit-when-unset behaviour. Several
+  fixture goldens reblessed (every fixture that declares `id:`
+  gained the const). 158 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` on child-workflow + signal markers):
   extends the previous activity-marker shipment to the remaining
   marker structs:

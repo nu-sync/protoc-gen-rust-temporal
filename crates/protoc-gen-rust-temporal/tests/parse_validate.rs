@@ -1213,6 +1213,49 @@ fn workflow_aliases_const_omitted_when_empty() {
 }
 
 #[test]
+fn workflow_and_update_id_template_source_consts_emit() {
+    // R4 — when proto declares `id:` on a workflow or update, the
+    // generator now emits a `<RPC>_WORKFLOW_ID_TEMPLATE` /
+    // `<RPC>_UPDATE_ID_TEMPLATE: &str` const carrying the verbatim
+    // template source. Lets debug tools inspect what the user
+    // declared without reconstructing from parsed segments.
+    // Workflows / updates without `id:` produce no const.
+    let services = parse_and_validate("full_workflow");
+    let opts = load_fixture_options("full_workflow");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const RUN_WORKFLOW_ID_TEMPLATE: &str = \"run-{{ .Name }}\";"),
+        "missing RUN_WORKFLOW_ID_TEMPLATE const: {source}"
+    );
+}
+
+#[test]
+fn workflow_id_template_const_omitted_when_unset() {
+    // No `id:` declared → no template const emitted. Workflow_only
+    // declares `id:` so use a fresh inline fixture without one.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package no_id.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOW_ID_TEMPLATE"),
+        "no `id:` declared so no template const must emit: {source}"
+    );
+}
+
+#[test]
 fn child_workflow_and_signal_markers_expose_input_output_type_consts() {
     // R4 — child-workflow markers (`<Wf>Workflow`) and signal
     // markers (`<Sig>Signal`) gain inherent `INPUT_TYPE` /

@@ -25,6 +25,7 @@ pub mod multi_v1_multi_service_temporal {
     pub const ALPHA_INPUT_TYPE: &str = "multi.v1.AlphaInput";
     pub const ALPHA_OUTPUT_TYPE: &str = "multi.v1.AlphaOutput";
     pub const ALPHA_TASK_QUEUE: &str = "multi";
+    pub const ALPHA_WORKFLOW_ID_TEMPLATE: &str = "alpha-{{ .Label }}";
     pub const BETA_WORKFLOW_NAME: &str = "multi.v1.MultiService.Beta";
     pub const BETA_INPUT_TYPE: &str = "multi.v1.BetaInput";
     pub const BETA_OUTPUT_TYPE: &str = "multi.v1.BetaOutput";

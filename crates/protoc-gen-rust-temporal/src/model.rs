@@ -87,6 +87,12 @@ pub struct WorkflowModel {
     /// via `format!`, so the substitution happens at codegen time — no
     /// runtime template engine required.
     pub id_expression: Option<Vec<IdTemplateSegment>>,
+    /// Verbatim `id:` template string from the proto, preserved so
+    /// render can surface it as a `<RPC>_WORKFLOW_ID_TEMPLATE: &str`
+    /// const for tooling that needs the original template (debug
+    /// inspectors, doc generators). `None` when no id template is
+    /// declared.
+    pub id_template_source: Option<String>,
     pub id_reuse_policy: Option<IdReusePolicy>,
     /// Proto-declared default policy when the start request collides with a
     /// running workflow id. `None` lets the server pick its default.
@@ -256,6 +262,10 @@ pub struct UpdateModel {
     /// client-level `<update>_by_template` convenience method that uses
     /// the derived id to find the parent workflow.
     pub id_expression: Option<Vec<IdTemplateSegment>>,
+    /// Verbatim `id:` template string from the proto, preserved
+    /// alongside the parsed segments. See the matching field on
+    /// `WorkflowModel`.
+    pub id_template_source: Option<String>,
     /// Proto-declared default `WaitPolicy` for this update. When the
     /// caller leaves the update method's `wait_policy` arg as `None`,
     /// codegen folds this value in. `None` here means the proto didn't

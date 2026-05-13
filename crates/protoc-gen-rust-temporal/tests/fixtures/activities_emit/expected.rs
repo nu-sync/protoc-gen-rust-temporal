@@ -28,6 +28,7 @@ pub mod acts_v1_chunk_service_temporal {
     pub const RUN_BATCH_INPUT_TYPE: &str = "acts.v1.BatchInput";
     pub const RUN_BATCH_OUTPUT_TYPE: &str = "acts.v1.BatchOutput";
     pub const RUN_BATCH_TASK_QUEUE: &str = "chunks";
+    pub const RUN_BATCH_WORKFLOW_ID_TEMPLATE: &str = "batch-{{ .Name }}";
 
     pub const PROCESS_ACTIVITY_INPUT_TYPE: &str = "acts.v1.ChunkInput";
     pub const PROCESS_ACTIVITY_OUTPUT_TYPE: &str = "acts.v1.ChunkOutput";

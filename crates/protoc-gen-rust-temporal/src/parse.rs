@@ -513,6 +513,7 @@ fn workflow_from(
         }
     }
 
+    let id_template_source = (!opts.id.is_empty()).then(|| opts.id.clone());
     let id_expression = if opts.id.is_empty() {
         None
     } else {
@@ -549,6 +550,7 @@ fn workflow_from(
         id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
         parent_close_policy: parent_close_policy_from_proto(opts.parent_close_policy),
         wait_for_cancellation: opts.wait_for_cancellation,
+        id_template_source,
         search_attributes: parse_search_attributes_spec(&opts.search_attributes, &method.input()),
         retry_policy: opts.retry_policy.map(retry_policy_from_proto),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
@@ -694,6 +696,7 @@ fn update_from(
     } else {
         opts.name
     };
+    let id_template_source = (!opts.id.is_empty()).then(|| opts.id.clone());
     let id_expression = if opts.id.is_empty() {
         None
     } else {
@@ -730,6 +733,7 @@ fn update_from(
         output_type: ProtoType::new(method.output().full_name()),
         validate: opts.validate,
         id_expression,
+        id_template_source,
         default_wait_policy,
         cli_name,
         cli_aliases,
