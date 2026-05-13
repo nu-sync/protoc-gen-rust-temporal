@@ -11,7 +11,8 @@ typed **Rust** [Temporal](https://temporal.io) client.
 > **Status:** Phase 5 complete. The plugin emits typed client, update,
 > signal-with-start, activity, workflow-registration, and CLI scaffold code;
 > the job-queue external consumer has migrated to the generated contracts.
-> BSR remote-plugin distribution is still in progress — see [`SPEC.md`](./SPEC.md).
+> The project direction is now majority parity with
+> `protoc-gen-go-temporal`; see [`ROADMAP.md`](./ROADMAP.md).
 
 ## What it does
 
@@ -34,6 +35,17 @@ mirroring the proto. The intended sibling is
 [`protoc-gen-ts-temporal`](https://github.com/nu-sync/protoc-gen-ts-temporal),
 so one annotated proto produces Go, TS, and Rust clients with zero proto
 changes.
+
+## Roadmap
+
+The current Rust generator is not full Go-plugin parity. The active roadmap is
+to prioritize the most useful parity surfaces first: richer generated worker
+implementation contracts, typed activity execution helpers from workflows,
+broader client operations, and runtime option coverage. Unsupported features
+should be explicit while they move through that plan.
+
+See [`ROADMAP.md`](./ROADMAP.md) for the phase order and current unsupported
+items.
 
 ## Quickstart
 
@@ -119,6 +131,7 @@ against the facade documented in [`docs/RUNTIME-API.md`](./docs/RUNTIME-API.md).
 | `examples/job-queue/` | Primary end-to-end example: generated client, worker, HTTP API, and CLI. |
 | `proto/temporal/v1/temporal.proto` | Vendored copy of cludden's annotation schema. |
 | `SPEC.md` | Design spec + phased delivery plan. |
+| `ROADMAP.md` | Active majority-parity direction and unsupported-feature plan. |
 | `WIRE-FORMAT.md` | Pinned wire-format contract. |
 | `docs/sdk-shape.md` | Pinned reference for `temporalio-sdk` 0.4 quirks. |
 

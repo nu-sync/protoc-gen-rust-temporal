@@ -6,23 +6,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `protoc-gen-rust-temporal` is a `protoc` plugin that consumes
 [`cludden/protoc-gen-go-temporal`](https://github.com/cludden/protoc-gen-go-temporal)'s
-`temporal.v1.*` annotations from a proto service and emits a typed **Rust**
-[Temporal](https://temporal.io) client. We supply the Rust code generator;
-cludden owns the annotation schema, and the schema is vendored at
+`temporal.v1.*` annotations from a proto service and emits typed **Rust**
+[Temporal](https://temporal.io) client and worker-side code. We supply the
+Rust code generator; cludden owns the annotation schema, and the schema is
+vendored at
 `crates/protoc-gen-rust-temporal/proto/temporal/v1/temporal.proto`.
 
 Sibling project: `nu-sync/protoc-gen-ts-temporal`. Wire format is
 intentionally byte-identical (see `WIRE-FORMAT.md`) so one annotated proto
 produces Go, TS, and Rust clients with no proto changes.
 
-The plugin emits generated client code plus typed worker-side contracts
-(activity traits, workflow registration names/helpers, and optional CLI
-scaffolding). Workflow and activity bodies remain hand-written against
-`temporalio-sdk`.
+The plugin currently emits generated client code plus typed worker-side
+contracts (activity traits, workflow registration names/helpers, and optional
+CLI scaffolding). The project direction is majority parity with
+`protoc-gen-go-temporal`; richer generated worker surfaces and workflow-side
+activity execution helpers are roadmap priorities. Workflow and activity bodies
+remain hand-written against `temporalio-sdk`.
 
 ## Required reading before non-trivial changes
 
-- `SPEC.md` — design, scope, phased delivery plan, what's intentionally out of scope.
+- `SPEC.md` — current baseline behavior, durable constraints, and historical
+  delivery phases.
+- `ROADMAP.md` — active direction for majority parity with
+  `protoc-gen-go-temporal`, including current unsupported features and phase
+  priorities.
 - `WIRE-FORMAT.md` — the `(encoding, messageType, data)` Payload triple. Pinned at v1; must stay byte-identical to the TS sibling and to cludden's Go runtime.
 - `docs/RUNTIME-API.md` — every symbol the generated code calls from the consumer-supplied `crate::temporal_runtime` facade, and when each emit branch fires.
 - `docs/sdk-shape.md` — verified deviations between `temporalio-sdk` 0.4's spec and reality.
@@ -108,15 +115,17 @@ fall back to the in-tree `proto/` copy.
 3. **`parse.rs`** walks `ServiceDescriptor`s in `files_to_generate`,
    pulls `temporal.v1.{service,workflow,activity,signal,query,update}`
    extensions off each `MethodOptions` / `ServiceOptions`, and produces
-   `model::ServiceModel`. Method-level annotations are mutually exclusive
-   (a method is exactly one of workflow / signal / query / update / activity).
+   `model::ServiceModel`. The current emit model mostly treats each method as
+   one primary generated kind. Do not assume that is a permanent schema rule:
+   cludden's Go generator supports useful co-annotations, and `ROADMAP.md`
+   tracks moving the Rust model toward that parity.
 
 4. **`validate.rs`** enforces cross-method invariants: every
-   `WorkflowOptions.{signal,query,update}.ref` must point to an actual
-   annotated method on the same service; `signal` methods must return
+   `WorkflowOptions.{signal,query,update}.ref` must currently point to an
+   actual annotated method on the same service; `signal` methods must return
    `google.protobuf.Empty`; workflows need a `task_queue` (either inline
-   or from the service-level default); activity-annotated method names
-   can't collide with workflow/signal/query/update names.
+   or from the service-level default). Cross-service refs and Go-compatible
+   co-annotation semantics are roadmap work, not invalid design directions.
 
 5. **`render.rs`** emits one `<stem>_temporal.rs` per input proto containing
    a `<Service>Client` struct and one `<Workflow>Handle` per workflow rpc.
@@ -180,6 +189,8 @@ When adding a new emit branch:
   rely on newer std/stable features.
 - **One module per source proto.** Output is `<stem>_temporal.rs` so
   consumer build scripts can `include!` deterministically.
-- **Worker emit is contract-only.** The plugin emits typed worker contracts
-  and registration helpers; the user's workflow/activity bodies still live in
-  application code because `temporalio-sdk` registration is macro-shaped.
+- **Worker emit is contract-only today.** The plugin emits typed worker
+  contracts and registration helpers; the user's workflow/activity bodies still
+  live in application code because `temporalio-sdk` registration is
+  macro-shaped. `ROADMAP.md` tracks richer generated worker implementation
+  surface and activity execution helpers as priority parity work.
