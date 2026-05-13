@@ -324,7 +324,104 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
         render_client_signal_method(out, sig);
     }
 
+    // R4: client-level query-by-id. Mirrors render_query_method on the
+    // Handle but the by-id variant attaches a handle internally first.
+    let attached_query_names: std::collections::HashSet<&str> = svc
+        .workflows
+        .iter()
+        .flat_map(|wf| wf.attached_queries.iter())
+        .map(|q| q.rpc_method.as_str())
+        .collect();
+    for q in &svc.queries {
+        if !attached_query_names.contains(q.rpc_method.as_str()) {
+            continue;
+        }
+        render_client_query_method(out, q);
+    }
+
     let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// Client-level query-by-id. Same Empty-variant matrix as `render_query_method`
+/// on the Handle, but each variant first attaches a `WorkflowHandle` from the
+/// caller-supplied workflow id.
+fn render_client_query_method(out: &mut String, q: &QueryModel) {
+    let method_snake = q.rpc_method.to_snake_case();
+    let out_ty = q.output_type.rust_name();
+    let _ = writeln!(
+        out,
+        "        /// Run the `{}` query against a workflow by id.",
+        q.registered_name
+    );
+    match (q.input_type.is_empty, q.output_type.is_empty) {
+        (true, true) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto_empty_unit(&inner, \"{}\").await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (true, false) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto_empty::<{out_ty}>(&inner, \"{}\").await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, true) => {
+            let in_ty = q.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_unit::<{in_ty}>(&inner, \"{}\", &input).await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, false) => {
+            let in_ty = q.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::query_proto::<{in_ty}, {out_ty}>(&inner, \"{}\", &input).await",
+                q.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+    }
     let _ = writeln!(out);
 }
 

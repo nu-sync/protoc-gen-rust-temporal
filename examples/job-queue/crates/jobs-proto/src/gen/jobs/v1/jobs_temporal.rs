@@ -94,6 +94,12 @@ pub mod jobs_v1_job_service_temporal {
             temporal_runtime::signal_proto(&inner, "jobs.v1.JobService.CancelJob", &input).await
         }
 
+        /// Run the `jobs.v1.JobService.GetStatus` query against a workflow by id.
+        pub async fn get_status(&self, workflow_id: impl Into<String>, input: GetStatusInput) -> Result<JobStatusOutput> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::query_proto::<GetStatusInput, JobStatusOutput>(&inner, "jobs.v1.JobService.GetStatus", &input).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

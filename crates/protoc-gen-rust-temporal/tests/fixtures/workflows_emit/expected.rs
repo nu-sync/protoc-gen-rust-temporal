@@ -94,6 +94,12 @@ pub mod wf_v1_order_service_temporal {
             temporal_runtime::signal_proto(&inner, "wf.v1.OrderService.Cancel", &input).await
         }
 
+        /// Run the `wf.v1.OrderService.Status` query against a workflow by id.
+        pub async fn status(&self, workflow_id: impl Into<String>) -> Result<StatusOutput> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::query_proto_empty::<StatusOutput>(&inner, "wf.v1.OrderService.Status").await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

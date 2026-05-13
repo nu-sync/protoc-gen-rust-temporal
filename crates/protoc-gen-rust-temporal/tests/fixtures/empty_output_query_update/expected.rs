@@ -78,6 +78,18 @@ pub mod eoqu_v1_eoqu_service_temporal {
             }
         }
 
+        /// Run the `eoqu.v1.EoquService.Ack` query against a workflow by id.
+        pub async fn ack(&self, workflow_id: impl Into<String>, input: AckInput) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::query_unit::<AckInput>(&inner, "eoqu.v1.EoquService.Ack", &input).await
+        }
+
+        /// Run the `eoqu.v1.EoquService.AckEmpty` query against a workflow by id.
+        pub async fn ack_empty(&self, workflow_id: impl Into<String>) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::query_proto_empty_unit(&inner, "eoqu.v1.EoquService.AckEmpty").await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

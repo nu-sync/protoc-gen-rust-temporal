@@ -972,6 +972,56 @@ fn signal_returning_non_empty_fails_validation() {
 }
 
 #[test]
+fn client_exposes_query_by_id_methods() {
+    // R4 — client-level query-by-id. Mirrors the Empty-variant matrix on
+    // the Handle:
+    //   (Empty in, non-Empty out)       → query_proto_empty
+    //   (Empty in, Empty out)           → query_proto_empty_unit
+    //   (non-Empty in, non-Empty out)   → query_proto
+    //   (non-Empty in, Empty out)       → query_unit
+    //
+    // full_workflow's Status query is Empty-in, non-Empty-out
+    // (StatusOutput), so we should see attach_handle + query_proto_empty.
+    let services = parse_and_validate("full_workflow");
+    let svc = &services[0];
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains(
+            "pub async fn status(&self, workflow_id: impl Into<String>) -> Result<StatusOutput>"
+        ),
+        "client must expose Status query-by-id (Empty-in, non-Empty-out): {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::query_proto_empty::<StatusOutput>(&inner, \"full.v1.FullService.Status\").await"),
+        "Empty-in query must route to query_proto_empty"
+    );
+    assert!(
+        source.contains(
+            "let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+        ),
+        "client query-by-id must attach a handle before calling the bridge"
+    );
+}
+
+#[test]
+fn client_query_by_id_covers_empty_output_variants() {
+    // empty_output_query_update covers (Empty-in, Empty-out) and
+    // (non-Empty-in, Empty-out). Both must compile to the right bridge fn
+    // at the client level too.
+    let services = parse_and_validate("empty_output_query_update");
+    let svc = &services[0];
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains("temporal_runtime::query_proto_empty_unit(&inner,"),
+        "Empty-in/Empty-out query must route to query_proto_empty_unit at client level: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::query_unit::<"),
+        "non-Empty-in/Empty-out query must route to query_unit at client level: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_signal_by_id_methods() {
     // R4: `<Service>Client::<signal>(workflow_id, input)` lets callers send
     // a signal without first calling `<rpc>_handle(id)`. Mirrors the Go

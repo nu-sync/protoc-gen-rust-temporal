@@ -103,6 +103,12 @@ pub mod full_v1_full_service_temporal {
             temporal_runtime::signal_proto(&inner, "full.v1.FullService.Bootstrap", &input).await
         }
 
+        /// Run the `full.v1.FullService.Status` query against a workflow by id.
+        pub async fn status(&self, workflow_id: impl Into<String>) -> Result<StatusOutput> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::query_proto_empty::<StatusOutput>(&inner, "full.v1.FullService.Status").await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

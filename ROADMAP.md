@@ -138,6 +138,13 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — client query-by-id): `<Service>Client` now exposes
+  `<query>(workflow_id [, input])` for every attached query rpc, with
+  full Empty-variant matrix coverage (`query_proto_empty`,
+  `query_proto_empty_unit`, `query_proto`, `query_unit`). Same internal
+  pattern as signal-by-id: attach a handle then delegate to the existing
+  bridge fn. Two new tests pin the Empty-in/Empty-out and the
+  Empty-output paths.
 - 2026-05-13 (R4 — client signal-by-id): `<Service>Client` now exposes
   `<signal>(workflow_id, input)` for every attached signal rpc on the
   service, mirroring the Go plugin's `client.<Signal>(ctx, id, runID, …)`.
@@ -376,7 +383,7 @@ toward majority parity.
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
 | Activity calls from workflows | Not generated. | R3 |
-| Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, client-level signal-by-id all shipped 2026-05-13; top-level query/update-by-id still TODO. | R4 |
+| Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal-by-id, query-by-id all shipped 2026-05-13; update-by-id still TODO. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |
 | Update ids/default wait stage | Not fully emitted. | R5 |
