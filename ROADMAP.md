@@ -283,6 +283,19 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::has_run_id()` predicate):
+  cheap convenience over `self.inner.run_id().is_some()`. Lets
+  diagnostic code branch on whether a handle was returned by the
+  typed start path (run_id known — workflow execution is the
+  current one) vs constructed via attach
+  (`<rpc>_handle(workflow_id)` — run_id `None`, may resolve to
+  any historical execution sharing the id). Useful for log
+  decoration like `if h.has_run_id() { … } else { warn!("running
+  against latest execution") }`. Sugar over the existing
+  `.run_id().is_some()` chain. One new positive parse_validate
+  test pins the fn signature + body. Several fixture goldens
+  reblessed (every Handle gained the predicate). 187
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — bridge `WorkflowHandle` + `<Wf>Handle` derive `Clone`):
   the bridge `WorkflowHandle` previously had no derives — its
   three fields (`TemporalClient` (Arc-backed), `String`, and

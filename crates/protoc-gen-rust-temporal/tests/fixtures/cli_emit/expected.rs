@@ -306,6 +306,12 @@ pub mod cli_v1_report_service_temporal {
             self.inner.run_id()
         }
 
+        /// `true` if this handle has a known run id (started via the typed start
+        /// path); `false` if it was constructed via `<rpc>_handle(workflow_id)`.
+        pub fn has_run_id(&self) -> bool {
+            self.inner.run_id().is_some()
+        }
+
         /// Wait for the workflow to complete and return its output.
         pub async fn result(&self) -> Result<GenerateOutput> {
             temporal_runtime::wait_result_proto::<GenerateOutput>(&self.inner).await
@@ -444,6 +450,12 @@ pub mod cli_v1_report_service_temporal {
         /// `Some(...)` for handles returned by the start path.
         pub fn run_id(&self) -> Option<&str> {
             self.inner.run_id()
+        }
+
+        /// `true` if this handle has a known run id (started via the typed start
+        /// path); `false` if it was constructed via `<rpc>_handle(workflow_id)`.
+        pub fn has_run_id(&self) -> bool {
+            self.inner.run_id().is_some()
         }
 
         /// Wait for the workflow to complete and return its output.

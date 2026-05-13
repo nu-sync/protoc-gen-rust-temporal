@@ -1782,6 +1782,22 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.run_id()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Cheap predicate over `run_id().is_some()` — lets diagnostic
+    // logging branch on whether a handle was returned by the start
+    // path (run_id known) vs constructed via attach (run_id `None`).
+    // Convenience over a `.run_id().is_some()` chain.
+    let _ = writeln!(
+        out,
+        "        /// `true` if this handle has a known run id (started via the typed start"
+    );
+    let _ = writeln!(
+        out,
+        "        /// path); `false` if it was constructed via `<rpc>_handle(workflow_id)`."
+    );
+    let _ = writeln!(out, "        pub fn has_run_id(&self) -> bool {{");
+    let _ = writeln!(out, "            self.inner.run_id().is_some()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
 
     // result()
     let _ = writeln!(

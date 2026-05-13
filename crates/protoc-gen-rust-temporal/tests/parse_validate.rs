@@ -2876,6 +2876,26 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_has_run_id_predicate() {
+    // R6 ergonomics — `<Wf>Handle::has_run_id()` is a cheap
+    // predicate over `self.inner.run_id().is_some()` letting
+    // diagnostic logging branch on whether a handle was returned
+    // by the typed start path (run_id known) vs constructed via
+    // attach (run_id `None`). Sugar over the existing
+    // `.run_id().is_some()` chain.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn has_run_id(&self) -> bool {"),
+        "missing has_run_id predicate: {source}"
+    );
+    assert!(
+        source.contains("self.inner.run_id().is_some()"),
+        "has_run_id body must check inner.run_id().is_some(): {source}"
+    );
+}
+
+#[test]
 fn handle_struct_derives_clone() {
     // R6 ergonomics — `<Wf>Handle` derives Clone. Free since the
     // bridge `WorkflowHandle` is itself Clone (Arc-backed
