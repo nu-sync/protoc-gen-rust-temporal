@@ -21,6 +21,7 @@ pub mod aliases_v1_alias_service_temporal {
     pub const RUN_TASK_QUEUE: &str = "aliases";
     pub const RUN_WORKFLOW_ALIASES: &[&str] = &["aliases.v1.AliasService.RunLegacy", "aliases.v1.AliasService.RunV0"];
 
+    #[derive(Clone)]
     pub struct AliasServiceClient {
         client: temporal_runtime::TemporalClient,
     }

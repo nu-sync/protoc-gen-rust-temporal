@@ -2876,6 +2876,22 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn client_struct_derives_clone() {
+    // R6 ergonomics — `<Service>Client` derives Clone. Free since
+    // the bridge's `TemporalClient` is `Arc`-backed and derives
+    // Clone — cloning the wrapper bumps a refcount, no
+    // re-connection. Lets callers freely share the typed client
+    // across tasks (`tokio::spawn(async move { svc.run(...) })`),
+    // channels, and worker pools.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("#[derive(Clone)]\n    pub struct JobServiceClient {"),
+        "Client struct must derive Clone: {source}"
+    );
+}
+
+#[test]
 fn client_implements_from_temporal_client_trait() {
     // R6 ergonomics — sugar over `<Service>Client::new`:
     // `From<TemporalClient> for <Service>Client` lets consumers

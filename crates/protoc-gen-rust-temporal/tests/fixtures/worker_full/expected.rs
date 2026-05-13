@@ -49,6 +49,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
     pub const LOAD_ACTIVITY_INPUT_TYPE: &str = "workerfull.v1.LoadInput";
     pub const LOAD_ACTIVITY_OUTPUT_TYPE: &str = "workerfull.v1.LoadOutput";
 
+    #[derive(Clone)]
     pub struct OrchestrationServiceClient {
         client: temporal_runtime::TemporalClient,
     }

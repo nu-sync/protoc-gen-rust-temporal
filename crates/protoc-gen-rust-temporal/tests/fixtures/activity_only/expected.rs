@@ -13,6 +13,7 @@ pub mod act_v1_worker_only_service_temporal {
     pub const CLEANUP_ACTIVITY_INPUT_TYPE: &str = "act.v1.CleanupInput";
     pub const CLEANUP_ACTIVITY_OUTPUT_TYPE: &str = "act.v1.CleanupOutput";
 
+    #[derive(Clone)]
     pub struct WorkerOnlyServiceClient {
         client: temporal_runtime::TemporalClient,
     }

@@ -44,6 +44,7 @@ pub mod acts_v1_chunk_service_temporal {
         id
     }
 
+    #[derive(Clone)]
     pub struct ChunkServiceClient {
         client: temporal_runtime::TemporalClient,
     }

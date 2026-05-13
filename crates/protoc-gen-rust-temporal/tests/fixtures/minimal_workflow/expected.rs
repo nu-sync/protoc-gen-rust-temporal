@@ -53,6 +53,7 @@ pub mod jobs_v1_job_service_temporal {
         id
     }
 
+    #[derive(Clone)]
     pub struct JobServiceClient {
         client: temporal_runtime::TemporalClient,
     }

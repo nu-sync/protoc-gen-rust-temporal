@@ -57,6 +57,7 @@ pub mod full_v1_full_service_temporal {
         id
     }
 
+    #[derive(Clone)]
     pub struct FullServiceClient {
         client: temporal_runtime::TemporalClient,
     }

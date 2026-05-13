@@ -641,6 +641,11 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
 }
 
 fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &str) {
+    // `Clone` is free here — the bridge's `TemporalClient` is
+    // `Arc`-backed and derives Clone, so cloning the wrapper just
+    // bumps the inner refcount. Lets callers freely share the
+    // typed client across tasks / threads / channels.
+    let _ = writeln!(out, "    #[derive(Clone)]");
     let _ = writeln!(out, "    pub struct {client_struct} {{");
     let _ = writeln!(out, "        client: temporal_runtime::TemporalClient,");
     let _ = writeln!(out, "    }}");

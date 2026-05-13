@@ -51,6 +51,7 @@ pub mod wf_v1_order_service_temporal {
         id
     }
 
+    #[derive(Clone)]
     pub struct OrderServiceClient {
         client: temporal_runtime::TemporalClient,
     }

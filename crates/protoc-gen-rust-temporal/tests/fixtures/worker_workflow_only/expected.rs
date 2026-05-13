@@ -20,6 +20,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     pub const RUN_OUTPUT_TYPE: &str = "workerwf.v1.WorkOutput";
     pub const RUN_TASK_QUEUE: &str = "worker-workflows";
 
+    #[derive(Clone)]
     pub struct WorkerWorkflowServiceClient {
         client: temporal_runtime::TemporalClient,
     }

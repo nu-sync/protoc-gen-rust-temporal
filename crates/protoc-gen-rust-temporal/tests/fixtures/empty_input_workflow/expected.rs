@@ -13,6 +13,7 @@ pub mod empty_v1_nop_service_temporal {
     pub const TICK_OUTPUT_TYPE: &str = "google.protobuf.Empty";
     pub const TICK_TASK_QUEUE: &str = "nop";
 
+    #[derive(Clone)]
     pub struct NopServiceClient {
         client: temporal_runtime::TemporalClient,
     }

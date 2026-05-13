@@ -20,6 +20,7 @@ pub mod solo_v1_solo_service_temporal {
     pub const DO_WORK_OUTPUT_TYPE: &str = "solo.v1.WorkOutput";
     pub const DO_WORK_TASK_QUEUE: &str = "solo-tq";
 
+    #[derive(Clone)]
     pub struct SoloServiceClient {
         client: temporal_runtime::TemporalClient,
     }

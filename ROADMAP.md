@@ -283,6 +283,17 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client` derives `Clone`):
+  every generated `<Service>Client` now derives `Clone`. Free
+  since the bridge's `TemporalClient` is `Arc`-backed and derives
+  Clone — cloning the wrapper bumps the inner refcount, no
+  re-connection. Lets callers freely share the typed client across
+  tasks (`tokio::spawn(async move { svc.run(...).await })`),
+  channels, and worker pools without wrapping in `Arc<Mutex<>>`.
+  One new positive parse_validate test pins the derive line.
+  Several fixture goldens reblessed (every Client struct gained
+  the derive). 185 parse_validate tests green. No bridge signature
+  change.
 - 2026-05-13 (R6 — `From<TemporalClient>` impl on `<Service>Client`):
   parallel of the recent `<Wf>Handle` From shipment for the
   service client. `impl From<TemporalClient> for <Service>Client`

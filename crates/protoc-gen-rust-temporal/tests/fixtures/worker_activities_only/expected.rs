@@ -20,6 +20,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
     pub const PING_ACTIVITY_INPUT_TYPE: &str = "google.protobuf.Empty";
     pub const PING_ACTIVITY_OUTPUT_TYPE: &str = "google.protobuf.Empty";
 
+    #[derive(Clone)]
     pub struct ActivityWorkerServiceClient {
         client: temporal_runtime::TemporalClient,
     }

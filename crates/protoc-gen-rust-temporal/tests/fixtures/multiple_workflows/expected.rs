@@ -42,6 +42,7 @@ pub mod multi_v1_multi_service_temporal {
         id
     }
 
+    #[derive(Clone)]
     pub struct MultiServiceClient {
         client: temporal_runtime::TemporalClient,
     }

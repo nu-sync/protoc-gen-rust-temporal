@@ -40,6 +40,7 @@ pub mod cli_v1_report_service_temporal {
         id
     }
 
+    #[derive(Clone)]
     pub struct ReportServiceClient {
         client: temporal_runtime::TemporalClient,
     }

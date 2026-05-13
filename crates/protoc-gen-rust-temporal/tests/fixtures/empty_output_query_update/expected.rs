@@ -39,6 +39,7 @@ pub mod eoqu_v1_eoqu_service_temporal {
     pub const TOUCH_EMPTY_START_UPDATE_INPUT_TYPE: &str = "eoqu.v1.TouchInput";
     pub const TOUCH_EMPTY_START_UPDATE_OUTPUT_TYPE: &str = "google.protobuf.Empty";
 
+    #[derive(Clone)]
     pub struct EoquServiceClient {
         client: temporal_runtime::TemporalClient,
     }
