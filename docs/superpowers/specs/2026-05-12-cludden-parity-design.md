@@ -5,6 +5,10 @@
 **Date:** 2026-05-12.
 **Pinned cludden commit:** `cludden/protoc-gen-go-temporal@v1.22.1` (tag `v1.22.1`), matching what `compat-tests/` already audits against. Re-pinned only at Phase 5 start (per the spec's Nexus/XNS section).
 
+> Historical note: this brainstorming doc predates the active parity roadmap.
+> Use [`../../../ROADMAP.md`](../../../ROADMAP.md) as the current source of
+> truth for priority order, supported flags, and deferred features.
+
 ## Goal
 
 Reframe v1's "client-only emit, consumer-owned facade" decision into rough

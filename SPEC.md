@@ -1,26 +1,47 @@
 # protoc-gen-rust-temporal — SPEC
 
-**Status:** Design (pre-implementation)
+**Status:** Implemented baseline plus historical delivery plan
 **Date:** 2026-05-12
 **Author:** wcygan
 **Target repo:** `github.com/nu-sync/protoc-gen-rust-temporal`
 
 ## TL;DR
 
-A `protoc` plugin that reads `temporal.v1.*` method options from a proto service and emits a typed **Rust** Temporal client. Schema is **not** ours — we consume the annotation set published by [`cludden/protoc-gen-go-temporal`](https://github.com/cludden/protoc-gen-go-temporal) on BSR at `buf.build/cludden/protoc-gen-go-temporal`. We supply the Rust code generator; cludden owns the schema.
+A `protoc` plugin that reads `temporal.v1.*` method options from a proto
+service and emits typed **Rust** Temporal client and worker-side code. Schema is
+**not** ours -- we consume the annotation set published by
+[`cludden/protoc-gen-go-temporal`](https://github.com/cludden/protoc-gen-go-temporal)
+on BSR at `buf.build/cludden/protoc-gen-go-temporal`. We supply the Rust code
+generator; cludden owns the schema.
 
-Sibling project: [`nu-sync/protoc-gen-ts-temporal`](../protoc-gen-ts-temporal). Same schema, same wire format, different emit target. Together they let a proto annotated for `protoc-gen-go-temporal` produce Go (cludden), TS, and Rust clients with **zero proto changes**.
+Sibling project: [`nu-sync/protoc-gen-ts-temporal`](../protoc-gen-ts-temporal).
+Same schema, same wire format, different emit target. Together they let a proto
+annotated for `protoc-gen-go-temporal` produce Go (cludden), TS, and Rust
+clients with **zero proto changes**.
 
-## Non-goals
+The current implementation is a working baseline, not the final scope. The
+active direction is majority parity with cludden's Go generator; see
+[`ROADMAP.md`](./ROADMAP.md) for priority order and current unsupported
+features.
+
+## Permanent constraints and current limits
 
 - Authoring a new annotation schema. Field numbers, message shapes, semantics: all cludden.
-- Emitting worker bodies or activity implementations. Worker code remains
-  hand-written against `temporalio-sdk`; the plugin can optionally emit
-  worker-side contracts and thin registration helpers that route through
+- Emitting business logic for workflow or activity bodies. Worker code remains
+  hand-written against `temporalio-sdk`; the plugin can emit worker-side
+  contracts, adapters, helpers, and registration glue that route through
   `crate::temporal_runtime`.
-- Bundling a Temporal SDK. We depend on `temporalio-client` + `prost` at runtime.
+- Bundling a Temporal SDK. Generated code routes through a consumer-supplied
+  `crate::temporal_runtime`; the default bridge depends on the pinned
+  Temporal SDK crates.
 - Supporting JSON payloads. Generated clients speak `binary/protobuf` and reject anything else (see Wire Format).
-- **Bloblang `id` templates.** cludden's Go plugin compiles `WorkflowOptions.id` as [Bloblang](https://docs.redpanda.com/redpanda-connect/guides/bloblang/about/) (e.g. `${! name.or("anonymous") }`) and evaluates the expression *at workflow-start time* against the input message. The Rust plugin only accepts the [Go template](https://pkg.go.dev/text/template) subset cludden's own annotation comments use — `{{ .FieldName }}` references on the input proto — and materialises them into a private `<rpc>_id(input: &Input) -> String` function at codegen time. Non-Bloblang `{{ .X }}` templates round-trip identically between Go and Rust; Bloblang-only expressions are rejected by `parse_id_template` with a clear "only field references are supported" error so users see the limitation at protoc time rather than getting silently-wrong workflow ids at runtime. If full Bloblang parity becomes necessary post-1.0, the path is to pull `bloblang-rs` (or compile to a Rust closure during codegen) rather than ship a runtime evaluator.
+- **Current Bloblang limit.** cludden's Go plugin compiles `WorkflowOptions.id`
+  as Bloblang and evaluates the expression at workflow-start time against the
+  input message. The Rust plugin currently accepts only the simple
+  `{{ .FieldName }}` subset and materializes it into a private
+  `<rpc>_id(input: &Input) -> String` function at codegen time. Bloblang
+  expressions are rejected by `parse_id_template` with a clear diagnostic. Full
+  Bloblang support is roadmap work, not a permanent non-goal.
 
 ## Reference implementation
 
@@ -35,7 +56,8 @@ client over a Temporal dev server). The demo now lives in this repo at
 - The four-stage pipeline: `parse → validate → render → CodeGeneratorResponse`.
 - Golden-fixture testing with `regen_fixtures.sh` for reblessing.
 - The `TypedProtoMessage<T: TemporalProtoMessage>` newtype that wraps prost-generated types and implements `TemporalSerializable`/`TemporalDeserializable` for the `binary/protobuf` wire format.
-- Eight verified deviations between the `temporalio-sdk` 0.4 spec and reality (documented in `job-queue/docs/sdk-shape.md`).
+- Eight verified deviations between the `temporalio-sdk` 0.4 spec and reality
+  (now tracked in `docs/sdk-shape.md`).
 
 What carries over: the descriptor-extraction trick, the four-stage pipeline shape, the test harness, the `TypedProtoMessage` wrapper, the SDK landmines doc. What changes: input schema (cludden's, not ours), drop the `-client` suffix on the crate name, expand emit surface to cover update + signal-with-start.
 
@@ -54,9 +76,9 @@ deps:
 
 Consumer protos import as `import "temporal/v1/temporal.proto";` — same path cludden's own examples use.
 
-Annotations we consume:
+Current baseline annotation behavior:
 
-| Annotation | What v1 of this plugin does with it |
+| Annotation | Current Rust behavior |
 |---|---|
 | `temporal.v1.workflow` on a method | Emit a typed `<workflow>(input, opts) -> <Workflow>Handle` method on the service client. With `workflows=true`, also emit `<Workflow>Definition` and `register_<workflow>_workflow(...)` glue. |
 | `temporal.v1.query` on a method | Emit `handle.<query>() -> Output` returning the typed response. |
@@ -64,11 +86,14 @@ Annotations we consume:
 | `temporal.v1.update` on a method | Emit `handle.<update>(input, wait_policy) -> Output`. |
 | `temporal.v1.activity` on a method | By default, validate only. With `activities=true`, emit `<Service>Activities`, activity name consts, and `register_<service>_activities(...)` glue. |
 | `temporal.v1.service` on the service | Use as default `task_queue` if a workflow doesn't override it. |
-| `WorkflowOptions.{Query,Signal,Update}.ref` | Wire each ref through to the generated handle as a method. Unknown refs are a validation error. |
-| `WorkflowOptions.aliases[]` | Recorded as constants; not exposed on the client API directly. |
+| `WorkflowOptions.{Query,Signal,Update}.ref` | Wire each same-service ref through to the generated handle as a method. Unknown refs are a validation error. Cross-service refs are roadmap work. |
+| `WorkflowOptions.aliases[]` | Parsed into the model but not fully emitted or registered yet. Alias parity is roadmap work. |
 | `WorkflowOptions.{Signal,Update}.start = true` | Emit a free function `<signal>_with_start(...)` / `<update>_with_start(...)` alongside the client. |
 
-Out of scope for v1 emit (read and ignored): `XNSActivityOptions`, `Patch`, `CLI*Options`, `FieldOptions`.
+Current unsupported or partial annotation areas include XNS, Nexus, patch/protopatch,
+Bloblang-derived search attributes, method co-annotations, cross-service refs,
+most activity runtime options, several workflow runtime options, and full CLI
+execution. The active plan for these gaps is tracked in `ROADMAP.md`.
 
 ## Wire format
 
@@ -114,24 +139,25 @@ The plugin emits one Rust module per source proto, suitable for `include!`-ing f
 
 ```rust
 pub mod jobs_v1_temporal {
-    use temporalio_client::Client;
     use crate::jobs::v1::*;                // prost types from protoc-gen-prost
-    use crate::proto_message::TypedProtoMessage;
+    use crate::temporal_runtime;
 
-    pub const RUN_JOB_WORKFLOW: &str = "jobs.v1.JobService/RunJob";
+    pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
 
-    pub struct JobServiceClient { client: Client }
+    pub struct JobServiceClient {
+        client: temporal_runtime::TemporalClient,
+    }
 
     impl JobServiceClient {
-        pub fn new(client: Client) -> Self { Self { client } }
+        pub fn new(client: temporal_runtime::TemporalClient) -> Self { Self { client } }
 
         /// Start RunJob. Returns a typed handle.
         pub async fn run_job(
             &self,
             input: JobInput,
             opts: RunJobStartOptions,
-        ) -> Result<RunJobHandle, temporalio_client::Error> { /* ... */ }
+        ) -> Result<RunJobHandle> { /* ... */ }
 
         /// Attach to a running workflow by ID.
         pub fn run_job_handle(&self, workflow_id: impl Into<String>) -> RunJobHandle { /* ... */ }
@@ -141,13 +167,13 @@ pub mod jobs_v1_temporal {
 
     impl RunJobHandle {
         pub fn workflow_id(&self) -> &str { /* ... */ }
-        pub async fn result(&self) -> Result<JobOutput, temporalio_client::Error> { /* ... */ }
+        pub async fn result(&self) -> Result<JobOutput> { /* ... */ }
 
         /// Method exists because `query: [{ ref: "GetStatus" }]` is wired in proto.
-        pub async fn get_status(&self) -> Result<JobStatusOutput, temporalio_client::Error> { /* ... */ }
+        pub async fn get_status(&self) -> Result<JobStatusOutput> { /* ... */ }
 
         /// Method exists because `signal: [{ ref: "CancelJob" }]` is wired in proto.
-        pub async fn cancel_job(&self, input: CancelJobInput) -> Result<(), temporalio_client::Error> { /* ... */ }
+        pub async fn cancel_job(&self, input: CancelJobInput) -> Result<()> { /* ... */ }
     }
 
     /// Free function exists because the CancelJob signal has `start: true`.
@@ -156,24 +182,27 @@ pub mod jobs_v1_temporal {
         signal_input: CancelJobInput,
         workflow_input: JobInput,
         opts: RunJobStartOptions,
-    ) -> Result<RunJobHandle, temporalio_client::Error> { /* ... */ }
+    ) -> Result<RunJobHandle> { /* ... */ }
 }
 ```
 
 Properties of the generated code:
 
-- **One `<Service>Client` per proto service**, owning a `temporalio_client::Client`.
+- **One `<Service>Client` per proto service**, owning a
+  `temporal_runtime::TemporalClient`.
 - **One `<Workflow>Handle` per workflow rpc**, exposing only the signals/queries/updates declared in that workflow's options. Wrong signal name = compile error.
 - **Workflow registration name, task queue, id expression, reuse policy, execution timeout** baked in from proto options as defaults; caller-supplied options override.
-- **Inputs/outputs wrapped in `TypedProtoMessage<T>`** internally so the SDK's `TemporalSerializable` dispatch picks `binary/protobuf` over the JSON default. Public API takes/returns bare prost types — wrapping is hidden.
+- **Inputs/outputs wrapped in `TypedProtoMessage<T>`** inside the runtime bridge
+  so the SDK's `TemporalSerializable` dispatch picks `binary/protobuf` over the
+  JSON default. Public API takes/returns bare prost types; wrapping is hidden.
 
 ## Runtime support
 
 | Toolchain | Status | Notes |
 |---|---|---|
-| Stable Rust (current MSRV TBD; likely 1.78+) | Tier 1 | |
-| `temporalio-sdk` / `temporalio-client` 0.4+ | Tier 1 | PoC validated against 0.4.0; track upstream as it matures. |
-| `prost` 0.13 | Tier 1 | Same version the PoC uses; ecosystem default. |
+| Stable Rust 1.88 | Tier 1 | Pinned by `rust-toolchain.toml` and workspace `rust-version`. |
+| `temporalio-sdk` / `temporalio-client` =0.4.0 | Tier 1 | The default bridge pins exact SDK versions to avoid silent pre-1.0 API drift. |
+| `prost` 0.13 | Tier 1 | Workspace dependency used by generated payload helpers and prost message types. |
 
 Generator rules:
 
@@ -188,7 +217,8 @@ Generator rules:
 |---|---|---|
 | `protoc-gen-rust-temporal` binary | crates.io + GitHub Releases (prebuilt: `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`) | `cargo install protoc-gen-rust-temporal` or download |
 | Same binary | **BSR Remote Plugin** as `buf.build/nu-sync/rust-temporal` | `buf.gen.yaml: plugins: - remote: buf.build/nu-sync/rust-temporal` |
-| Optional helper crate `temporal-proto-runtime` (TBD) | crates.io | Provides the `TemporalProtoMessage` trait + `TypedProtoMessage<T>` so consumers don't hand-roll it. The PoC inlines this in `crates/jobs-proto/src/proto_message.rs`; lifting it to a shared crate avoids duplicating ~50 LOC across every consumer. |
+| Helper crate `temporal-proto-runtime` | crates.io | Provides the `TemporalProtoMessage` trait + `TypedProtoMessage<T>`. Its `sdk` feature supplies the SDK serialization impls. |
+| Default bridge crate `temporal-proto-runtime-bridge` | crates.io | Drop-in `crate::temporal_runtime` facade backed by the pinned Temporal SDK crates. |
 
 BSR Remote Plugin is the headline distribution path. Cargo install is the fallback.
 
@@ -197,6 +227,7 @@ BSR Remote Plugin is the headline distribution path. Cargo install is the fallba
 ```
 protoc-gen-rust-temporal/
 ├── SPEC.md                            # this file
+├── ROADMAP.md                         # active majority-parity direction
 ├── WIRE-FORMAT.md                     # payload contract (byte-identical to TS sibling)
 ├── README.md                          # quickstart + buf.gen.yaml example
 ├── Cargo.toml                         # workspace
@@ -223,7 +254,10 @@ protoc-gen-rust-temporal/
 │   │           ├── activity_only/          # validate-only path
 │   │           ├── full/
 │   │           └── bad_*/                  # validation-error fixtures
-│   └── temporal-proto-runtime/        # OPTIONAL — shared TypedProtoMessage<T> helper
+│   ├── temporal-proto-runtime/        # shared TypedProtoMessage<T> helper
+│   │   ├── Cargo.toml
+│   │   └── src/lib.rs
+│   └── temporal-proto-runtime-bridge/ # default crate::temporal_runtime facade
 │       ├── Cargo.toml
 │       └── src/lib.rs
 ├── docs/
@@ -235,6 +269,14 @@ protoc-gen-rust-temporal/
         ├── ci.yml                     # cargo test + clippy + fmt + golden bless check
         └── release.yml                # build matrix → GitHub Release + crates.io publish
 ```
+
+## Roadmap relationship
+
+The phases below describe the path that produced the current `0.1.x` baseline.
+New feature planning should start from [`ROADMAP.md`](./ROADMAP.md), which
+prioritizes majority parity with cludden's Go generator. When a roadmap phase
+changes generated code, update this spec only for durable behavior and keep
+phase-by-phase planning in the roadmap or a focused design note.
 
 ## Phased delivery
 
@@ -330,5 +372,7 @@ Each phase ends with green CI and a tagged release.
 4. **Should activity-tagged methods emit *anything*?** Resolved in Phase 7:
    validate-only by default; `activities=true` emits the typed trait, name
    constants, and thin registration helper.
-5. **Workflow start options shape.** PoC uses a generated `<Workflow>StartOptions` struct (workflow_id, task_queue override, etc.). Reasonable defaults vs. fully-required fields — settle in Phase 2.
-6. **License.** Cludden's repo is MIT. Match (MIT) or Apache-2.0 for the plugin?
+5. **Workflow start options shape.** Resolved in Phase 2: each workflow gets a
+   generated `<Workflow>StartOptions` struct with optional overrides and
+   proto-derived defaults.
+6. **License.** Resolved: MIT.

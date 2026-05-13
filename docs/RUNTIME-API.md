@@ -25,6 +25,16 @@ removed without a major bump (post-1.0) or a deprecation cycle (pre-1.0).
 
 Current pin: **protoc-gen-rust-temporal 0.1.1**.
 
+## Roadmap relationship
+
+This document describes only the runtime symbols emitted today. The active
+project roadmap is majority parity with `protoc-gen-go-temporal`, which will
+add facade symbols for worker implementation helpers, workflow-side activity
+execution, broader client operations, and runtime option coverage. Each new
+emitted symbol must be added here in the same change that introduces it. See
+[`ROADMAP.md`](../ROADMAP.md) for priority order and current unsupported
+features.
+
 ## Types
 
 The facade must define (or re-export) the following types. Generated
@@ -211,7 +221,7 @@ wrap. The closest upstream pieces are low-level `temporalio-sdk-core`
 `ephemeral_server` support and raw `temporalio-client` TestService RPCs, which
 would require this project to own a separate test harness.
 
-## Future direction (post-1.0)
+## Future direction
 
 The current contract is structural — the compiler tells consumers what
 they're missing, but there's no nominal `trait TemporalRuntime`
@@ -220,3 +230,7 @@ this trait" and give consumers IDE-level discoverability of every
 required function. Tracked as a v0.x → v1.0 design decision; the cost is
 a more intrusive consumer API, the benefit is stronger compile-time
 errors.
+
+Before that decision, roadmap phases should keep using free functions and
+re-exported SDK types under `crate::temporal_runtime` unless a phase-specific
+design note explains why a trait is required.
