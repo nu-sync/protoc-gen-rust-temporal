@@ -1622,6 +1622,32 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
             "        ctx.start_activity({marker_struct}, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
         );
         let _ = writeln!(out, "    }}");
+
+        // R3 — local-activity variant. Mirrors the helper above but routes
+        // through `start_local_activity` + `LocalActivityOptions`. Local
+        // activities run in-process on the worker without going through
+        // the matching service — useful for cheap deterministic work that
+        // doesn't need workflow task scheduling overhead.
+        let local_fn = format!("execute_{}_local", act.rpc_method.to_snake_case());
+        let _ = writeln!(out, "    pub async fn {local_fn}<W>(");
+        let _ = writeln!(
+            out,
+            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
+        );
+        let _ = writeln!(out, "        input: {input_ty},");
+        let _ = writeln!(
+            out,
+            "        opts: temporal_runtime::worker::LocalActivityOptions,"
+        );
+        let _ = writeln!(
+            out,
+            "    ) -> ::std::result::Result<{output_ty}, temporal_runtime::worker::ActivityExecutionError> {{"
+        );
+        let _ = writeln!(
+            out,
+            "        ctx.start_local_activity({marker_struct}, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
+        );
+        let _ = writeln!(out, "    }}");
     }
     let _ = writeln!(out);
 

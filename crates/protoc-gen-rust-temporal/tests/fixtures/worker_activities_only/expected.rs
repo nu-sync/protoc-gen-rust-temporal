@@ -52,6 +52,13 @@ pub mod workeract_v1_activity_worker_service_temporal {
     ) -> ::std::result::Result<FetchOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_activity(FetchActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
+    pub async fn execute_fetch_local<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: FetchInput,
+        opts: temporal_runtime::worker::LocalActivityOptions,
+    ) -> ::std::result::Result<FetchOutput, temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_local_activity(FetchActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
 
     pub trait ActivityWorkerServiceActivities: Send + Sync + 'static {
         fn fetch(&self, ctx: temporal_runtime::ActivityContext, input: FetchInput) -> impl ::std::future::Future<Output = Result<FetchOutput>> + Send;

@@ -512,6 +512,26 @@ fn activities_emit_renders_per_activity_marker_structs() {
         !source.contains("execute_heartbeat"),
         "Empty-input activity must not produce a workflow-side helper yet"
     );
+
+    // R3 — local-activity variant. Mirrors the regular helper but uses
+    // `start_local_activity` + `LocalActivityOptions`. Same Empty-skip
+    // gating so the suppression is consistent.
+    assert!(
+        source.contains("pub async fn execute_process_local<W>("),
+        "must emit `execute_process_local` workflow-side helper: {source}"
+    );
+    assert!(
+        source.contains("opts: temporal_runtime::worker::LocalActivityOptions,"),
+        "local helper must take LocalActivityOptions: {source}"
+    );
+    assert!(
+        source.contains("ctx.start_local_activity(ProcessActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"),
+        "local helper must delegate to start_local_activity + unwrap: {source}"
+    );
+    assert!(
+        !source.contains("execute_heartbeat_local"),
+        "Empty-input activity must not produce a local-activity helper yet"
+    );
 }
 
 #[test]

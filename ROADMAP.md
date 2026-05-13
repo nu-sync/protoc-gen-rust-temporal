@@ -138,6 +138,13 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R3 — local-activity variant): every non-Empty activity
+  now also ships `execute_<activity>_local(ctx, input, opts) ->
+  Result<<Output>, ActivityExecutionError>` alongside the regular
+  helper. Routes through `ctx.start_local_activity(<RPC>Activity, input,
+  opts)` + `LocalActivityOptions`. Useful for deterministic in-process
+  work that doesn't need workflow task scheduling overhead. Empty-side
+  variant suppression matches the regular helper.
 - 2026-05-13 (R3 — typed workflow-side helper): every non-Empty
   activity now also ships `pub async fn execute_<activity><W>(ctx, input,
   opts) -> Result<<Output>, ActivityExecutionError>` next to its marker
@@ -435,7 +442,7 @@ toward majority parity.
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
-| Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>(ctx, input, opts)` typed helpers shipped 2026-05-13 (non-Empty in/out only); option builders, local-activity variants, and Empty-input/output helpers still pending. | R3 |
+| Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` shipped 2026-05-13 (non-Empty in/out only); option builders + Empty-input/output helpers still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |

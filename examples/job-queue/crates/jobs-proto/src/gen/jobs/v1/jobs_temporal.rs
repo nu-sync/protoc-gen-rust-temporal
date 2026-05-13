@@ -187,6 +187,13 @@ pub mod jobs_v1_job_service_temporal {
     ) -> ::std::result::Result<JobOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_activity(ExecuteCommandActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
+    pub async fn execute_execute_command_local<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: JobInput,
+        opts: temporal_runtime::worker::LocalActivityOptions,
+    ) -> ::std::result::Result<JobOutput, temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_local_activity(ExecuteCommandActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
 
     pub trait JobServiceActivities: Send + Sync + 'static {
         fn prepare_workspace(&self, ctx: temporal_runtime::ActivityContext, input: PrepareWorkspaceInput) -> impl ::std::future::Future<Output = Result<()>> + Send;

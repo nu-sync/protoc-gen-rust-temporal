@@ -543,6 +543,9 @@ pub mod temporal_runtime {
         #[derive(Debug, Default)]
         pub struct ActivityOptions;
 
+        #[derive(Debug, Default)]
+        pub struct LocalActivityOptions;
+
         #[derive(Debug)]
         pub struct ActivityExecutionError;
 
@@ -554,6 +557,17 @@ pub mod temporal_runtime {
                 _activity: AD,
                 _input: impl Into<AD::Input>,
                 _opts: ActivityOptions,
+            ) -> ::std::result::Result<AD::Output, ActivityExecutionError>
+            where
+                AD::Output: Default,
+            {
+                Ok(AD::Output::default())
+            }
+            pub async fn start_local_activity<AD: ActivityDefinition>(
+                &self,
+                _activity: AD,
+                _input: impl Into<AD::Input>,
+                _opts: LocalActivityOptions,
             ) -> ::std::result::Result<AD::Output, ActivityExecutionError>
             where
                 AD::Output: Default,
