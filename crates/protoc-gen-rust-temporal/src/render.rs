@@ -801,6 +801,18 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "            self.client");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Cloning accessor — sugar over `.inner().clone()`. Lets
+    // callers obtain an owned `TemporalClient` without consuming
+    // the wrapper, useful when the wrapper is borrowed and we
+    // want to spawn a sibling `<X>Client` without transferring
+    // ownership.
+    let _ = writeln!(
+        out,
+        "        pub fn clone_inner(&self) -> temporal_runtime::TemporalClient {{"
+    );
+    let _ = writeln!(out, "            self.client.clone()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
     // Idiomatic `From<TemporalClient>` — sugar over `Self::new`

@@ -87,6 +87,10 @@ pub mod workeract_v1_activity_worker_service_temporal {
             self.client
         }
 
+        pub fn clone_inner(&self) -> temporal_runtime::TemporalClient {
+            self.client.clone()
+        }
+
     }
 
     impl ::std::convert::From<temporal_runtime::TemporalClient> for ActivityWorkerServiceClient {

@@ -3122,6 +3122,26 @@ fn client_implements_from_temporal_client_trait() {
 }
 
 #[test]
+fn client_exposes_clone_inner_accessor() {
+    // R6 ergonomics — `<Service>Client::clone_inner(&self) ->
+    // TemporalClient` is sugar over `.inner().clone()`. Lets
+    // callers obtain an owned client without consuming the
+    // wrapper, useful when the wrapper is borrowed and we want
+    // to spawn a sibling `<X>Client` without transferring
+    // ownership.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn clone_inner(&self) -> temporal_runtime::TemporalClient {"),
+        "missing clone_inner accessor: {source}"
+    );
+    assert!(
+        source.contains("self.client.clone()"),
+        "clone_inner body must clone the inner client: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_into_inner_consuming_accessor() {
     // R6 ergonomics — `<Service>Client::into_inner(self)` returns
     // the underlying `TemporalClient` by value. Lets callers

@@ -511,6 +511,20 @@ Progress:
   parse_validate test pins the fn signature. Several fixture
   goldens reblessed (every Handle gained the new method). 181
   parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::clone_inner()` accessor):
+  every generated `<Service>Client` now exposes
+  `clone_inner(&self) -> TemporalClient` — sugar over the existing
+  `.inner().clone()` chain. Lets callers obtain an owned
+  `TemporalClient` without consuming the wrapper, useful when the
+  wrapper is borrowed and we want to spawn a sibling typed client
+  without giving up the original. Pairs with
+  `inner()` (borrow), `into_inner()` (consume), and the new
+  `clone_inner()` (borrow + clone) for the full
+  borrow / clone / consume access matrix on the underlying bridge
+  client. One new positive parse_validate test pins the fn
+  signature + body. Several fixture goldens reblessed (every
+  Client gained the accessor). 197 parse_validate tests green.
+  No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::into_inner()` consuming accessor):
   every generated `<Service>Client` now exposes
   `into_inner(self) -> TemporalClient` returning the underlying

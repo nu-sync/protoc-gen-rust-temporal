@@ -87,6 +87,10 @@ pub mod solo_v1_solo_service_temporal {
             self.client
         }
 
+        pub fn clone_inner(&self) -> temporal_runtime::TemporalClient {
+            self.client.clone()
+        }
+
     }
 
     impl ::std::convert::From<temporal_runtime::TemporalClient> for SoloServiceClient {
