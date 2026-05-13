@@ -46,7 +46,7 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
     let _ = writeln!(out, "    use {proto_mod}::*;");
     let _ = writeln!(out);
 
-    render_message_type_impls(&mut out, svc);
+    render_message_type_impls(&mut out, svc, options);
     render_constants(&mut out, svc);
     render_id_fns(&mut out, svc);
     render_client_struct(&mut out, svc, &client_struct);
@@ -91,7 +91,11 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
 /// what lets `start_workflow_proto::<I>` / `signal_proto::<I>` etc. resolve
 /// at the call site. `google.protobuf.Empty` types are skipped — the
 /// `_empty` runtime variants take no payload generic.
-fn render_message_type_impls(out: &mut String, svc: &ServiceModel) {
+fn render_message_type_impls(
+    out: &mut String,
+    svc: &ServiceModel,
+    options: &crate::options::RenderOptions,
+) {
     use std::collections::BTreeMap;
 
     let mut by_rust_name: BTreeMap<String, String> = BTreeMap::new();
@@ -120,8 +124,12 @@ fn render_message_type_impls(out: &mut String, svc: &ServiceModel) {
         record(&u.input_type);
         record(&u.output_type);
     }
-    // Activities are validate-only — their message types are not used by the
-    // emitted client surface, so they do not need impls.
+    if options.activities {
+        for a in &svc.activities {
+            record(&a.input_type);
+            record(&a.output_type);
+        }
+    }
 
     if by_rust_name.is_empty() {
         return;

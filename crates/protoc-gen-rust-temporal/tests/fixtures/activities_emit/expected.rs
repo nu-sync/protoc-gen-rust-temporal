@@ -14,6 +14,15 @@ pub mod acts_v1_chunk_service_temporal {
     impl temporal_runtime::TemporalProtoMessage for BatchOutput {
         const MESSAGE_TYPE: &'static str = "acts.v1.BatchOutput";
     }
+    impl temporal_runtime::TemporalProtoMessage for ChunkInput {
+        const MESSAGE_TYPE: &'static str = "acts.v1.ChunkInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for ChunkOutput {
+        const MESSAGE_TYPE: &'static str = "acts.v1.ChunkOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for HeartbeatOutput {
+        const MESSAGE_TYPE: &'static str = "acts.v1.HeartbeatOutput";
+    }
 
     pub const RUN_BATCH_WORKFLOW_NAME: &str = "acts.v1.ChunkService.RunBatch";
     pub const RUN_BATCH_TASK_QUEUE: &str = "chunks";

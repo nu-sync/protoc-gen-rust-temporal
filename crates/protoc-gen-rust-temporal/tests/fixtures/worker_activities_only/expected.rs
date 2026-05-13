@@ -8,6 +8,13 @@ pub mod workeract_v1_activity_worker_service_temporal {
     use crate::temporal_runtime;
     use crate::workeract::v1::*;
 
+    impl temporal_runtime::TemporalProtoMessage for FetchInput {
+        const MESSAGE_TYPE: &'static str = "workeract.v1.FetchInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for FetchOutput {
+        const MESSAGE_TYPE: &'static str = "workeract.v1.FetchOutput";
+    }
+
     pub struct ActivityWorkerServiceClient {
         client: temporal_runtime::TemporalClient,
     }

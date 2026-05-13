@@ -257,8 +257,21 @@ Each phase ends with green CI and a tagged release.
 - BSR Remote Plugin registered as `buf.build/nu-sync/rust-temporal`.
 - README quickstart includes both `buf.gen.yaml` shapes (remote + local install).
 
-**Phase 5 — First external consumer**
-- Migrate `job-queue` off its vendored `temporal/v1/temporal.proto` onto the BSR dep. Switch `jobs-proto/build.rs` from invoking the in-tree plugin to invoking the externally-installed `protoc-gen-rust-temporal`. Delete `job-queue/crates/protoc-gen-rust-temporal-client/`. Verify the end-to-end demo (`just demo`) still passes against the new plugin binary. This is the integration test that proves "anyone can use it."
+**Phase 5 — First external consumer** (completed 2026-05-13)
+- `job-queue` now consumes the externally-installed
+  `protoc-gen-rust-temporal` for client + worker emit and registers its Rust
+  worker through generated `RunJobDefinition`, `JobServiceActivities`,
+  `register_run_job_workflow`, and `register_job_service_activities` glue.
+  Landed in [`job-queue` commit `88c4749`](../job-queue) (`Migrate worker to
+  generated Temporal contracts`).
+- The external-consumer pass kept the vendored annotation schema pinned instead
+  of switching to a BSR dep so it stays aligned with the plugin's cludden
+  v1.22.1 schema while Phase 4 distribution remains in flight.
+- Verification: `just gen` idempotence, `cargo check --workspace
+  --all-targets`, `cargo clippy --workspace --all-targets -- -D warnings`,
+  `cargo test --workspace --all-targets`, `just demo` against a real Temporal
+  dev server, Go client -> migrated Rust worker, and migrated Rust client -> Go
+  worker all passed.
 
 **Phase 6 — Update + signal-with-start emit polish**
 - Beyond the PoC's surface area. Update support requires `WaitPolicy` plumbing. Signal-with-start and update-with-start require emitting free functions alongside the client struct.

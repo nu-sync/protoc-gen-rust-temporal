@@ -17,6 +17,12 @@ pub mod workerfull_v1_orchestration_service_temporal {
     impl temporal_runtime::TemporalProtoMessage for ConfirmOutput {
         const MESSAGE_TYPE: &'static str = "workerfull.v1.ConfirmOutput";
     }
+    impl temporal_runtime::TemporalProtoMessage for LoadInput {
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.LoadInput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for LoadOutput {
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.LoadOutput";
+    }
     impl temporal_runtime::TemporalProtoMessage for RunInput {
         const MESSAGE_TYPE: &'static str = "workerfull.v1.RunInput";
     }
