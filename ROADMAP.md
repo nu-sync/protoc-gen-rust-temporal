@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R3 — first activity-from-workflow step): under
+  `activities=true`, every activity with non-Empty input AND output now
+  gets a per-rpc marker struct (`<RPC>Activity`) plus an
+  `impl temporal_runtime::worker::ActivityDefinition` carrying the typed
+  `Input` / `Output` (wrapped in `TypedProtoMessage<T>` for the
+  orphan-rule reasons documented in the bridge) and a `name()` that
+  delegates to the existing `<RPC>_ACTIVITY_NAME` const. Workflow code
+  can call `ctx.start_activity(<RPC>Activity, input, opts).await` against
+  the SDK's typed activity entrypoint without hand-writing the
+  ActivityDefinition. The bridge gains a top-level
+  `pub use TypedProtoMessage;` re-export so generated code can spell
+  the type without reaching into the inner crate. Empty-input/output
+  activities still ship the name const but skip the marker, gated by an
+  explicit comment in the emit — lifting the gate is a follow-up once
+  `()` impls land upstream. Two new tests pin the typed and Empty-skip
+  paths.
 - 2026-05-13 (R5 — `UpdateOptions.wait_for_stage` + deprecated
   `wait_policy`): both fields now fold into a generated default. Every
   update method's `wait_policy` arg moves from `temporal_runtime::WaitPolicy`
@@ -411,7 +427,7 @@ toward majority parity.
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
-| Activity calls from workflows | Not generated. | R3 |
+| Activity calls from workflows | Per-rpc `ActivityDefinition` markers shipped 2026-05-13 (non-Empty in/out only); workflow-context helpers + option builders + local-activity variants still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |

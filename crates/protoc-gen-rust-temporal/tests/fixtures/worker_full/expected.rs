@@ -181,6 +181,13 @@ pub mod workerfull_v1_orchestration_service_temporal {
 
     pub const LOAD_ACTIVITY_NAME: &str = "workerfull.v1.OrchestrationService.Load";
 
+    pub struct LoadActivity;
+    impl temporal_runtime::worker::ActivityDefinition for LoadActivity {
+        type Input = temporal_runtime::TypedProtoMessage<LoadInput>;
+        type Output = temporal_runtime::TypedProtoMessage<LoadOutput>;
+        fn name() -> &'static str { LOAD_ACTIVITY_NAME }
+    }
+
     pub trait OrchestrationServiceActivities: Send + Sync + 'static {
         fn load(&self, ctx: temporal_runtime::ActivityContext, input: LoadInput) -> impl ::std::future::Future<Output = Result<LoadOutput>> + Send;
     }

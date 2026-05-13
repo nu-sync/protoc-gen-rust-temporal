@@ -440,6 +440,51 @@ fn worker_activities_only_render_golden() {
 }
 
 #[test]
+fn activities_emit_renders_per_activity_marker_structs() {
+    // R3 — every activity with non-Empty input AND output gets a marker
+    // struct + ActivityDefinition impl, so workflow code can call
+    // `ctx.start_activity(<RPC>Activity, input, opts)` against a typed
+    // marker. Empty-side activities are skipped because `()` doesn't
+    // implement TemporalSerializable/Deserializable in temporalio-common 0.4.
+    let services = parse_and_validate("activities_emit");
+    let opts = load_fixture_options("activities_emit");
+    assert!(opts.activities);
+    let source = render::render(&services[0], &opts);
+    // ChunkInput / ChunkOutput → Process gets the full marker + impl.
+    assert!(
+        source.contains("pub struct ProcessActivity;"),
+        "Process activity must produce a marker struct: {source}"
+    );
+    assert!(
+        source.contains("impl temporal_runtime::worker::ActivityDefinition for ProcessActivity"),
+        "Process activity must impl ActivityDefinition: {source}"
+    );
+    assert!(
+        source.contains("type Input = temporal_runtime::TypedProtoMessage<ChunkInput>;"),
+        "marker Input must wrap the prost input in TypedProtoMessage: {source}"
+    );
+    assert!(
+        source.contains("type Output = temporal_runtime::TypedProtoMessage<ChunkOutput>;"),
+        "marker Output must wrap the prost output in TypedProtoMessage: {source}"
+    );
+    assert!(
+        source.contains("fn name() -> &'static str { PROCESS_ACTIVITY_NAME }"),
+        "marker name() must delegate to the existing name const: {source}"
+    );
+
+    // Heartbeat has Empty input — must NOT produce a marker (until we have
+    // `()` TemporalSerializable impls). The name const is still emitted.
+    assert!(
+        !source.contains("pub struct HeartbeatActivity;"),
+        "Empty-input activity must not produce a marker struct yet: {source}"
+    );
+    assert!(
+        source.contains("pub const HEARTBEAT_ACTIVITY_NAME"),
+        "Heartbeat name const must remain available"
+    );
+}
+
+#[test]
 fn activities_emit_renders_trait_and_consts() {
     let services = parse_and_validate("activities_emit");
     let opts = load_fixture_options("activities_emit");

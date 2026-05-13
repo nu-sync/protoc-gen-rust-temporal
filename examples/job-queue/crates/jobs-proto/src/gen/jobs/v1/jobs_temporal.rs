@@ -174,6 +174,13 @@ pub mod jobs_v1_job_service_temporal {
     pub const EXECUTE_COMMAND_ACTIVITY_NAME: &str = "jobs.v1.JobService.ExecuteCommand";
     pub const COLLECT_OUTPUT_ACTIVITY_NAME: &str = "jobs.v1.JobService.CollectOutput";
 
+    pub struct ExecuteCommandActivity;
+    impl temporal_runtime::worker::ActivityDefinition for ExecuteCommandActivity {
+        type Input = temporal_runtime::TypedProtoMessage<JobInput>;
+        type Output = temporal_runtime::TypedProtoMessage<JobOutput>;
+        fn name() -> &'static str { EXECUTE_COMMAND_ACTIVITY_NAME }
+    }
+
     pub trait JobServiceActivities: Send + Sync + 'static {
         fn prepare_workspace(&self, ctx: temporal_runtime::ActivityContext, input: PrepareWorkspaceInput) -> impl ::std::future::Future<Output = Result<()>> + Send;
         fn execute_command(&self, ctx: temporal_runtime::ActivityContext, input: JobInput) -> impl ::std::future::Future<Output = Result<JobOutput>> + Send;

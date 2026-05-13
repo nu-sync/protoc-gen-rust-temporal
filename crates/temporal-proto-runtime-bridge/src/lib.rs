@@ -55,6 +55,13 @@ use temporalio_common::protos::temporal::api::workflowservice::v1::{
 };
 
 pub use temporal_proto_runtime::TemporalProtoMessage;
+/// Re-export the `binary/protobuf` payload wrapper so plugin-emitted
+/// activity marker structs can spell out `temporal_runtime::TypedProtoMessage<T>`
+/// for `ActivityDefinition::{Input, Output}`. The `sdk` feature on
+/// `temporal-proto-runtime` ships the `TemporalSerializable` /
+/// `TemporalDeserializable` impls on `TypedProtoMessage<T>` — the orphan
+/// rule blocks impls on raw `T` directly, so the wrapper is the bridge.
+pub use temporal_proto_runtime::TypedProtoMessage;
 
 /// Encoding constant for the wire-format triple (`metadata.encoding`).
 const ENCODING: &str = temporal_proto_runtime::ENCODING;

@@ -39,6 +39,13 @@ pub mod workeract_v1_activity_worker_service_temporal {
     pub const FETCH_ACTIVITY_NAME: &str = "workeract.v1.ActivityWorkerService.Fetch";
     pub const PING_ACTIVITY_NAME: &str = "workeract.v1.ActivityWorkerService.Ping";
 
+    pub struct FetchActivity;
+    impl temporal_runtime::worker::ActivityDefinition for FetchActivity {
+        type Input = temporal_runtime::TypedProtoMessage<FetchInput>;
+        type Output = temporal_runtime::TypedProtoMessage<FetchOutput>;
+        fn name() -> &'static str { FETCH_ACTIVITY_NAME }
+    }
+
     pub trait ActivityWorkerServiceActivities: Send + Sync + 'static {
         fn fetch(&self, ctx: temporal_runtime::ActivityContext, input: FetchInput) -> impl ::std::future::Future<Output = Result<FetchOutput>> + Send;
         fn ping(&self, ctx: temporal_runtime::ActivityContext, input: ()) -> impl ::std::future::Future<Output = Result<()>> + Send;

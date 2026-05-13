@@ -309,6 +309,15 @@ pub mod temporal_runtime {
         const MESSAGE_TYPE: &'static str;
     }
 
+    /// Stub of `temporal-proto-runtime`'s `TypedProtoMessage<T>` so the
+    /// generated `ActivityDefinition::{Input, Output}` types resolve.
+    pub struct TypedProtoMessage<T: TemporalProtoMessage>(pub T);
+    impl<T: TemporalProtoMessage> From<T> for TypedProtoMessage<T> {
+        fn from(t: T) -> Self {
+            Self(t)
+        }
+    }
+
     pub type ActivityContext = ();
 
     pub fn random_workflow_id() -> String {
@@ -509,6 +518,17 @@ pub mod temporal_runtime {
 
         pub trait ActivityImplementer {}
         pub trait WorkflowImplementer {}
+
+        /// Stub of the SDK's ActivityDefinition trait so the generated
+        /// per-activity marker structs + impls type-check against the
+        /// stub runtime.
+        pub trait ActivityDefinition {
+            type Input;
+            type Output;
+            fn name() -> &'static str
+            where
+                Self: Sized;
+        }
 
         impl Worker {
             pub fn register_activities<I>(&mut self, _impl: I) -> &mut Self

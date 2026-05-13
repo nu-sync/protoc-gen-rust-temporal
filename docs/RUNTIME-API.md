@@ -50,7 +50,8 @@ code references them by their unqualified name through
 | `RetryPolicy` | Struct mirroring cludden's `RetryPolicy` (`initial_interval`, `backoff_coefficient`, `max_interval`, `max_attempts`, `non_retryable_error_types`). `backoff_coefficient` is set via `set_backoff_coefficient`/`with_backoff_coefficient` because the underlying f64 is stored as bits for `Eq`. Added 0.1.2. |
 | `WaitPolicy` | Enum with variants `Admitted`, `Accepted`, `Completed`. Used by update calls. |
 | `TemporalProtoMessage` | Re-exported from [`temporal-proto-runtime`](https://crates.io/crates/temporal-proto-runtime). The plugin emits `impl temporal_runtime::TemporalProtoMessage for <Ty>` for every prost message type the client surface touches; consumers do not write these by hand. |
-| `TypedProtoMessage<T>` | Re-exported from [`temporal-proto-runtime`](https://crates.io/crates/temporal-proto-runtime). Enable that crate's `sdk` feature to get the `TemporalSerializable` / `TemporalDeserializable` impls — otherwise the orphan rule blocks consumers from adding them. |
+| `TypedProtoMessage<T>` | Re-exported from [`temporal-proto-runtime`](https://crates.io/crates/temporal-proto-runtime). Enable that crate's `sdk` feature to get the `TemporalSerializable` / `TemporalDeserializable` impls — otherwise the orphan rule blocks consumers from adding them. The plugin's `activities=true` emit references it as `temporal_runtime::TypedProtoMessage<T>` in each per-activity `ActivityDefinition` impl. |
+| `worker::ActivityDefinition` | Re-exported from `temporalio-common`. The plugin emits an `impl temporal_runtime::worker::ActivityDefinition for <RPC>Activity` per non-Empty activity under `activities=true`, so workflow code can call `ctx.start_activity(<RPC>Activity, input, opts)`. |
 
 ## Functions
 

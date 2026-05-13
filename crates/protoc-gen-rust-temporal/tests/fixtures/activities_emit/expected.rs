@@ -142,6 +142,13 @@ pub mod acts_v1_chunk_service_temporal {
     pub const PROCESS_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Process";
     pub const HEARTBEAT_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Heartbeat";
 
+    pub struct ProcessActivity;
+    impl temporal_runtime::worker::ActivityDefinition for ProcessActivity {
+        type Input = temporal_runtime::TypedProtoMessage<ChunkInput>;
+        type Output = temporal_runtime::TypedProtoMessage<ChunkOutput>;
+        fn name() -> &'static str { PROCESS_ACTIVITY_NAME }
+    }
+
     pub trait ChunkServiceActivities: Send + Sync + 'static {
         fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;
         fn heartbeat(&self, ctx: temporal_runtime::ActivityContext, input: ()) -> impl ::std::future::Future<Output = Result<HeartbeatOutput>> + Send;

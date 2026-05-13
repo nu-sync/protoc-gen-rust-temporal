@@ -1552,6 +1552,51 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
 
     let _ = writeln!(out);
 
+    // R3 — per-activity marker structs + ActivityDefinition impls. Lets
+    // workflow code call `ctx.start_activity(<ActivityName>Activity, input,
+    // opts)` against a typed marker instead of hand-writing
+    // ActivityDefinition impls per service.
+    //
+    // Scoped to activities with **non-Empty** input *and* output because
+    // `temporalio-common`'s `ActivityDefinition` trait requires `Input`/
+    // `Output` to impl `TemporalSerializable + TemporalDeserializable`,
+    // which `()` does not satisfy in the 0.4 SDK. Empty-input/output
+    // activities still get a name const above — they just need a hand-
+    // written ActivityDefinition (or wrap the Empty side in a marker
+    // message).
+    for act in &svc.activities {
+        if act.input_type.is_empty || act.output_type.is_empty {
+            continue;
+        }
+        let marker_struct = format!("{}Activity", act.rpc_method);
+        let const_ident = format!("{}_ACTIVITY_NAME", act.rpc_method.to_shouty_snake_case());
+        let input_ty = act.input_type.rust_name();
+        let output_ty = act.output_type.rust_name();
+        // `Input` / `Output` resolve through `TypedProtoMessage<T>` because
+        // the `TemporalSerializable` / `TemporalDeserializable` impls live
+        // on the wrapper, not on raw `T` (Rust orphan rule). Callers pass
+        // a raw `T` value at the call site — the SDK's `start_activity`
+        // takes `impl Into<AD::Input>` and there's a `From<T>` impl on
+        // `TypedProtoMessage<T>`. The returned future yields
+        // `TypedProtoMessage<O>`; consumers unwrap via `.into_inner()`.
+        let _ = writeln!(out, "    pub struct {marker_struct};");
+        let _ = writeln!(
+            out,
+            "    impl temporal_runtime::worker::ActivityDefinition for {marker_struct} {{"
+        );
+        let _ = writeln!(
+            out,
+            "        type Input = temporal_runtime::TypedProtoMessage<{input_ty}>;"
+        );
+        let _ = writeln!(
+            out,
+            "        type Output = temporal_runtime::TypedProtoMessage<{output_ty}>;"
+        );
+        let _ = writeln!(out, "        fn name() -> &'static str {{ {const_ident} }}");
+        let _ = writeln!(out, "    }}");
+    }
+    let _ = writeln!(out);
+
     let _ = writeln!(out, "    pub trait {trait_name}: Send + Sync + 'static {{");
     for act in &svc.activities {
         let method_name = act.rpc_method.to_snake_case();
