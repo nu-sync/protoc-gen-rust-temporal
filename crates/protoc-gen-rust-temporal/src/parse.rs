@@ -489,6 +489,7 @@ fn workflow_from(
         id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
         parent_close_policy: parent_close_policy_from_proto(opts.parent_close_policy),
         wait_for_cancellation: opts.wait_for_cancellation,
+        search_attributes: parse_search_attributes_spec(&opts.search_attributes),
         retry_policy: opts.retry_policy.map(retry_policy_from_proto),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
@@ -656,7 +657,13 @@ fn reject_unsupported_workflow_options(
     rpc: &str,
 ) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
-    if !opts.search_attributes.is_empty() {
+    // R7 slice 1 only honours the empty-map Bloblang literal
+    // (`root = {}`). Richer expressions are still refused here with the
+    // standard "does not yet honour" diagnostic. The honoured-empty
+    // case lands in the model below via `parse_search_attributes_spec`.
+    if !opts.search_attributes.is_empty()
+        && parse_search_attributes_spec(&opts.search_attributes).is_none()
+    {
         unsupported.push("search_attributes");
     }
     if !opts.typed_search_attributes.is_empty() {
@@ -822,6 +829,20 @@ fn reject_unsupported_activity_options(
     _rpc: &str,
 ) -> Result<()> {
     Ok(())
+}
+
+/// R7 slice 1 — recognise the canonical empty-map Bloblang expression
+/// `root = {}` (whitespace-tolerant). Returns `Some(Empty)` on match,
+/// `None` otherwise. Slice 2 will replace this with a real lexer +
+/// parser; for now we hand-fold the only form that has a useful
+/// no-op semantic.
+fn parse_search_attributes_spec(raw: &str) -> Option<crate::model::SearchAttributesSpec> {
+    let normalized: String = raw.split_whitespace().collect::<Vec<_>>().join("");
+    if normalized == "root={}" {
+        Some(crate::model::SearchAttributesSpec::Empty)
+    } else {
+        None
+    }
 }
 
 fn activity_options_spec_from_proto(

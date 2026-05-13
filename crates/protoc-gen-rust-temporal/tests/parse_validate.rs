@@ -2349,6 +2349,105 @@ fn workflow_id_with_bloblang_expression_is_rejected() {
 /// `parse.rs`. When you add a new rejection rule, drop a row here naming
 /// the field and an isolating proto snippet. The roadmap (R1) requires that
 /// every unsupported-field diagnostic fire under test so silent drops can
+#[test]
+fn search_attributes_empty_map_bloblang_is_accepted() {
+    // R7 slice 1 — `(temporal.v1.workflow).search_attributes = "root = {}"`
+    // is the canonical "no search attrs" Bloblang expression. Parse
+    // accepts it (no longer rejected) and stores `Some(Empty)` on the
+    // model. Runtime emit treats Empty as a no-op — semantically
+    // identical to leaving the field unset, which faithfully implements
+    // "this workflow declares zero search attributes".
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_empty.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = {}"
+            };
+          }
+        }
+        message In {}  message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must accept root = {}");
+    use protoc_gen_rust_temporal::model::SearchAttributesSpec;
+    assert_eq!(
+        services[0].workflows[0].search_attributes,
+        Some(SearchAttributesSpec::Empty),
+        "model must record the empty-map spec so slice 2 has a foundation"
+    );
+}
+
+#[test]
+fn search_attributes_whitespace_variations_accepted() {
+    use protoc_gen_rust_temporal::model::SearchAttributesSpec;
+    let cases = ["root = {}", "root={}", "  root  =  {  }  "];
+    for raw in cases {
+        let proto = format!(
+            r#"
+            syntax = "proto3";
+            package sa_ws.v1;
+            import "temporal/v1/temporal.proto";
+
+            service Svc {{
+              rpc Run(In) returns (Out) {{
+                option (temporal.v1.workflow) = {{
+                  task_queue:        "tq"
+                  search_attributes: "{}"
+                }};
+              }}
+            }}
+            message In {{}} message Out {{}}
+            "#,
+            raw.escape_default()
+        );
+        let (pool, files, _tmp) = compile_fixture_inline(&proto);
+        let services =
+            parse::parse(&pool, &files).unwrap_or_else(|e| panic!("parse failed for {raw:?}: {e}"));
+        assert_eq!(
+            services[0].workflows[0].search_attributes,
+            Some(SearchAttributesSpec::Empty),
+            "whitespace variant {raw:?} must parse to Empty"
+        );
+    }
+}
+
+#[test]
+fn search_attributes_richer_expressions_still_rejected() {
+    // R7 slice 1 explicitly does NOT support field references or
+    // literal key/value entries — those land in slices 2 / 3. The
+    // existing rejection diagnostic must still fire so users see the
+    // boundary clearly.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_complex.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root.CustomerId = this.customer_id"
+            };
+          }
+        }
+        message In  { string customer_id = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "expressions beyond `root = {{}}` must still be rejected with the standard diagnostic: {err}"
+    );
+}
+
 /// never regress.
 #[test]
 fn unsupported_field_support_status_table() {

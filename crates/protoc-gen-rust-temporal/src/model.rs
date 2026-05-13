@@ -79,6 +79,12 @@ pub struct WorkflowModel {
     /// ChildWorkflowCancellationType::WaitCancellationCompleted`. `false`
     /// (default) emits no setter so the SDK's default behaviour stays.
     pub wait_for_cancellation: bool,
+    /// Parsed `(temporal.v1.workflow).search_attributes` Bloblang
+    /// expression. `None` means the proto didn't declare any. R7 slice 1
+    /// only models the empty-map literal `root = {}`; richer
+    /// expressions are still refused at parse with a slice-bounded
+    /// diagnostic. See `docs/R7-BLOBLANG.md`.
+    pub search_attributes: Option<SearchAttributesSpec>,
     /// Proto-declared default retry policy for the workflow. `None` means
     /// the proto omits the field and the server picks defaults.
     pub retry_policy: Option<RetryPolicySpec>,
@@ -317,6 +323,19 @@ impl IdReusePolicy {
             Self::TerminateIfRunning => "TerminateIfRunning",
         }
     }
+}
+
+/// Compiled form of `(temporal.v1.workflow).search_attributes`. R7
+/// slice 1 only models the empty-map literal — `root = {}` — which
+/// faithfully says "this workflow declares zero search attributes" and
+/// emits as a no-op on the start path. Slice 2 will add a `Static`
+/// variant carrying a `HashMap<String, Value>` of literal entries;
+/// slice 3 will add a `WithInput` variant carrying field references.
+/// See `docs/R7-BLOBLANG.md`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SearchAttributesSpec {
+    /// Empty map — proto declared `root = {}`.
+    Empty,
 }
 
 /// Compiled form of `(temporal.v1.workflow).retry_policy`. Holds the

@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 — slice 1 lands): the canonical empty-map Bloblang
+  expression (`root = {}`, whitespace-tolerant) is accepted at parse
+  and stored on the model as `SearchAttributesSpec::Empty`. Runtime
+  emit treats Empty as a no-op — semantically equivalent to declaring
+  no search attributes, which faithfully implements the proto's stated
+  intent. Richer expressions (field references, non-empty literals,
+  typed search attrs) remain rejected with the standard "does not yet
+  honour" diagnostic; slices 2 and 3 land them per the design note.
+  Three new tests pin the accepted form, whitespace tolerance, and
+  the still-rejected boundary.
 - 2026-05-13 (R7 — design note): published `docs/R7-BLOBLANG.md` —
   the pre-implementation design note that captures the SDK contract
   (`WorkflowStartOptions.search_attributes: Option<HashMap<String, Payload>>`
