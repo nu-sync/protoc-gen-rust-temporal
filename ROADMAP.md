@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 slice 2 — reject duplicate keys in literal map):
+  the Bloblang search-attribute lexer previously accepted
+  `root = { "Env": "prod", "Env": "staging" }` and emitted two
+  `sa.insert("Env", …)` calls — the second silently winning. Now
+  the lexer tracks seen keys and falls through to the standard
+  unsupported-`search_attributes` diagnostic when a key repeats,
+  so the silent-second-wins bug surfaces at codegen. One new
+  positive parse_validate test pins the rejection. 143 parse_validate
+  tests green. No bridge signature change; no fixture goldens touched.
 - 2026-05-13 (R1 — id-template enum field-kind validation):
   extends the per-kind id-template validation to also reject enum
   field refs. prost emits enum fields as bare `i32` (the open-enum

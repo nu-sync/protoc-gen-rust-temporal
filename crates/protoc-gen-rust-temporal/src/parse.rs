@@ -950,7 +950,8 @@ fn parse_search_attributes_spec(
     // literals here; cludden's examples don't use them and the
     // simplification keeps the lexer trivial. If slice 3 needs richer
     // strings the lexer graduates.
-    let mut entries = Vec::new();
+    let mut entries: Vec<(String, crate::model::SearchAttributeLiteral)> = Vec::new();
+    let mut seen_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
     for entry in body.split(',') {
         let entry = entry.trim();
         if entry.is_empty() {
@@ -967,6 +968,14 @@ fn parse_search_attributes_spec(
             .and_then(|s| s.strip_suffix('"'))?;
         // Reject keys containing escape sequences for slice 2 simplicity.
         if key.contains('\\') {
+            return None;
+        }
+        // Reject the same key appearing twice in the same map — render
+        // would emit two `sa.insert(K, …)` calls and the second silently
+        // wins, which almost never matches author intent. Fall through
+        // to the standard unsupported-`search_attributes` diagnostic so
+        // the bug surfaces at codegen.
+        if !seen_keys.insert(key.to_string()) {
             return None;
         }
         let value = parse_search_attribute_literal(value_part, input)?;

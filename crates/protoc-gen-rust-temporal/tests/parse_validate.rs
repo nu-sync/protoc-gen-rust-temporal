@@ -4031,6 +4031,36 @@ fn workflow_id_template_rejects_bytes_field() {
 }
 
 #[test]
+fn search_attributes_duplicate_key_is_rejected() {
+    // The slice-2 literal map must not declare the same key twice —
+    // render would emit `sa.insert(K, V1); sa.insert(K, V2);` and the
+    // second silently wins. Fall through to the standard
+    // unsupported-`search_attributes` diagnostic instead.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_dup_key.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"Env\": \"prod\", \"Env\": \"staging\" }"
+            };
+          }
+        }
+        message In {}  message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "duplicate-key literal map must surface the unsupported diagnostic: {err}"
+    );
+}
+
+#[test]
 fn search_attributes_string_literal_accepts_minimal_json_escapes() {
     // R7 slice 2 — the string lexer accepts the same minimal escape
     // set the encoder emits: `\\` (backslash) and `\"` (double quote).
