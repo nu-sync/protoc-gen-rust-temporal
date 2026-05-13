@@ -61,6 +61,10 @@ pub mod solo_v1_solo_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `solo.v1.SoloService.DoWork` workflow.
         pub async fn do_work(
             &self,

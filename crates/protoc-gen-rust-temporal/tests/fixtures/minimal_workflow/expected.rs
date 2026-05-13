@@ -98,6 +98,10 @@ pub mod jobs_v1_job_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `jobs.v1.JobService.RunJob` workflow.
         pub async fn run_job(
             &self,

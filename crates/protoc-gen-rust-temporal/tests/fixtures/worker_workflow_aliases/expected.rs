@@ -62,6 +62,10 @@ pub mod aliases_v1_alias_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `aliases.v1.AliasService.Run` workflow.
         pub async fn run(
             &self,

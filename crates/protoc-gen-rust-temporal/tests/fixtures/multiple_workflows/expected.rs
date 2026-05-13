@@ -84,6 +84,10 @@ pub mod multi_v1_multi_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `multi.v1.MultiService.Alpha` workflow.
         pub async fn alpha(
             &self,

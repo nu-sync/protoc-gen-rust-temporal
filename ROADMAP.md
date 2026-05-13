@@ -283,6 +283,18 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::into_inner()` consuming accessor):
+  every generated `<Service>Client` now exposes
+  `into_inner(self) -> TemporalClient` returning the underlying
+  bridge client by value. Lets callers transfer ownership for
+  sharing across multiple typed service clients (e.g. wrap the
+  same connection in both an `<A>Client` and a `<B>Client`
+  without re-connecting). Pairs with the existing borrowing
+  `inner(&self) -> &TemporalClient` accessor — together they
+  cover the borrow + own duality. One new positive parse_validate
+  test pins the fn signature + body. 16 fixture goldens
+  reblessed (every Client gained the new method). 180
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::connect(url, namespace)` convenience):
   every generated client now exposes a one-call `connect`
   constructor that wraps `temporal_runtime::connect(url, namespace)`

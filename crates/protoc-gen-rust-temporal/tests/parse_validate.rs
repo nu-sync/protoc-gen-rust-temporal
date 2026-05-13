@@ -2819,6 +2819,26 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn client_exposes_into_inner_consuming_accessor() {
+    // R6 ergonomics — `<Service>Client::into_inner(self)` returns
+    // the underlying `TemporalClient` by value. Lets callers
+    // transfer ownership for sharing across multiple typed
+    // service clients (e.g. wrap the same connection in both an
+    // `<A>Client` and a `<B>Client`). Pairs with the existing
+    // `inner(&self) -> &TemporalClient` borrowing accessor.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn into_inner(self) -> temporal_runtime::TemporalClient {"),
+        "missing into_inner consuming accessor: {source}"
+    );
+    assert!(
+        source.contains("self.client") && source.contains("into_inner"),
+        "into_inner body must return self.client by value: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_connect_convenience_constructor() {
     // R6 ergonomics — `<Service>Client::connect(url, namespace)`
     // wraps `temporal_runtime::connect()` + `Self::new()` in one

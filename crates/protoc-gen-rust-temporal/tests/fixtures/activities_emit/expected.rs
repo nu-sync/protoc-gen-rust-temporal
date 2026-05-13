@@ -86,6 +86,10 @@ pub mod acts_v1_chunk_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `acts.v1.ChunkService.RunBatch` workflow.
         pub async fn run_batch(
             &self,

@@ -61,6 +61,10 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `workerwf.v1.WorkerWorkflowService.Run` workflow.
         pub async fn run(
             &self,

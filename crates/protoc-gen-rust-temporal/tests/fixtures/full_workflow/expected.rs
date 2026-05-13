@@ -102,6 +102,10 @@ pub mod full_v1_full_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `full.v1.FullService.Run` workflow.
         pub async fn run(
             &self,

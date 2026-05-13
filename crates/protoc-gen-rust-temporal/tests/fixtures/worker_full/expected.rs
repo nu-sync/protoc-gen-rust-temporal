@@ -94,6 +94,10 @@ pub mod workerfull_v1_orchestration_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
         /// Start a new `workerfull.v1.OrchestrationService.Run` workflow.
         pub async fn run(
             &self,

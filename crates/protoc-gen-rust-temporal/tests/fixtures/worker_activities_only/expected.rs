@@ -61,6 +61,10 @@ pub mod workeract_v1_activity_worker_service_temporal {
             &self.client
         }
 
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
     }
 
 

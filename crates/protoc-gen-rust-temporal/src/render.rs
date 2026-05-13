@@ -725,6 +725,17 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "            &self.client");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Consuming accessor — lets callers transfer ownership of the
+    // underlying `TemporalClient` for sharing across multiple
+    // typed service clients (e.g. wrapping the same connection in
+    // both an `<A>Client` and a `<B>Client`).
+    let _ = writeln!(
+        out,
+        "        pub fn into_inner(self) -> temporal_runtime::TemporalClient {{"
+    );
+    let _ = writeln!(out, "            self.client");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
 
     for wf in &svc.workflows {
         render_client_workflow_methods(out, svc, wf);
