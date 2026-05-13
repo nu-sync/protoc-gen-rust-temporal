@@ -39,7 +39,9 @@ use temporalio_common::protos::temporal::api::common::v1::{
     Payload, Payloads, WorkflowExecution, WorkflowType,
 };
 use temporalio_common::protos::temporal::api::enums::v1 as sdk_enums;
-use temporalio_common::protos::temporal::api::enums::v1::{TaskQueueKind, WorkflowIdConflictPolicy};
+use temporalio_common::protos::temporal::api::enums::v1::{
+    TaskQueueKind, WorkflowIdConflictPolicy as ProtoWorkflowIdConflictPolicy,
+};
 use temporalio_common::protos::temporal::api::taskqueue::v1::TaskQueue;
 use temporalio_common::protos::temporal::api::update::v1 as update;
 use temporalio_common::protos::temporal::api::update::v1::WaitPolicy as ProtoWaitPolicy;
@@ -133,6 +135,27 @@ impl From<WorkflowIdReusePolicy> for sdk_enums::WorkflowIdReusePolicy {
             WorkflowIdReusePolicy::AllowDuplicateFailedOnly => Self::AllowDuplicateFailedOnly,
             WorkflowIdReusePolicy::RejectDuplicate => Self::RejectDuplicate,
             WorkflowIdReusePolicy::TerminateIfRunning => Self::TerminateIfRunning,
+        }
+    }
+}
+
+/// Policy for a start request whose `workflow_id` matches a **running**
+/// workflow. Maps to `temporalio-common`'s `WorkflowIdConflictPolicy`.
+/// `Unspecified` lets the server fall through to its default; we model that
+/// as `Option::None` at call sites.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkflowIdConflictPolicy {
+    Fail,
+    UseExisting,
+    TerminateExisting,
+}
+
+impl From<WorkflowIdConflictPolicy> for sdk_enums::WorkflowIdConflictPolicy {
+    fn from(value: WorkflowIdConflictPolicy) -> Self {
+        match value {
+            WorkflowIdConflictPolicy::Fail => Self::Fail,
+            WorkflowIdConflictPolicy::UseExisting => Self::UseExisting,
+            WorkflowIdConflictPolicy::TerminateExisting => Self::TerminateExisting,
         }
     }
 }
@@ -277,6 +300,7 @@ pub async fn start_workflow_proto<I>(
     task_queue: &str,
     input: &I,
     id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    id_conflict_policy: Option<WorkflowIdConflictPolicy>,
     execution_timeout: Option<Duration>,
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
@@ -292,11 +316,17 @@ where
         .maybe_run_timeout(run_timeout)
         .maybe_task_timeout(task_timeout)
         .enable_eager_workflow_start(enable_eager_workflow_start);
-    // bon builders use typestate — id_reuse_policy has #[builder(default)],
-    // so we only call the setter when present.
-    let options = match id_reuse_policy {
-        Some(p) => base.id_reuse_policy(p.into()).build(),
-        None => base.build(),
+    // bon builders use typestate — every conditional setter has its own
+    // `Set*` marker, so the call chain must terminate in a single
+    // `build()` per arm. Materialise the option matrix here.
+    let options = match (id_reuse_policy, id_conflict_policy) {
+        (Some(reuse), Some(conflict)) => base
+            .id_reuse_policy(reuse.into())
+            .id_conflict_policy(conflict.into())
+            .build(),
+        (Some(reuse), None) => base.id_reuse_policy(reuse.into()).build(),
+        (None, Some(conflict)) => base.id_conflict_policy(conflict.into()).build(),
+        (None, None) => base.build(),
     };
     let handle = client
         .sdk()
@@ -322,6 +352,7 @@ pub async fn start_workflow_proto_empty(
     workflow_id: &str,
     task_queue: &str,
     id_reuse_policy: Option<WorkflowIdReusePolicy>,
+    id_conflict_policy: Option<WorkflowIdConflictPolicy>,
     execution_timeout: Option<Duration>,
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
@@ -333,9 +364,14 @@ pub async fn start_workflow_proto_empty(
         .maybe_run_timeout(run_timeout)
         .maybe_task_timeout(task_timeout)
         .enable_eager_workflow_start(enable_eager_workflow_start);
-    let options = match id_reuse_policy {
-        Some(p) => base.id_reuse_policy(p.into()).build(),
-        None => base.build(),
+    let options = match (id_reuse_policy, id_conflict_policy) {
+        (Some(reuse), Some(conflict)) => base
+            .id_reuse_policy(reuse.into())
+            .id_conflict_policy(conflict.into())
+            .build(),
+        (Some(reuse), None) => base.id_reuse_policy(reuse.into()).build(),
+        (None, Some(conflict)) => base.id_conflict_policy(conflict.into()).build(),
+        (None, None) => base.build(),
     };
     let handle = client
         .sdk()
@@ -795,7 +831,7 @@ where
         // Update-with-start needs a non-default conflict policy server-side;
         // UseExisting is the documented choice (start if absent, attach if
         // present).
-        workflow_id_conflict_policy: WorkflowIdConflictPolicy::UseExisting as i32,
+        workflow_id_conflict_policy: ProtoWorkflowIdConflictPolicy::UseExisting as i32,
         request_id: uuid::Uuid::new_v4().to_string(),
         identity: identity.clone(),
         ..Default::default()
@@ -948,7 +984,7 @@ where
         workflow_run_timeout: run_timeout.and_then(|d| d.try_into().ok()),
         workflow_task_timeout: task_timeout.and_then(|d| d.try_into().ok()),
         workflow_id_reuse_policy: id_reuse,
-        workflow_id_conflict_policy: WorkflowIdConflictPolicy::UseExisting as i32,
+        workflow_id_conflict_policy: ProtoWorkflowIdConflictPolicy::UseExisting as i32,
         request_id: uuid::Uuid::new_v4().to_string(),
         identity: identity.clone(),
         ..Default::default()

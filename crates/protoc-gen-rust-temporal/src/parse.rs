@@ -19,9 +19,10 @@ use prost_reflect::{
 };
 
 use crate::model::{
-    ActivityModel, IdReusePolicy, IdTemplateSegment, ProtoType, QueryModel, QueryRef, ServiceModel,
-    SignalModel, SignalRef, UpdateModel, UpdateRef, WorkflowModel,
+    ActivityModel, IdConflictPolicy, IdReusePolicy, IdTemplateSegment, ProtoType, QueryModel,
+    QueryRef, ServiceModel, SignalModel, SignalRef, UpdateModel, UpdateRef, WorkflowModel,
 };
+use crate::temporal::api::enums::v1::WorkflowIdConflictPolicy as ProtoConflictPolicy;
 use crate::temporal::v1::{
     ActivityOptions, IdReusePolicy as ProtoPolicy, QueryOptions, ServiceOptions, SignalOptions,
     UpdateOptions, WorkflowOptions,
@@ -342,6 +343,7 @@ fn workflow_from(
         task_queue: (!opts.task_queue.is_empty()).then_some(opts.task_queue),
         id_expression,
         id_reuse_policy: id_reuse_policy_from_proto(opts.id_reuse_policy),
+        id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
         task_timeout: opts.task_timeout.and_then(duration_from_proto),
@@ -482,9 +484,6 @@ fn reject_unsupported_workflow_options(
     }
     if opts.parent_close_policy != 0 {
         unsupported.push("parent_close_policy");
-    }
-    if opts.workflow_id_conflict_policy != 0 {
-        unsupported.push("workflow_id_conflict_policy");
     }
     if opts.wait_for_cancellation {
         unsupported.push("wait_for_cancellation");
@@ -724,6 +723,15 @@ fn id_reuse_policy_from_proto(raw: i32) -> Option<IdReusePolicy> {
         ProtoPolicy::WorkflowIdReusePolicyTerminateIfRunning => {
             Some(IdReusePolicy::TerminateIfRunning)
         }
+    }
+}
+
+fn id_conflict_policy_from_proto(raw: i32) -> Option<IdConflictPolicy> {
+    match ProtoConflictPolicy::try_from(raw).ok()? {
+        ProtoConflictPolicy::Unspecified => None,
+        ProtoConflictPolicy::Fail => Some(IdConflictPolicy::Fail),
+        ProtoConflictPolicy::UseExisting => Some(IdConflictPolicy::UseExisting),
+        ProtoConflictPolicy::TerminateExisting => Some(IdConflictPolicy::TerminateExisting),
     }
 }
 

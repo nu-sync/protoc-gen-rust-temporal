@@ -277,6 +277,13 @@ pub mod temporal_runtime {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WorkflowIdConflictPolicy {
+        Fail,
+        UseExisting,
+        TerminateExisting,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WaitPolicy {
         Admitted,
         Accepted,
@@ -304,6 +311,7 @@ pub mod temporal_runtime {
         _task_queue: &str,
         _input: &I,
         _id_reuse_policy: Option<WorkflowIdReusePolicy>,
+        _id_conflict_policy: Option<WorkflowIdConflictPolicy>,
         _execution_timeout: Option<std::time::Duration>,
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
@@ -318,6 +326,7 @@ pub mod temporal_runtime {
         _workflow_id: &str,
         _task_queue: &str,
         _id_reuse_policy: Option<WorkflowIdReusePolicy>,
+        _id_conflict_policy: Option<WorkflowIdConflictPolicy>,
         _execution_timeout: Option<std::time::Duration>,
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,

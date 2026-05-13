@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (second R5 option): `WorkflowOptions.workflow_id_conflict_policy`
+  shipped end-to-end. New facade enum `temporal_runtime::WorkflowIdConflictPolicy`
+  maps to `temporalio-common::WorkflowIdConflictPolicy` (`Fail` / `UseExisting`
+  / `TerminateExisting`). `<Workflow>StartOptions::id_conflict_policy:
+  Option<WorkflowIdConflictPolicy>` exposes the override; the start path
+  folds the proto default in. The bridge handles all four
+  reuse-policy × conflict-policy combinations against bon's typestate
+  builder. Two positive tests added; the support-status row flips from
+  rejected to supported.
 - 2026-05-13 (R6 down-payment): `WorkflowOptions.cli.ignore` is now honoured.
   Setting `cli: { ignore: true }` filters the workflow out of the `cli=true`
   scaffold (no `Start<Wf>`/`Attach<Wf>` subcommand variant or Args struct

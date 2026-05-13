@@ -1255,21 +1255,6 @@ fn unsupported_field_support_status_table() {
             expect_field: "parent_close_policy",
         },
         Case {
-            label: "WorkflowOptions.workflow_id_conflict_policy",
-            snippet: r#"
-              service Svc {
-                rpc Run(In) returns (Out) {
-                  option (temporal.v1.workflow) = {
-                    task_queue: "tq"
-                    workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "workflow_id_conflict_policy",
-        },
-        Case {
             label: "WorkflowOptions.versioning_behavior",
             snippet: r#"
               service Svc {
@@ -1546,6 +1531,74 @@ fn enable_eager_start_flows_into_start_options() {
     assert!(
         source.contains("enable_eager_workflow_start,"),
         "resolved value must be passed to the runtime bridge call: {source}"
+    );
+}
+
+#[test]
+fn workflow_id_conflict_policy_flows_into_start_options() {
+    // R5: `workflow_id_conflict_policy` moves from rejected to supported,
+    // wired through to `WorkflowStartOptions.id_conflict_policy` on the
+    // bridge. Defaults fold into the start path so callers who leave
+    // `StartOptions::id_conflict_policy` as `None` still get the proto-
+    // declared default.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package conflict.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
+            };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    use protoc_gen_rust_temporal::model::IdConflictPolicy;
+    assert_eq!(
+        svc.workflows[0].id_conflict_policy,
+        Some(IdConflictPolicy::UseExisting),
+        "model must carry the proto-declared default"
+    );
+
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains(
+            "pub id_conflict_policy: Option<temporal_runtime::WorkflowIdConflictPolicy>,"
+        ),
+        "StartOptions must expose the conflict-policy field: {source}"
+    );
+    assert!(
+        source.contains("let id_conflict_policy = opts.id_conflict_policy.or(Some(temporal_runtime::WorkflowIdConflictPolicy::UseExisting));"),
+        "start path must fold the proto default in (UseExisting here): {source}"
+    );
+    assert!(
+        source.contains("id_conflict_policy,"),
+        "resolved value must be forwarded to the bridge call: {source}"
+    );
+}
+
+#[test]
+fn workflow_id_conflict_policy_absent_resolves_to_none() {
+    // Without the proto field set, the model must hold `None` and the
+    // start path should not bake in any default — `None` lets the server
+    // pick its own conflict default.
+    let services = parse_and_validate("minimal_workflow");
+    assert!(
+        services[0].workflows[0].id_conflict_policy.is_none(),
+        "absent proto field must keep model None"
+    );
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("let id_conflict_policy = opts.id_conflict_policy;"),
+        "start path must rebind opts directly when no default exists: {source}"
     );
 }
 

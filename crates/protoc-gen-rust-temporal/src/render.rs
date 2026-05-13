@@ -418,6 +418,7 @@ fn render_start_body(
         let _ = writeln!(out, "{ind}    &input,");
     }
     let _ = writeln!(out, "{ind}    id_reuse_policy,");
+    let _ = writeln!(out, "{ind}    id_conflict_policy,");
     let _ = writeln!(out, "{ind}    execution_timeout,");
     let _ = writeln!(out, "{ind}    run_timeout,");
     let _ = writeln!(out, "{ind}    task_timeout,");
@@ -439,8 +440,15 @@ fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
             p.rust_variant()
         )
     });
-    let resolutions: [(&'static str, Option<String>); 4] = [
+    let id_conflict_default = wf.id_conflict_policy.map(|p| {
+        format!(
+            "temporal_runtime::WorkflowIdConflictPolicy::{}",
+            p.rust_variant()
+        )
+    });
+    let resolutions: [(&'static str, Option<String>); 5] = [
         ("id_reuse_policy", id_reuse_default),
+        ("id_conflict_policy", id_conflict_default),
         (
             "execution_timeout",
             wf.execution_timeout.map(duration_literal),
@@ -480,6 +488,10 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(
         out,
         "        pub id_reuse_policy: Option<temporal_runtime::WorkflowIdReusePolicy>,"
+    );
+    let _ = writeln!(
+        out,
+        "        pub id_conflict_policy: Option<temporal_runtime::WorkflowIdConflictPolicy>,"
     );
     let _ = writeln!(out, "        pub execution_timeout: Option<Duration>,");
     let _ = writeln!(out, "        pub run_timeout: Option<Duration>,");

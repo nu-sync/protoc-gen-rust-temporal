@@ -34,6 +34,7 @@ pub mod empty_v1_nop_service_temporal {
             });
             let task_queue = opts.task_queue.unwrap_or_else(|| "nop".to_string());
             let id_reuse_policy = opts.id_reuse_policy;
+            let id_conflict_policy = opts.id_conflict_policy;
             let execution_timeout = opts.execution_timeout;
             let run_timeout = opts.run_timeout;
             let task_timeout = opts.task_timeout;
@@ -44,6 +45,7 @@ pub mod empty_v1_nop_service_temporal {
                 &workflow_id,
                 &task_queue,
                 id_reuse_policy,
+                id_conflict_policy,
                 execution_timeout,
                 run_timeout,
                 task_timeout,
@@ -66,6 +68,7 @@ pub mod empty_v1_nop_service_temporal {
         pub workflow_id: Option<String>,
         pub task_queue: Option<String>,
         pub id_reuse_policy: Option<temporal_runtime::WorkflowIdReusePolicy>,
+        pub id_conflict_policy: Option<temporal_runtime::WorkflowIdConflictPolicy>,
         pub execution_timeout: Option<Duration>,
         pub run_timeout: Option<Duration>,
         pub task_timeout: Option<Duration>,

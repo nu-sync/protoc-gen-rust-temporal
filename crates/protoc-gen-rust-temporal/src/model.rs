@@ -66,6 +66,9 @@ pub struct WorkflowModel {
     /// runtime template engine required.
     pub id_expression: Option<Vec<IdTemplateSegment>>,
     pub id_reuse_policy: Option<IdReusePolicy>,
+    /// Proto-declared default policy when the start request collides with a
+    /// running workflow id. `None` lets the server pick its default.
+    pub id_conflict_policy: Option<IdConflictPolicy>,
     pub execution_timeout: Option<Duration>,
     pub run_timeout: Option<Duration>,
     pub task_timeout: Option<Duration>,
@@ -214,6 +217,26 @@ impl IdReusePolicy {
             Self::AllowDuplicateFailedOnly => "AllowDuplicateFailedOnly",
             Self::RejectDuplicate => "RejectDuplicate",
             Self::TerminateIfRunning => "TerminateIfRunning",
+        }
+    }
+}
+
+/// Policy for when a start request collides with a **running** workflow.
+/// Distinct from [`IdReusePolicy`] — that one targets *closed* runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdConflictPolicy {
+    Fail,
+    UseExisting,
+    TerminateExisting,
+}
+
+impl IdConflictPolicy {
+    /// Variant identifier on `temporal_runtime::WorkflowIdConflictPolicy`.
+    pub fn rust_variant(self) -> &'static str {
+        match self {
+            Self::Fail => "Fail",
+            Self::UseExisting => "UseExisting",
+            Self::TerminateExisting => "TerminateExisting",
         }
     }
 }
