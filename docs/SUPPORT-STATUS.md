@@ -48,7 +48,6 @@ Separate extension from `(temporal.v1.service)`; configures the top-level
 | `id_reuse_policy` | supported | Maps to `temporal_runtime::WorkflowIdReusePolicy`. |
 | `execution_timeout`, `run_timeout`, `task_timeout` | supported | Folded into the generated start path as defaults; caller can override via `<Workflow>StartOptions`. |
 | `query[]`, `signal[]`, `update[]` | supported (same-service only) | Same-service refs become typed handle methods. Fully-qualified refs are rejected by `validate.rs::check_ref` (R1). Per-entry sub-fields each have their own row below. |
-| `retry_policy` | rejected | R5. |
 | `search_attributes` | supported (slices 1 + 2 + 3a + 3b string/int/bool refs) | The empty-map `root = {}` (slice 1), non-empty literal maps `root = { "Key": <literal>, … }` (slice 2) with string / signed-integer / boolean values, and `this.<field>` references targeting singular `string` / `int64` / `bool` input fields (slice 3) compile and flow through to `WorkflowStartOptions.search_attributes`. The field-ref encoder reads from the start path's `input` binding at call time. Repeated / map / message / enum fields and other scalar types (`int32`, `uint64`, `float`, `double`, `bytes`, …) plus `typed_search_attributes` remain rejected. See `docs/R7-BLOBLANG.md`. |
 | `typed_search_attributes` | rejected | R5 + R7. |
 | `parent_close_policy` | supported | Folds into a per-workflow `<rpc>_default_child_options() -> ChildWorkflowOptions` factory that bakes the policy in. Caller passes the result into `start_<workflow>_child(ctx, input, opts)`. |
@@ -87,7 +86,7 @@ Separate extension from `(temporal.v1.service)`; configures the top-level
 | `ref` | supported | Same-service only. |
 | `start` | supported | Triggers emission of `<update>_with_start`. |
 | `validate` | supported | Threaded into the generated update call (no validator hook emitted yet — R2). |
-| `workflow_id_conflict_policy` | rejected | Bridge hardcodes `UseExisting`; R5. |
+| `workflow_id_conflict_policy` | supported | Threads through `update_with_start_workflow_proto[_unit]` so the start half of update-with-start honours the proto-declared override. `None` (proto unset) keeps the bridge's `UseExisting` fallback in place. |
 | `cli` | rejected | R6. |
 | `xns` | rejected | R8. |
 

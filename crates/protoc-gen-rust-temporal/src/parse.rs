@@ -564,6 +564,7 @@ fn workflow_from(
                 start: u.start,
                 validate: u.validate,
                 cross_service: None,
+                id_conflict_policy: id_conflict_policy_from_proto(u.workflow_id_conflict_policy),
             })
             .collect(),
     })
@@ -749,15 +750,12 @@ fn reject_unsupported_update_options(
 }
 
 /// Per-update fields nested inside `WorkflowOptions.update[]` that the v1
-/// emit drops. The bridge's `update-with-start` path hardcodes
-/// `WorkflowIdConflictPolicy::UseExisting`, so a proto-level override would
-/// be silently ignored — refuse the proto rather than ship the wrong policy.
+/// emit drops. `workflow_id_conflict_policy` now threads through the
+/// bridge's update-with-start path (R5); `cli` and `xns` remain rejected.
 ///
 /// **Why this lives in parse, not model:** rejection must run against the
 /// raw `WorkflowOptions.Update` proto, before [`workflow_from`] projects
-/// it into the narrower [`crate::model::UpdateRef`] (which intentionally
-/// drops `cli` / `xns` / `workflow_id_conflict_policy`). Any future
-/// "reject unsupported X" fix on nested refs belongs here too.
+/// it into the narrower [`crate::model::UpdateRef`].
 fn reject_unsupported_workflow_update_ref(
     refs: &[crate::temporal::v1::workflow_options::Update],
     service: &str,
@@ -765,9 +763,6 @@ fn reject_unsupported_workflow_update_ref(
 ) -> Result<()> {
     for r in refs {
         let mut unsupported: Vec<&'static str> = Vec::new();
-        if r.workflow_id_conflict_policy != 0 {
-            unsupported.push("workflow_id_conflict_policy");
-        }
         if r.cli.is_some() {
             unsupported.push("cli");
         }

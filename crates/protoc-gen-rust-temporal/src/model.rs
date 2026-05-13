@@ -166,6 +166,12 @@ pub struct UpdateRef {
     pub start: bool,
     pub validate: Option<bool>,
     pub cross_service: Option<CrossServiceTarget>,
+    /// Per-`(temporal.v1.workflow).update[N].workflow_id_conflict_policy`
+    /// override. Threads into the workflow's `<update>_with_start` free
+    /// function so the start half honours the proto's choice instead
+    /// of falling back to the bridge's `UseExisting` default. `None`
+    /// preserves the historical fallback.
+    pub id_conflict_policy: Option<IdConflictPolicy>,
 }
 
 /// Resolved target of a cross-service `signal` / `query` / `update`

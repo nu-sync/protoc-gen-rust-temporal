@@ -1387,7 +1387,7 @@ fn render_with_start_functions(out: &mut String, svc: &ServiceModel) {
             else {
                 continue;
             };
-            render_update_with_start_fn(out, svc, wf, u);
+            render_update_with_start_fn(out, svc, wf, u, uref);
         }
     }
 }
@@ -1484,6 +1484,7 @@ fn render_update_with_start_fn(
     svc: &ServiceModel,
     wf: &WorkflowModel,
     u: &UpdateModel,
+    uref: &crate::model::UpdateRef,
 ) {
     let fn_name = format!("{}_with_start", u.rpc_method.to_snake_case());
     let handle_struct = format!("{}Handle", wf.rpc_method);
@@ -1595,6 +1596,16 @@ fn render_update_with_start_fn(
     let _ = writeln!(out, "            execution_timeout,");
     let _ = writeln!(out, "            run_timeout,");
     let _ = writeln!(out, "            task_timeout,");
+    // Per-ref `workflow_id_conflict_policy` override; `None` keeps the
+    // bridge's `UseExisting` default in place.
+    let id_conflict_arg = match uref.id_conflict_policy {
+        Some(p) => format!(
+            "Some(temporal_runtime::WorkflowIdConflictPolicy::{})",
+            p.rust_variant()
+        ),
+        None => "None".to_string(),
+    };
+    let _ = writeln!(out, "            {id_conflict_arg},");
     let _ = writeln!(out, "        ).await?;");
     if u.output_type.is_empty {
         let _ = writeln!(out, "        Ok({handle_struct} {{ inner }})");

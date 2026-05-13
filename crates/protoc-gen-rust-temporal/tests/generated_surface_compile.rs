@@ -526,6 +526,7 @@ pub mod temporal_runtime {
         _execution_timeout: Option<std::time::Duration>,
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
+        _id_conflict_policy: Option<WorkflowIdConflictPolicy>,
     ) -> anyhow::Result<(WorkflowHandle, O)> {
         Ok((WorkflowHandle, O::default()))
     }
@@ -546,6 +547,7 @@ pub mod temporal_runtime {
         _execution_timeout: Option<std::time::Duration>,
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
+        _id_conflict_policy: Option<WorkflowIdConflictPolicy>,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }

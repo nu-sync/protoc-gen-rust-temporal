@@ -972,6 +972,7 @@ where
 /// Backed by the server's `ExecuteMultiOperationRequest` gRPC, since
 /// `temporalio-client 0.4` doesn't expose a friendly wrapper for this combo.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_with_start_workflow_proto<W, U, O>(
     client: &TemporalClient,
     workflow_name: &'static str,
@@ -985,6 +986,7 @@ pub async fn update_with_start_workflow_proto<W, U, O>(
     execution_timeout: Option<Duration>,
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
+    id_conflict_policy: Option<WorkflowIdConflictPolicy>,
 ) -> Result<(WorkflowHandle, O)>
 where
     W: TemporalProtoMessage,
@@ -1021,9 +1023,12 @@ where
         workflow_task_timeout: task_timeout.and_then(|d| d.try_into().ok()),
         workflow_id_reuse_policy: id_reuse,
         // Update-with-start needs a non-default conflict policy server-side;
-        // UseExisting is the documented choice (start if absent, attach if
-        // present).
-        workflow_id_conflict_policy: ProtoWorkflowIdConflictPolicy::UseExisting as i32,
+        // honour the proto-declared override when present, otherwise
+        // fall back to UseExisting (start if absent, attach if present).
+        workflow_id_conflict_policy: id_conflict_policy
+            .map(ProtoWorkflowIdConflictPolicy::from)
+            .unwrap_or(ProtoWorkflowIdConflictPolicy::UseExisting)
+            as i32,
         request_id: uuid::Uuid::new_v4().to_string(),
         identity: identity.clone(),
         ..Default::default()
@@ -1142,6 +1147,7 @@ pub async fn update_with_start_workflow_proto_unit<W, U>(
     execution_timeout: Option<Duration>,
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
+    id_conflict_policy: Option<WorkflowIdConflictPolicy>,
 ) -> Result<WorkflowHandle>
 where
     W: TemporalProtoMessage,
@@ -1176,7 +1182,10 @@ where
         workflow_run_timeout: run_timeout.and_then(|d| d.try_into().ok()),
         workflow_task_timeout: task_timeout.and_then(|d| d.try_into().ok()),
         workflow_id_reuse_policy: id_reuse,
-        workflow_id_conflict_policy: ProtoWorkflowIdConflictPolicy::UseExisting as i32,
+        workflow_id_conflict_policy: id_conflict_policy
+            .map(ProtoWorkflowIdConflictPolicy::from)
+            .unwrap_or(ProtoWorkflowIdConflictPolicy::UseExisting)
+            as i32,
         request_id: uuid::Uuid::new_v4().to_string(),
         identity: identity.clone(),
         ..Default::default()

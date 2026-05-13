@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R5 — per-update `workflow_id_conflict_policy` honoured):
+  the nested `WorkflowOptions.update[].workflow_id_conflict_policy`
+  field on update refs moves from rejected to supported. The bridge's
+  `update_with_start_workflow_proto[_unit]` fns grow a trailing
+  `id_conflict_policy: Option<WorkflowIdConflictPolicy>` arg; `None`
+  keeps the historical `UseExisting` default in place, `Some(...)`
+  honours the proto override. `UpdateRef` gains the new field; render
+  threads it through the `<update>_with_start` free function body.
+  The existing rejection test was flipped to a positive emit assertion
+  that pins both the model state and the rendered
+  `Some(temporal_runtime::WorkflowIdConflictPolicy::<Variant>)` arg.
+  Stub runtime in `generated_surface_compile.rs` updated for the new
+  arg. Two fixture goldens (`empty_output_query_update`,
+  `full_workflow`) reblessed. Stale `retry_policy | rejected | R5`
+  row removed from SUPPORT-STATUS — that row contradicted the
+  already-supported entry two lines below.
 - 2026-05-13 (R6 — service-level `(temporal.v1.cli)` honoured):
   cludden's plugin uses a distinct extension `(temporal.v1.cli)`
   (separate from `(temporal.v1.service)`) to configure the top-level

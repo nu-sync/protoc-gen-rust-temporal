@@ -2715,22 +2715,24 @@ fn update_without_wait_policy_default_falls_back_to_completed() {
 }
 
 #[test]
-fn workflow_update_ref_with_conflict_policy_is_rejected() {
-    // The bridge's update-with-start path hardcodes UseExisting; a per-
-    // update conflict_policy override on WorkflowOptions.update[] would
-    // be silently dropped. Refuse the proto rather than ship the wrong
-    // policy.
+fn workflow_update_ref_with_conflict_policy_threads_through() {
+    // R5 — per-update `workflow_id_conflict_policy` on
+    // `WorkflowOptions.update[]` now flows through the
+    // bridge's update-with-start path instead of being refused.
+    // The render emits `Some(WorkflowIdConflictPolicy::<Variant>)` as
+    // the trailing arg; `None` (proto unset) keeps the bridge's
+    // historical `UseExisting` default in place.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package guard.v1;
+        package upd_conflict.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
               task_queue: "tq"
-              update: [{ ref: "Patch" workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_FAIL }]
+              update: [{ ref: "Patch" start: true workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_FAIL }]
             };
           }
           rpc Patch(In) returns (Out) {
@@ -2741,12 +2743,20 @@ fn workflow_update_ref_with_conflict_policy_is_rejected() {
         message Out {}
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
+    let services =
+        parse::parse(&pool, &files_to_generate).expect("conflict_policy on update ref must parse");
+    use protoc_gen_rust_temporal::model::IdConflictPolicy;
+    let uref = services[0].workflows[0]
+        .attached_updates
+        .iter()
+        .find(|u| u.rpc_method == "Patch")
+        .expect("Patch update ref must be in model");
+    assert_eq!(uref.id_conflict_policy, Some(IdConflictPolicy::Fail));
+
+    let source = render::render(&services[0], &Default::default());
     assert!(
-        err.contains("workflow_id_conflict_policy") && err.contains("Patch"),
-        "expected nested-update conflict_policy diagnostic, got: {err}"
+        source.contains("Some(temporal_runtime::WorkflowIdConflictPolicy::Fail)"),
+        "render must thread the override into update_with_start: {source}"
     );
 }
 
