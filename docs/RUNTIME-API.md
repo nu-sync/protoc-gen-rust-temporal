@@ -79,6 +79,8 @@ service that has at least one workflow.
 | `signal_with_start_workflow_proto<W, S>` | `<signal>_with_start` free fn (signal has `start: true`) | `async fn(client, workflow_name, workflow_id, task_queue, workflow_input: &W, signal_name, signal_input: &S, …) -> Result<WorkflowHandle>` | 0.1.0 |
 | `update_with_start_workflow_proto<W, U, O>` | `<update>_with_start` free fn, **non-Empty** update output | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<(WorkflowHandle, O)>` | 0.1.0 |
 | `update_with_start_workflow_proto_unit<W, U>` | `<update>_with_start` free fn, **Empty** update output | `async fn(client, …, workflow_input: &W, update_name, update_input: &U, wait_policy, …) -> Result<WorkflowHandle>` | 0.1.1 |
+| `cancel_workflow` | every `<Workflow>Handle::cancel_workflow(reason)` | `async fn(handle: &WorkflowHandle, reason: &str) -> Result<()>` | 0.1.2 |
+| `terminate_workflow` | every `<Workflow>Handle::terminate_workflow(reason)` | `async fn(handle: &WorkflowHandle, reason: &str) -> Result<()>` | 0.1.2 |
 
 ### Removed since 0.0.x
 

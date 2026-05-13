@@ -154,6 +154,16 @@ pub mod multi_v1_multi_service_temporal {
             temporal_runtime::wait_result_proto::<AlphaOutput>(&self.inner).await
         }
 
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]
@@ -187,6 +197,16 @@ pub mod multi_v1_multi_service_temporal {
         /// Wait for the workflow to complete and return its output.
         pub async fn result(&self) -> Result<BetaOutput> {
             temporal_runtime::wait_result_proto::<BetaOutput>(&self.inner).await
+        }
+
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
         }
 
     }

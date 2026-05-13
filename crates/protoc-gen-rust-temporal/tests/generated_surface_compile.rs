@@ -359,6 +359,14 @@ pub mod temporal_runtime {
         Ok(())
     }
 
+    pub async fn cancel_workflow(_handle: &WorkflowHandle, _reason: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    pub async fn terminate_workflow(_handle: &WorkflowHandle, _reason: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     pub async fn signal_proto<I: TemporalProtoMessage>(
         _handle: &WorkflowHandle,
         _name: &str,

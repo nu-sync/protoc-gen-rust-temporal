@@ -119,6 +119,16 @@ pub mod workerfull_v1_orchestration_service_temporal {
             temporal_runtime::wait_result_proto::<RunOutput>(&self.inner).await
         }
 
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+
         /// Send the `workerfull.v1.OrchestrationService.Cancel` signal.
         pub async fn cancel(&self, input: CancelInput) -> Result<()> {
             temporal_runtime::signal_proto(&self.inner, "workerfull.v1.OrchestrationService.Cancel", &input).await

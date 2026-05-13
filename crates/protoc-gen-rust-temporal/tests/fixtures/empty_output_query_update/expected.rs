@@ -107,6 +107,16 @@ pub mod eoqu_v1_eoqu_service_temporal {
             temporal_runtime::wait_result_proto::<RunOutput>(&self.inner).await
         }
 
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+
         /// Run the `eoqu.v1.EoquService.Ack` query.
         pub async fn ack(&self, input: AckInput) -> Result<()> {
             temporal_runtime::query_unit::<AckInput>(&self.inner, "eoqu.v1.EoquService.Ack", &input).await

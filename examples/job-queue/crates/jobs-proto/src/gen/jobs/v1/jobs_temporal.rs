@@ -123,6 +123,16 @@ pub mod jobs_v1_job_service_temporal {
             temporal_runtime::wait_result_proto::<JobOutput>(&self.inner).await
         }
 
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+
         /// Send the `jobs.v1.JobService.CancelJob` signal.
         pub async fn cancel_job(&self, input: CancelJobInput) -> Result<()> {
             temporal_runtime::signal_proto(&self.inner, "jobs.v1.JobService.CancelJob", &input).await

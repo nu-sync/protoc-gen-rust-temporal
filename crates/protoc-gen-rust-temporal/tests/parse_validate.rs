@@ -972,6 +972,75 @@ fn signal_returning_non_empty_fails_validation() {
 }
 
 #[test]
+fn every_workflow_handle_exposes_cancel_and_terminate() {
+    // R4: cancel & terminate are operations on the execution itself, not
+    // proto-driven, so every generated `<Workflow>Handle` carries them
+    // unconditionally — even workflows that declare no attached
+    // signal/query/update.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub async fn cancel_workflow(&self, reason: &str) -> Result<()>"),
+        "minimal workflow handle must carry cancel_workflow(): {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::cancel_workflow(&self.inner, reason).await"),
+        "cancel_workflow() must delegate to the runtime facade"
+    );
+    assert!(
+        source.contains("pub async fn terminate_workflow(&self, reason: &str) -> Result<()>"),
+        "minimal workflow handle must carry terminate_workflow(): {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::terminate_workflow(&self.inner, reason).await"),
+        "terminate_workflow() must delegate to the runtime facade"
+    );
+}
+
+#[test]
+fn cancel_and_terminate_appear_on_every_fixture_handle() {
+    // Belt-and-braces — even fixtures with rich attached refs must keep
+    // the cancel/terminate pair on every Handle. Walks every fixture so
+    // we catch a future regression like "cancel/terminate emit was tied
+    // to attached_signals being non-empty".
+    let fixtures = [
+        "minimal_workflow",
+        "full_workflow",
+        "workflow_only",
+        "empty_input_workflow",
+        "empty_output_query_update",
+        "multiple_workflows",
+        "activity_only",
+        "cli_emit",
+    ];
+    for fixture in fixtures {
+        let services = parse_and_validate(fixture);
+        let opts = load_fixture_options(fixture);
+        for svc in &services {
+            let source = render::render(svc, &opts);
+            // Every workflow contributes one Handle struct + one pair.
+            let cancels = source
+                .matches("pub async fn cancel_workflow(&self, reason: &str)")
+                .count();
+            let terminates = source
+                .matches("pub async fn terminate_workflow(&self, reason: &str)")
+                .count();
+            assert_eq!(
+                cancels,
+                svc.workflows.len(),
+                "{fixture}: expected one cancel_workflow() per workflow, got {cancels} for {} workflow(s)",
+                svc.workflows.len()
+            );
+            assert_eq!(
+                terminates,
+                svc.workflows.len(),
+                "{fixture}: expected one terminate_workflow() per workflow, got {terminates}"
+            );
+        }
+    }
+}
+
+#[test]
 fn workflow_retry_policy_flows_into_start_options() {
     // R5: `retry_policy` graduates from rejected to supported. The proto's
     // RetryPolicy lands on the model, then re-emerges as a

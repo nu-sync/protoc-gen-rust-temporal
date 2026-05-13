@@ -639,6 +639,43 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     }
     let _ = writeln!(out);
 
+    // Cancel & terminate helpers (R4): every workflow handle exposes them
+    // unconditionally — they're operations on the execution itself, not
+    // proto-driven. Cancel is cooperative (the workflow's own cancel
+    // handler runs); terminate is a hard kill.
+    //
+    // Named with the `_workflow` suffix so they cannot collide with a
+    // sibling proto rpc literally named `Cancel` or `Terminate` (the Go
+    // plugin uses the same disambiguation).
+    let _ = writeln!(
+        out,
+        "        /// Request cooperative cancellation. `reason` is recorded in event history."
+    );
+    let _ = writeln!(
+        out,
+        "        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {{"
+    );
+    let _ = writeln!(
+        out,
+        "            temporal_runtime::cancel_workflow(&self.inner, reason).await"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "        /// Terminate the workflow — hard kill, no cancel handler runs."
+    );
+    let _ = writeln!(
+        out,
+        "        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {{"
+    );
+    let _ = writeln!(
+        out,
+        "            temporal_runtime::terminate_workflow(&self.inner, reason).await"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
+
     for sref in &wf.attached_signals {
         if let Some(sig) = svc.signals.iter().find(|s| s.rpc_method == sref.rpc_method) {
             render_signal_method(out, sig);

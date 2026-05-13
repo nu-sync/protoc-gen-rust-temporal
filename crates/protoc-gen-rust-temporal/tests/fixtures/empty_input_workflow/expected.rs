@@ -92,6 +92,16 @@ pub mod empty_v1_nop_service_temporal {
             temporal_runtime::wait_result_unit(&self.inner).await
         }
 
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+
     }
 
 }

@@ -30,8 +30,9 @@ use temporalio_client::grpc::WorkflowService;
 use temporalio_client::tonic::IntoRequest;
 use temporalio_client::{
     Client, NamespacedClient, UntypedQuery, UntypedSignal, UntypedUpdate, UntypedWorkflowHandle,
-    WorkflowGetResultOptions, WorkflowQueryOptions, WorkflowSignalOptions, WorkflowStartOptions,
-    WorkflowStartSignal, WorkflowStartUpdateOptions, WorkflowUpdateWaitStage,
+    WorkflowCancelOptions, WorkflowGetResultOptions, WorkflowQueryOptions, WorkflowSignalOptions,
+    WorkflowStartOptions, WorkflowStartSignal, WorkflowStartUpdateOptions, WorkflowTerminateOptions,
+    WorkflowUpdateWaitStage,
 };
 use temporalio_common::UntypedWorkflow;
 use temporalio_common::data_converters::RawValue;
@@ -509,6 +510,37 @@ fn validate_empty_payload(payload: &Payload) -> Result<()> {
 }
 
 // ── Signals ────────────────────────────────────────────────────────────
+
+/// Request cancellation of a running workflow. The server records the
+/// request and routes it to the workflow's cancel handler; the workflow's
+/// own logic decides what to do. `reason` is recorded in event history.
+pub async fn cancel_workflow(handle: &WorkflowHandle, reason: &str) -> Result<()> {
+    let opts = WorkflowCancelOptions::builder()
+        .reason(reason.to_string())
+        .build();
+    handle
+        .untyped()
+        .cancel(opts)
+        .await
+        .with_context(|| format!("cancel workflow {}", handle.workflow_id))?;
+    Ok(())
+}
+
+/// Terminate a running workflow. Unlike [`cancel_workflow`], this is a
+/// hard kill — the workflow's cancel handler does not run and history is
+/// finalized with a `WorkflowExecutionTerminated` event. `reason` is
+/// recorded; the server picks a UUID request id.
+pub async fn terminate_workflow(handle: &WorkflowHandle, reason: &str) -> Result<()> {
+    let opts = WorkflowTerminateOptions::builder()
+        .reason(reason.to_string())
+        .build();
+    handle
+        .untyped()
+        .terminate(opts)
+        .await
+        .with_context(|| format!("terminate workflow {}", handle.workflow_id))?;
+    Ok(())
+}
 
 /// Send a typed signal with proto input.
 pub async fn signal_proto<I>(handle: &WorkflowHandle, name: &str, input: &I) -> Result<()>

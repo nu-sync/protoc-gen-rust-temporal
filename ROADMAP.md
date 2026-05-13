@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (first R4 deliverable): every generated `<Workflow>Handle`
+  now exposes `cancel_workflow(reason)` and `terminate_workflow(reason)`
+  delegating to new bridge fns `temporal_runtime::cancel_workflow` /
+  `temporal_runtime::terminate_workflow`. Named with the `_workflow`
+  suffix so they cannot collide with a sibling proto rpc literally named
+  `Cancel` or `Terminate` (the Go plugin uses the same disambiguation).
+  Two new tests: positive method-shape assertion plus a belt-and-braces
+  walk over all 8 representative fixtures that pins one cancel/terminate
+  pair per workflow.
 - 2026-05-13 (third R5 option): `WorkflowOptions.retry_policy` shipped
   end-to-end. New facade struct `temporal_runtime::RetryPolicy` (with private
   bits-encoded backoff_coefficient so `Eq` still derives) converts to
@@ -355,7 +364,7 @@ toward majority parity.
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
 | Activity calls from workflows | Not generated. | R3 |
-| Client cancel/terminate/top-level operations | Not generated. | R4 |
+| Client cancel/terminate/top-level operations | `cancel_workflow` / `terminate_workflow` shipped 2026-05-13; top-level signal/query/update-by-id still TODO. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |
 | Update ids/default wait stage | Not fully emitted. | R5 |

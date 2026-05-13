@@ -117,6 +117,16 @@ pub mod wf_v1_order_service_temporal {
             temporal_runtime::wait_result_proto::<OrderOutput>(&self.inner).await
         }
 
+        /// Request cooperative cancellation. `reason` is recorded in event history.
+        pub async fn cancel_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::cancel_workflow(&self.inner, reason).await
+        }
+
+        /// Terminate the workflow — hard kill, no cancel handler runs.
+        pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
+            temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+
         /// Send the `wf.v1.OrderService.Cancel` signal.
         pub async fn cancel(&self, input: CancelInput) -> Result<()> {
             temporal_runtime::signal_proto(&self.inner, "wf.v1.OrderService.Cancel", &input).await
