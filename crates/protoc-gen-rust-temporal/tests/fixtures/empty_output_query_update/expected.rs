@@ -242,6 +242,7 @@ pub mod eoqu_v1_eoqu_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

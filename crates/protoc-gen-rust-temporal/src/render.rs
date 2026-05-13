@@ -1637,6 +1637,10 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
 
 fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let handle_struct = format!("{}Handle", wf.rpc_method);
+    // `Clone` is cheap — the bridge `WorkflowHandle` is itself
+    // Clone (Arc-backed `TemporalClient` + two short strings).
+    // Cloning the typed handle bumps the inner refcount.
+    let _ = writeln!(out, "    #[derive(Clone)]");
     let _ = writeln!(out, "    pub struct {handle_struct} {{");
     let _ = writeln!(out, "        inner: temporal_runtime::WorkflowHandle,");
     let _ = writeln!(out, "    }}");

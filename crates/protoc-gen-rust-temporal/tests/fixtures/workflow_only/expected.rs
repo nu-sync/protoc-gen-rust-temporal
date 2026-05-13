@@ -194,6 +194,7 @@ pub mod solo_v1_solo_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct DoWorkHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

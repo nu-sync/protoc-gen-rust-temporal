@@ -251,6 +251,7 @@ pub mod cli_v1_report_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct GenerateHandle {
         inner: temporal_runtime::WorkflowHandle,
     }
@@ -390,6 +391,7 @@ pub mod cli_v1_report_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct AggregateHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

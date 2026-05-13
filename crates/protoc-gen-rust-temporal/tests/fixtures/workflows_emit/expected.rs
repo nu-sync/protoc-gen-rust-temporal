@@ -241,6 +241,7 @@ pub mod wf_v1_order_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

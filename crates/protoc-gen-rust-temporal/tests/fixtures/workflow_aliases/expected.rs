@@ -189,6 +189,7 @@ pub mod aliases_v1_alias_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

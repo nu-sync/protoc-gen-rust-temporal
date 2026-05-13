@@ -254,6 +254,7 @@ pub mod multi_v1_multi_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct AlphaHandle {
         inner: temporal_runtime::WorkflowHandle,
     }
@@ -399,6 +400,7 @@ pub mod multi_v1_multi_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct BetaHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

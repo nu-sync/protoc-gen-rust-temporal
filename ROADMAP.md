@@ -283,6 +283,19 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — bridge `WorkflowHandle` + `<Wf>Handle` derive `Clone`):
+  the bridge `WorkflowHandle` previously had no derives — its
+  three fields (`TemporalClient` (Arc-backed), `String`, and
+  `Option<String>`) all implement Clone, but the type itself
+  didn't. Now derives `Clone` cheaply (refcount bump + two short
+  string copies), and the generated `<Wf>Handle` wrapper also
+  derives Clone. Lets callers share a typed handle across
+  `tokio::spawn` boundaries, channels, and worker pools without
+  `Arc<Handle>` wrapping. One new positive parse_validate test
+  pins the wrapper-side derive. Several fixture goldens reblessed
+  (every Handle gained the derive). 186 parse_validate tests
+  green. Bridge change is additive (only adds the Clone trait
+  impl); no signature change.
 - 2026-05-13 (R6 — `<Service>Client` derives `Clone`):
   every generated `<Service>Client` now derives `Clone`. Free
   since the bridge's `TemporalClient` is `Arc`-backed and derives

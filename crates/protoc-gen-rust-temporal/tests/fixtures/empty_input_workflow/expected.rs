@@ -179,6 +179,7 @@ pub mod empty_v1_nop_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct TickHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

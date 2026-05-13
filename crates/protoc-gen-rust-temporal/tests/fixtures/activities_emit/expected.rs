@@ -213,6 +213,7 @@ pub mod acts_v1_chunk_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunBatchHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

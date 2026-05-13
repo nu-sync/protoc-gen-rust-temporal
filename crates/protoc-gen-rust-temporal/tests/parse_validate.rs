@@ -2876,6 +2876,20 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_struct_derives_clone() {
+    // R6 ergonomics — `<Wf>Handle` derives Clone. Free since the
+    // bridge `WorkflowHandle` is itself Clone (Arc-backed
+    // `TemporalClient` + short id strings). Lets callers share
+    // the typed handle across tasks without `Arc<Handle>` wrapping.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("#[derive(Clone)]\n    pub struct RunJobHandle {"),
+        "Handle struct must derive Clone: {source}"
+    );
+}
+
+#[test]
 fn client_struct_derives_clone() {
     // R6 ergonomics — `<Service>Client` derives Clone. Free since
     // the bridge's `TemporalClient` is `Arc`-backed and derives

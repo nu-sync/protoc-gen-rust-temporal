@@ -244,6 +244,7 @@ pub mod jobs_v1_job_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunJobHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

@@ -109,6 +109,11 @@ impl TemporalClient {
 
 /// Live workflow handle. Stores the workflow id (and run id if known) so we
 /// can re-derive an `UntypedWorkflowHandle` per call without lifetime tying.
+///
+/// `Clone` is cheap — the `TemporalClient` is `Arc`-backed so cloning the
+/// handle bumps a refcount and copies two short strings; lets callers
+/// share a handle across tasks without `Arc<Handle>` wrapping.
+#[derive(Clone)]
 pub struct WorkflowHandle {
     client: TemporalClient,
     workflow_id: String,

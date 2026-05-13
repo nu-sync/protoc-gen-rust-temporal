@@ -269,6 +269,7 @@ pub mod full_v1_full_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunHandle {
         inner: temporal_runtime::WorkflowHandle,
     }

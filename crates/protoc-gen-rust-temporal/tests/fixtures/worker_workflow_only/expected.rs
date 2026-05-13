@@ -188,6 +188,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         }
     }
 
+    #[derive(Clone)]
     pub struct RunHandle {
         inner: temporal_runtime::WorkflowHandle,
     }
