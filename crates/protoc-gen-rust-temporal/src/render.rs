@@ -1554,6 +1554,22 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
+    // Manual `Display` impl — concise `<WorkflowName>(<workflow_id>)`
+    // form for log lines like `info!("handling {handle}")` where the
+    // structured Debug form would be too verbose.
+    let _ = writeln!(out, "    impl ::std::fmt::Display for {handle_struct} {{");
+    let _ = writeln!(
+        out,
+        "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+    );
+    let _ = writeln!(
+        out,
+        "            write!(f, \"{{}}({{}})\", Self::WORKFLOW_NAME, self.inner.workflow_id())"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+
     let _ = writeln!(out, "    impl {handle_struct} {{");
     // Identity consts mirroring the per-workflow module-level
     // consts. Lets diagnostic logging spell `<H>::WORKFLOW_NAME`

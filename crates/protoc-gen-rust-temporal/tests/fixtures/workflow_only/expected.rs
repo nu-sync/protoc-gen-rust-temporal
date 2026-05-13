@@ -172,6 +172,12 @@ pub mod solo_v1_solo_service_temporal {
         }
     }
 
+    impl ::std::fmt::Display for DoWorkHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+        }
+    }
+
     impl DoWorkHandle {
         pub const WORKFLOW_NAME: &'static str = self::DO_WORK_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::DO_WORK_INPUT_TYPE;

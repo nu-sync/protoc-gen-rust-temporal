@@ -157,6 +157,12 @@ pub mod empty_v1_nop_service_temporal {
         }
     }
 
+    impl ::std::fmt::Display for TickHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+        }
+    }
+
     impl TickHandle {
         pub const WORKFLOW_NAME: &'static str = self::TICK_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::TICK_INPUT_TYPE;

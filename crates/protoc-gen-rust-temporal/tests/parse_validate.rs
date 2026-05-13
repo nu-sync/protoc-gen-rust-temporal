@@ -2696,6 +2696,24 @@ fn client_struct_implements_debug() {
 }
 
 #[test]
+fn handle_struct_implements_display() {
+    // R6 ergonomics — `<Wf>Handle` carries a manual `Display` impl
+    // producing a concise `<WorkflowName>(<workflow_id>)` form for
+    // log lines like `info!("handling {handle}")` where the
+    // structured Debug form would be too verbose.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("impl ::std::fmt::Display for RunJobHandle {"),
+        "missing Display impl: {source}"
+    );
+    assert!(
+        source.contains("write!(f, \"{}({})\", Self::WORKFLOW_NAME, self.inner.workflow_id())"),
+        "Display body must format `<name>(<id>)` from the const + bridge accessor: {source}"
+    );
+}
+
+#[test]
 fn handle_struct_implements_debug() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Debug` impl
     // that prints `workflow_name`, `workflow_id`, `run_id`. Bridge

@@ -235,6 +235,17 @@ Progress:
   positive parse_validate test pins the impl shape including
   `finish_non_exhaustive`. Several fixture goldens reblessed.
   167 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle` `Display` impl):
+  pairs with the recent `Debug` impl. Every generated `<Wf>Handle`
+  now also implements `Display` producing a concise
+  `<WorkflowName>(<workflow_id>)` form. Lets log lines like
+  `info!("handling {handle}")` produce a single readable token,
+  vs. the structured Debug form that's verbose enough to dominate
+  the line. Reuses the recently-added `Self::WORKFLOW_NAME` const
+  and the bridge's `workflow_id()` accessor. One new positive
+  parse_validate test pins the impl shape. Several fixture goldens
+  reblessed (every Handle gained the impl block). 175
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle` `Debug` impl):
   every generated `<Wf>Handle` struct now carries a manual `Debug`
   impl that prints a structured `RunJobHandle { workflow_name,

@@ -222,6 +222,12 @@ pub mod jobs_v1_job_service_temporal {
         }
     }
 
+    impl ::std::fmt::Display for RunJobHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+        }
+    }
+
     impl RunJobHandle {
         pub const WORKFLOW_NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::RUN_JOB_INPUT_TYPE;

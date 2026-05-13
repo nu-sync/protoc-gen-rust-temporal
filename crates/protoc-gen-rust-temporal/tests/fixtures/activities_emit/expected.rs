@@ -191,6 +191,12 @@ pub mod acts_v1_chunk_service_temporal {
         }
     }
 
+    impl ::std::fmt::Display for RunBatchHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+        }
+    }
+
     impl RunBatchHandle {
         pub const WORKFLOW_NAME: &'static str = self::RUN_BATCH_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::RUN_BATCH_INPUT_TYPE;
