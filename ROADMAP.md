@@ -138,6 +138,21 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `cli.name` + `cli.aliases` per-workflow honoured):
+  `(temporal.v1.workflow).cli.name` and `cli.aliases` move from
+  rejected to supported. The CLI emit threads them into the per-workflow
+  `Start<Wf>` and `Attach<Wf>` subcommand variants as
+  `#[command(name = "start-<override>", alias = ["start-<a>", …])]` /
+  `#[command(name = "attach-<override>", alias = ["attach-<a>", …])]`
+  so the rename + aliases apply uniformly to both verbs. `cli.usage`
+  (help text override) still stays rejected — emitting it requires
+  rewriting the per-variant docstring path. Two new parse_validate
+  tests: positive override emit (start + attach in lock-step), and the
+  surviving `cli.usage` rejection. No bridge signature change; no
+  fixture goldens touched (no fixture sets `cli.name` or `cli.aliases`,
+  and the codegen emits attributes only when at least one is present).
+  Existing `workflow_cli_name_is_rejected` test was rewritten as the
+  positive emit test since the rejection no longer holds.
 - 2026-05-13 (R7 — slice 3b lands: `this.<field>` for int64 + bool):
   the field-ref support graduated from strings-only to also cover
   singular `int64` and `bool` input fields. `SearchAttributeLiteral`

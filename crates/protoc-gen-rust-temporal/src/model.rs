@@ -94,10 +94,14 @@ pub struct WorkflowModel {
     /// Additional names this workflow is also registered under.
     pub aliases: Vec<String>,
     /// `WorkflowOptions.cli.ignore`: omit this workflow from the generated
-    /// CLI scaffold when `cli=true`. Other fields under `WorkflowOptions.cli`
-    /// (`name`, `usage`, `aliases`) are still not honoured — `ignore` is the
-    /// only one threaded through today.
+    /// CLI scaffold when `cli=true`.
     pub cli_ignore: bool,
+    /// `WorkflowOptions.cli.name`: override the kebab-case subcommand name
+    /// clap derives from the variant. `None` falls back to the default.
+    pub cli_name: Option<String>,
+    /// `WorkflowOptions.cli.aliases`: extra clap subcommand aliases. Both
+    /// `start-<wf>` and `attach-<wf>` variants inherit them.
+    pub cli_aliases: Vec<String>,
     /// `WorkflowOptions.enable_eager_start`: ask the server for eager
     /// workflow execution (the request can be satisfied by a local worker
     /// if one has slots, cutting first-task latency). NOTE the upstream

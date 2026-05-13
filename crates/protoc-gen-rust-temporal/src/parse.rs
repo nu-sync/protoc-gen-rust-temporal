@@ -477,6 +477,15 @@ fn workflow_from(
         reject_unsupported_workflow_cli_options(cli, service_name, &rpc_method)?;
     }
     let cli_ignore = opts.cli.as_ref().is_some_and(|c| c.ignore);
+    let cli_name = opts
+        .cli
+        .as_ref()
+        .and_then(|c| (!c.name.is_empty()).then(|| c.name.clone()));
+    let cli_aliases = opts
+        .cli
+        .as_ref()
+        .map(|c| c.aliases.clone())
+        .unwrap_or_default();
     let enable_eager_workflow_start = opts.enable_eager_start;
     Ok(WorkflowModel {
         rpc_method,
@@ -496,6 +505,8 @@ fn workflow_from(
         task_timeout: opts.task_timeout.and_then(duration_from_proto),
         aliases: opts.aliases,
         cli_ignore,
+        cli_name,
+        cli_aliases,
         enable_eager_workflow_start,
         attached_signals: opts
             .signal
@@ -744,26 +755,20 @@ fn reject_unsupported_workflow_update_ref(
     Ok(())
 }
 
-/// `WorkflowOptions.cli` is the per-workflow CLI override block. Today the
-/// only field threaded into emit is `ignore` (filters the workflow out of
-/// the `cli=true` scaffold). The other fields — `name`, `usage`, and
-/// `aliases` — would change the generated command's user-facing surface
-/// but are not yet plumbed through, so honouring `ignore` silently while
-/// dropping them would surprise users. Reject the silent-drop cases.
+/// `WorkflowOptions.cli` is the per-workflow CLI override block.
+/// `ignore` filters the workflow out of the scaffold; `name` and
+/// `aliases` thread into the generated clap subcommand's `#[command(name
+/// = …, alias = …)]` attributes. `usage` (help text override) still
+/// requires a deeper rewrite of the per-variant docstring path and
+/// stays rejected.
 fn reject_unsupported_workflow_cli_options(
     cli: &crate::temporal::v1::CliCommandOptions,
     service: &str,
     rpc: &str,
 ) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
-    if !cli.name.is_empty() {
-        unsupported.push("cli.name");
-    }
     if !cli.usage.is_empty() {
         unsupported.push("cli.usage");
-    }
-    if !cli.aliases.is_empty() {
-        unsupported.push("cli.aliases");
     }
     if unsupported.is_empty() {
         return Ok(());

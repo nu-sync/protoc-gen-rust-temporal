@@ -1383,9 +1383,13 @@ fn cli_scaffold_suppressed_when_every_workflow_ignored() {
 }
 
 #[test]
-fn workflow_cli_name_is_rejected() {
-    // Honouring cli.ignore while silently dropping cli.name would surprise
-    // users who expect `cli: { name: "foo" }` to change the subcommand name.
+fn workflow_cli_name_and_aliases_emit_clap_overrides() {
+    // R6 — `(temporal.v1.workflow).cli.name` overrides the kebab-case
+    // clap subcommand name and `cli.aliases` add extra subcommand names,
+    // applied uniformly to the generated `Start<Wf>` and `Attach<Wf>`
+    // variants. `cli.usage` (help text override) still stays rejected
+    // because emitting it requires rewriting the per-variant docstring
+    // path.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
@@ -1396,7 +1400,53 @@ fn workflow_cli_name_is_rejected() {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
               task_queue: "tq"
-              cli: { name: "custom" }
+              cli: { name: "custom" aliases: ["alt-1", "alt-2"] }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services =
+        parse::parse(&pool, &files_to_generate).expect("cli.name + cli.aliases must parse");
+    assert_eq!(services[0].workflows[0].cli_name.as_deref(), Some("custom"));
+    assert_eq!(services[0].workflows[0].cli_aliases, vec!["alt-1", "alt-2"]);
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "#[command(name = \"start-custom\", alias = [\"start-alt-1\", \"start-alt-2\"])]"
+        ),
+        "start variant must carry the per-workflow clap overrides: {source}"
+    );
+    assert!(
+        source.contains(
+            "#[command(name = \"attach-custom\", alias = [\"attach-alt-1\", \"attach-alt-2\"])]"
+        ),
+        "attach variant must mirror the overrides with its own verb prefix: {source}"
+    );
+}
+
+#[test]
+fn workflow_cli_usage_is_still_rejected() {
+    // `cli.usage` (help text override) requires rewriting the docstring
+    // path on each variant — until that lands, dropping it silently
+    // would surprise users who expect the override to take effect.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { usage: "Run the thing." }
             };
           }
         }
@@ -1407,8 +1457,8 @@ fn workflow_cli_name_is_rejected() {
         .unwrap_err()
         .to_string();
     assert!(
-        err.contains("cli.name") && err.contains("does not yet honour"),
-        "expected cli.name diagnostic, got: {err}"
+        err.contains("cli.usage") && err.contains("does not yet honour"),
+        "expected cli.usage diagnostic, got: {err}"
     );
 }
 

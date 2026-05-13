@@ -2492,6 +2492,31 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
     let _ = client_struct; // silence unused if no workflows (already gated upstream)
 }
 
+/// Build the `#[command(...)]` argument list for a CLI subcommand
+/// variant. Returns an empty string when the workflow declares neither
+/// `cli.name` nor `cli.aliases` — caller suppresses the attribute in
+/// that case so the existing fixtures don't churn.
+///
+/// `verb` is `"start"` or `"attach"`; it's prepended to the override so
+/// the user-facing names stay disambiguated between the two variants
+/// generated per workflow.
+fn cli_command_attrs(verb: &str, wf: &crate::model::WorkflowModel) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(name) = wf.cli_name.as_ref() {
+        parts.push(format!("name = \"{verb}-{}\"", name.escape_default()));
+    }
+    if !wf.cli_aliases.is_empty() {
+        let aliases = wf
+            .cli_aliases
+            .iter()
+            .map(|a| format!("\"{verb}-{}\"", a.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!("alias = [{aliases}]"));
+    }
+    parts.join(", ")
+}
+
 fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     use heck::{ToPascalCase, ToSnakeCase};
 
@@ -2531,17 +2556,28 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "    pub enum Command {{");
     for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();
+        // Per-workflow `(temporal.v1.workflow).cli.name` overrides the
+        // kebab-case clap default; `cli.aliases` add extra command names
+        // for both the start and attach variants.
+        let start_attrs = cli_command_attrs("start", wf);
+        let attach_attrs = cli_command_attrs("attach", wf);
         let _ = writeln!(
             out,
             "        /// Start a new `{}` workflow.",
             wf.registered_name
         );
+        if !start_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({start_attrs})]");
+        }
         let _ = writeln!(out, "        Start{pascal}(Start{pascal}Args),");
         let _ = writeln!(
             out,
             "        /// Attach to a running `{}` workflow by id.",
             wf.registered_name
         );
+        if !attach_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({attach_attrs})]");
+        }
         let _ = writeln!(out, "        Attach{pascal}(Attach{pascal}Args),");
     }
     let _ = writeln!(out, "    }}");

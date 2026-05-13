@@ -47,10 +47,10 @@ issue or add the row. The diagnostic-coverage test
 | `versioning_behavior` | rejected | R5. |
 | `patches` | rejected | R8. |
 | `namespace` | rejected | Deprecated in the schema; same rationale as `ServiceOptions.namespace`. |
-| `cli.ignore` | supported | Filters the workflow out of the `cli=true` scaffold. Other `cli.*` fields are rejected — see below. |
-| `cli.name` | rejected | R6. Would change the subcommand name. |
-| `cli.usage` | rejected | R6. Would change the subcommand help text. |
-| `cli.aliases` | rejected | R6. Would add subcommand aliases. |
+| `cli.ignore` | supported | Filters the workflow out of the `cli=true` scaffold. |
+| `cli.name` | supported | Threads into the per-workflow clap variants as `#[command(name = "start-<override>")]` / `#[command(name = "attach-<override>")]` so callers see the rename uniformly for both verbs. |
+| `cli.usage` | rejected | R6. Would change the subcommand help text — needs the per-variant docstring path rewritten. |
+| `cli.aliases` | supported | Threads into the per-workflow clap variants as `#[command(alias = ["start-<a>", …])]` / `#[command(alias = ["attach-<a>", …])]`. Both verbs share the same alias list. |
 
 ### WorkflowOptions.Signal[] (nested)
 
