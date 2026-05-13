@@ -52,6 +52,7 @@ code references them by their unqualified name through
 | `TemporalProtoMessage` | Re-exported from [`temporal-proto-runtime`](https://crates.io/crates/temporal-proto-runtime). The plugin emits `impl temporal_runtime::TemporalProtoMessage for <Ty>` for every prost message type the client surface touches; consumers do not write these by hand. |
 | `TypedProtoMessage<T>` | Re-exported from [`temporal-proto-runtime`](https://crates.io/crates/temporal-proto-runtime). Enable that crate's `sdk` feature to get the `TemporalSerializable` / `TemporalDeserializable` impls — otherwise the orphan rule blocks consumers from adding them. The plugin's `activities=true` emit references it as `temporal_runtime::TypedProtoMessage<T>` in each per-activity `ActivityDefinition` impl. |
 | `worker::ActivityDefinition` | Re-exported from `temporalio-common`. The plugin emits an `impl temporal_runtime::worker::ActivityDefinition for <RPC>Activity` per non-Empty activity under `activities=true`, so workflow code can call `ctx.start_activity(<RPC>Activity, input, opts)`. |
+| `worker::{WorkflowContext, ActivityOptions, ActivityExecutionError, LocalActivityOptions}` | Re-exported from `temporalio-sdk` (`workflow_context` module, public via the crate root). The plugin's `execute_<activity>` helper takes `&WorkflowContext<W>` and `ActivityOptions`, returns `Result<O, ActivityExecutionError>`. |
 
 ## Functions
 

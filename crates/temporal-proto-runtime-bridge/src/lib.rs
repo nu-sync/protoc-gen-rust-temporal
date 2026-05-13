@@ -1200,6 +1200,9 @@ pub mod worker {
         ActivityContext, ActivityDefinitions, ActivityError, ActivityImplementer,
     };
     pub use temporalio_sdk::workflows::WorkflowImplementer;
+    pub use temporalio_sdk::{
+        ActivityExecutionError, ActivityOptions, LocalActivityOptions, WorkflowContext,
+    };
 }
 
 /// Top-level re-export so plugin-emitted code can resolve

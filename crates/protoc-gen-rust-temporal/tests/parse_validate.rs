@@ -482,6 +482,36 @@ fn activities_emit_renders_per_activity_marker_structs() {
         source.contains("pub const HEARTBEAT_ACTIVITY_NAME"),
         "Heartbeat name const must remain available"
     );
+
+    // R3 — workflow-side helper. Wraps `ctx.start_activity(...)` and
+    // unwraps the `TypedProtoMessage` envelope so the workflow body
+    // sees the raw `ChunkOutput` back. Generic over `W` so it works
+    // from any workflow body in the service.
+    assert!(
+        source.contains("pub async fn execute_process<W>("),
+        "must emit `execute_process` workflow-side helper: {source}"
+    );
+    assert!(
+        source.contains("ctx: &temporal_runtime::worker::WorkflowContext<W>,"),
+        "helper must take a generic WorkflowContext<W>: {source}"
+    );
+    assert!(
+        source.contains("opts: temporal_runtime::worker::ActivityOptions,"),
+        "helper must take an ActivityOptions: {source}"
+    );
+    assert!(
+        source.contains("-> ::std::result::Result<ChunkOutput, temporal_runtime::worker::ActivityExecutionError>"),
+        "helper return type must surface the raw output, not the wrapper: {source}"
+    );
+    assert!(
+        source.contains("ctx.start_activity(ProcessActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"),
+        "helper must delegate to start_activity + unwrap: {source}"
+    );
+    // Empty-side helper must also be suppressed.
+    assert!(
+        !source.contains("execute_heartbeat"),
+        "Empty-input activity must not produce a workflow-side helper yet"
+    );
 }
 
 #[test]

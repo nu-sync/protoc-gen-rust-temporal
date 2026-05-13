@@ -187,6 +187,13 @@ pub mod workerfull_v1_orchestration_service_temporal {
         type Output = temporal_runtime::TypedProtoMessage<LoadOutput>;
         fn name() -> &'static str { LOAD_ACTIVITY_NAME }
     }
+    pub async fn execute_load<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: LoadInput,
+        opts: temporal_runtime::worker::ActivityOptions,
+    ) -> ::std::result::Result<LoadOutput, temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_activity(LoadActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
 
     pub trait OrchestrationServiceActivities: Send + Sync + 'static {
         fn load(&self, ctx: temporal_runtime::ActivityContext, input: LoadInput) -> impl ::std::future::Future<Output = Result<LoadOutput>> + Send;

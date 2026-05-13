@@ -148,6 +148,13 @@ pub mod acts_v1_chunk_service_temporal {
         type Output = temporal_runtime::TypedProtoMessage<ChunkOutput>;
         fn name() -> &'static str { PROCESS_ACTIVITY_NAME }
     }
+    pub async fn execute_process<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: ChunkInput,
+        opts: temporal_runtime::worker::ActivityOptions,
+    ) -> ::std::result::Result<ChunkOutput, temporal_runtime::worker::ActivityExecutionError> {
+        ctx.start_activity(ProcessActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
+    }
 
     pub trait ChunkServiceActivities: Send + Sync + 'static {
         fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;

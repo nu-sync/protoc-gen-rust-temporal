@@ -317,6 +317,16 @@ pub mod temporal_runtime {
             Self(t)
         }
     }
+    impl<T: TemporalProtoMessage + Default> Default for TypedProtoMessage<T> {
+        fn default() -> Self {
+            Self(T::default())
+        }
+    }
+    impl<T: TemporalProtoMessage> TypedProtoMessage<T> {
+        pub fn into_inner(self) -> T {
+            self.0
+        }
+    }
 
     pub type ActivityContext = ();
 
@@ -528,6 +538,28 @@ pub mod temporal_runtime {
             fn name() -> &'static str
             where
                 Self: Sized;
+        }
+
+        #[derive(Debug, Default)]
+        pub struct ActivityOptions;
+
+        #[derive(Debug)]
+        pub struct ActivityExecutionError;
+
+        #[derive(Debug)]
+        pub struct WorkflowContext<W>(::std::marker::PhantomData<W>);
+        impl<W> WorkflowContext<W> {
+            pub async fn start_activity<AD: ActivityDefinition>(
+                &self,
+                _activity: AD,
+                _input: impl Into<AD::Input>,
+                _opts: ActivityOptions,
+            ) -> ::std::result::Result<AD::Output, ActivityExecutionError>
+            where
+                AD::Output: Default,
+            {
+                Ok(AD::Output::default())
+            }
         }
 
         impl Worker {

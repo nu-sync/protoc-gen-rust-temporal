@@ -1594,6 +1594,34 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "        fn name() -> &'static str {{ {const_ident} }}");
         let _ = writeln!(out, "    }}");
+
+        // R3 — workflow-side helper. Wraps `ctx.start_activity(...)` so
+        // workflow code calls `execute_<activity>(ctx, input, opts).await`
+        // and gets the raw output back. The helper unwraps the
+        // `TypedProtoMessage` envelope so consumers don't reach into it.
+        // Generic over `W` because the SDK ties `WorkflowContext` to the
+        // surrounding workflow implementer type — staying generic keeps
+        // the helper callable from any workflow body in the service.
+        let helper_fn = format!("execute_{}", act.rpc_method.to_snake_case());
+        let _ = writeln!(out, "    pub async fn {helper_fn}<W>(");
+        let _ = writeln!(
+            out,
+            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
+        );
+        let _ = writeln!(out, "        input: {input_ty},");
+        let _ = writeln!(
+            out,
+            "        opts: temporal_runtime::worker::ActivityOptions,"
+        );
+        let _ = writeln!(
+            out,
+            "    ) -> ::std::result::Result<{output_ty}, temporal_runtime::worker::ActivityExecutionError> {{"
+        );
+        let _ = writeln!(
+            out,
+            "        ctx.start_activity({marker_struct}, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
+        );
+        let _ = writeln!(out, "    }}");
     }
     let _ = writeln!(out);
 
