@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (bridge — search-attribute decoder helpers):
+  the bridge gains `decode_search_attribute_string` /
+  `decode_search_attribute_int` / `decode_search_attribute_bool` as
+  the inverses of the encoder triple shipped in R7 slice 2. They
+  validate the `json/plain` encoding contract (surface a precise
+  diagnostic on mis-typed payloads — `binary/protobuf` etc.) and
+  round-trip every value the encoders emit, including the minimal
+  JSON-escape (`\\` and `\"`) on strings. Plugin doesn't call them
+  yet; downstream consumers reading server-supplied search attributes
+  use them directly. Six new bridge unit tests pin the round-trip,
+  wrong-encoding rejection, non-numeric int rejection, and
+  not-`true`/`false` bool rejection. Bridge version bumped to 0.1.4
+  in `docs/RUNTIME-API.md`. 23 bridge tests total. No plugin signature
+  change.
 - 2026-05-13 (R4 — per-workflow attached-handler name consts):
   every workflow that refs at least one signal / query / update via
   `WorkflowOptions.{signal,query,update}[]` now emits per-kind

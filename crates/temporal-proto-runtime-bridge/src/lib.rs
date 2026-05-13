@@ -402,6 +402,81 @@ pub fn encode_search_attribute_bool(value: bool) -> Payload {
     }
 }
 
+/// Validate that a search-attribute `Payload` carries the canonical
+/// `json/plain` encoding the bridge emits via
+/// [`encode_search_attribute_string`] / `_int` / `_bool`. Returns the
+/// raw JSON bytes ready for type-specific parsing. Server-supplied
+/// payloads under a different encoding (e.g. `binary/protobuf`)
+/// surface a precise diagnostic so consumers don't silently mis-decode.
+fn check_json_plain<'a>(payload: &'a Payload, what: &str) -> Result<&'a [u8]> {
+    let encoding = payload
+        .metadata
+        .get("encoding")
+        .map(|v| v.as_slice())
+        .unwrap_or(b"");
+    if encoding != b"json/plain" {
+        anyhow::bail!(
+            "decode_search_attribute_{what}: expected `json/plain` encoding, got {encoding:?}",
+        );
+    }
+    Ok(&payload.data)
+}
+
+/// Decode a `string` search-attribute `Payload` written by
+/// [`encode_search_attribute_string`]. Accepts the minimal JSON-escape
+/// the encoder produces (backslash + double-quote).
+pub fn decode_search_attribute_string(payload: &Payload) -> Result<String> {
+    let data = check_json_plain(payload, "string")?;
+    let s = std::str::from_utf8(data)
+        .context("decode_search_attribute_string: data is not valid UTF-8")?;
+    let s = s
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .ok_or_else(|| anyhow::anyhow!("decode_search_attribute_string: missing JSON quotes"))?;
+    // Inverse of the minimal JSON-escape the encoder applies.
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.next() {
+                Some('\\') => out.push('\\'),
+                Some('"') => out.push('"'),
+                Some(other) => {
+                    anyhow::bail!("decode_search_attribute_string: unsupported escape `\\{other}`")
+                }
+                None => anyhow::bail!("decode_search_attribute_string: trailing backslash"),
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    Ok(out)
+}
+
+/// Decode a signed-integer search-attribute `Payload` written by
+/// [`encode_search_attribute_int`].
+pub fn decode_search_attribute_int(payload: &Payload) -> Result<i64> {
+    let data = check_json_plain(payload, "int")?;
+    let s = std::str::from_utf8(data)
+        .context("decode_search_attribute_int: data is not valid UTF-8")?;
+    s.parse::<i64>()
+        .with_context(|| format!("decode_search_attribute_int: not a base-10 i64: {s:?}"))
+}
+
+/// Decode a boolean search-attribute `Payload` written by
+/// [`encode_search_attribute_bool`].
+pub fn decode_search_attribute_bool(payload: &Payload) -> Result<bool> {
+    let data = check_json_plain(payload, "bool")?;
+    match data {
+        b"true" => Ok(true),
+        b"false" => Ok(false),
+        other => {
+            let s = std::str::from_utf8(other).unwrap_or("<non-utf8>");
+            anyhow::bail!("decode_search_attribute_bool: expected `true`/`false`, got {s:?}")
+        }
+    }
+}
+
 // ── Client construction ────────────────────────────────────────────────
 
 /// Connect to a Temporal frontend and produce a [`TemporalClient`].
@@ -1407,6 +1482,79 @@ mod tests {
     fn search_attribute_bool_encodes_as_json_bool() {
         assert_eq!(encode_search_attribute_bool(true).data, b"true".to_vec());
         assert_eq!(encode_search_attribute_bool(false).data, b"false".to_vec());
+    }
+
+    #[test]
+    fn search_attribute_string_decode_roundtrips_through_encode() {
+        // Round-trip every escape branch the minimal encoder produces.
+        for original in [
+            "production",
+            "with\"quote",
+            "with\\backslash",
+            r#"with"quote\and\backslash"#,
+            "plain",
+            "",
+        ] {
+            let p = encode_search_attribute_string(original);
+            let decoded = decode_search_attribute_string(&p).expect("decode must succeed");
+            assert_eq!(decoded, original, "round-trip drift on {original:?}");
+        }
+    }
+
+    #[test]
+    fn search_attribute_int_decode_roundtrips_through_encode() {
+        for original in [0i64, 1, -1, 42, -7, i64::MAX, i64::MIN] {
+            let p = encode_search_attribute_int(original);
+            let decoded = decode_search_attribute_int(&p).expect("decode must succeed");
+            assert_eq!(decoded, original);
+        }
+    }
+
+    #[test]
+    fn search_attribute_bool_decode_roundtrips_through_encode() {
+        assert!(decode_search_attribute_bool(&encode_search_attribute_bool(true)).unwrap());
+        assert!(!decode_search_attribute_bool(&encode_search_attribute_bool(false)).unwrap());
+    }
+
+    #[test]
+    fn search_attribute_decode_rejects_wrong_encoding() {
+        // A payload claiming `binary/protobuf` must NOT be decoded as
+        // a `json/plain` search attribute — the encoder contract says
+        // search attributes are always `json/plain`, and silent
+        // mis-decode would surface corrupted values.
+        let mut bad = encode_search_attribute_string("x");
+        bad.metadata
+            .insert("encoding".to_string(), b"binary/protobuf".to_vec());
+        let err = decode_search_attribute_string(&bad)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("expected `json/plain`"), "diagnostic: {err}");
+    }
+
+    #[test]
+    fn search_attribute_int_decode_rejects_non_numeric_data() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+        let bad = Payload {
+            metadata,
+            data: b"not-a-number".to_vec(),
+            external_payloads: vec![],
+        };
+        let err = decode_search_attribute_int(&bad).unwrap_err().to_string();
+        assert!(err.contains("not a base-10 i64"), "diagnostic: {err}");
+    }
+
+    #[test]
+    fn search_attribute_bool_decode_rejects_other_literals() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+        let bad = Payload {
+            metadata,
+            data: b"yes".to_vec(),
+            external_payloads: vec![],
+        };
+        let err = decode_search_attribute_bool(&bad).unwrap_err().to_string();
+        assert!(err.contains("expected `true`/`false`"), "diagnostic: {err}");
     }
 
     #[test]
