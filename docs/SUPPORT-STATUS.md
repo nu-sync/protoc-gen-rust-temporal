@@ -87,7 +87,7 @@ Separate extension from `(temporal.v1.service)`; configures the top-level
 | `start` | supported | Triggers emission of `<update>_with_start`. |
 | `validate` | supported | Threaded into the generated update call (no validator hook emitted yet — R2). |
 | `workflow_id_conflict_policy` | supported | Threads through `update_with_start_workflow_proto[_unit]` so the start half of update-with-start honours the proto-declared override. `None` (proto unset) keeps the bridge's `UseExisting` fallback in place. |
-| `cli` | rejected | R6. |
+| `cli` | supported | Per-ref `{name, aliases, usage}` flow into the `Update<Name>` clap subcommand's `#[command(name = "update-<name>", alias = [...], about = …)]`. Service-scoped CLI emit means the first workflow ref carrying overrides for a given update wins. |
 | `xns` | rejected | R8. |
 
 ## ActivityOptions (`(temporal.v1.activity)`)

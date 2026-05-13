@@ -138,6 +138,19 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `WorkflowOptions.update[N].cli` per-ref overrides honoured):
+  parallel of the signal-ref work. The nested `cli` field on update
+  refs moves from rejected to supported. `UpdateRef` gains
+  `cli_name` / `cli_aliases` / `cli_usage`; render's new
+  `update_ref_cli_attrs` helper picks the first workflow ref
+  carrying overrides and threads them into the `Update<Name>` clap
+  variant as `#[command(name = "update-<name>", alias = [...],
+  about = …)]`. The existing rejection test
+  `workflow_update_ref_with_cli_is_rejected_at_parse` was flipped to
+  a positive emit assertion (`...threads_into_subcommand`). No bridge
+  signature change; no fixture goldens touched (no fixture uses
+  update-ref cli overrides). 114 parse_validate / 17 bridge / all
+  other tests green.
 - 2026-05-13 (R6 — `WorkflowOptions.signal[N].cli` per-ref overrides honoured):
   the nested `cli` field on signal refs moves from rejected to
   supported. `SignalRef` gains `cli_name` / `cli_aliases` /

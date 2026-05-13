@@ -273,18 +273,24 @@ fn workflow_signal_ref_with_xns_is_rejected_at_parse() {
 }
 
 #[test]
-fn workflow_update_ref_with_cli_is_rejected_at_parse() {
+fn workflow_update_ref_with_cli_threads_into_subcommand() {
+    // R6 — `WorkflowOptions.update[N].cli` overrides flow into the
+    // `Update<Name>` clap subcommand attributes. Service-scoped CLI
+    // emit picks the first workflow ref carrying overrides.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package bad.v1;
+        package upd_cli.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
               task_queue: "tq"
-              update: [{ ref: "Touch", cli: {} }]
+              update: [{
+                ref: "Touch"
+                cli: { name: "bump", aliases: ["nudge"], usage: "Bump the run." }
+              }]
             };
           }
           rpc Touch(In) returns (Out) {
@@ -295,12 +301,27 @@ fn workflow_update_ref_with_cli_is_rejected_at_parse() {
         message Out {}
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .expect_err("cli on update ref must be rejected at parse")
-        .to_string();
+    let services =
+        parse::parse(&pool, &files_to_generate).expect("update[].cli must parse cleanly");
+    let uref = services[0].workflows[0]
+        .attached_updates
+        .iter()
+        .find(|u| u.rpc_method == "Touch")
+        .expect("Touch update ref must be in model");
+    assert_eq!(uref.cli_name.as_deref(), Some("bump"));
+    assert_eq!(uref.cli_aliases, vec!["nudge"]);
+    assert_eq!(uref.cli_usage.as_deref(), Some("Bump the run."));
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
     assert!(
-        err.contains("cli") && err.contains("update[ref=Touch]"),
-        "parse error must surface cli + update ref name, got: {err}"
+        source.contains(
+            "#[command(name = \"update-bump\", alias = [\"update-nudge\"], about = \"Bump the run.\")]"
+        ),
+        "update-ref cli overrides must surface on the UpdateTouch variant: {source}"
     );
 }
 

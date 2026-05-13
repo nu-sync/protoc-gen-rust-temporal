@@ -179,6 +179,13 @@ pub struct UpdateRef {
     /// of falling back to the bridge's `UseExisting` default. `None`
     /// preserves the historical fallback.
     pub id_conflict_policy: Option<IdConflictPolicy>,
+    /// Per-`WorkflowOptions.update[N].cli.name` override. `None` keeps
+    /// clap's kebab-case `update-<name>` default.
+    pub cli_name: Option<String>,
+    /// Per-`WorkflowOptions.update[N].cli.aliases` override.
+    pub cli_aliases: Vec<String>,
+    /// Per-`WorkflowOptions.update[N].cli.usage` override.
+    pub cli_usage: Option<String>,
 }
 
 /// Resolved target of a cross-service `signal` / `query` / `update`

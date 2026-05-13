@@ -572,12 +572,27 @@ fn workflow_from(
         attached_updates: opts
             .update
             .into_iter()
-            .map(|u| UpdateRef {
-                rpc_method: u.r#ref,
-                start: u.start,
-                validate: u.validate,
-                cross_service: None,
-                id_conflict_policy: id_conflict_policy_from_proto(u.workflow_id_conflict_policy),
+            .map(|u| {
+                let (cli_name, cli_aliases, cli_usage) = match u.cli.as_ref() {
+                    Some(c) => (
+                        (!c.name.is_empty()).then(|| c.name.clone()),
+                        c.aliases.clone(),
+                        (!c.usage.is_empty()).then(|| c.usage.clone()),
+                    ),
+                    None => (None, Vec::new(), None),
+                };
+                UpdateRef {
+                    rpc_method: u.r#ref,
+                    start: u.start,
+                    validate: u.validate,
+                    cross_service: None,
+                    id_conflict_policy: id_conflict_policy_from_proto(
+                        u.workflow_id_conflict_policy,
+                    ),
+                    cli_name,
+                    cli_aliases,
+                    cli_usage,
+                }
             })
             .collect(),
     })
@@ -763,8 +778,8 @@ fn reject_unsupported_update_options(
 }
 
 /// Per-update fields nested inside `WorkflowOptions.update[]` that the v1
-/// emit drops. `workflow_id_conflict_policy` now threads through the
-/// bridge's update-with-start path (R5); `cli` and `xns` remain rejected.
+/// emit drops. `workflow_id_conflict_policy` (R5) and `cli` (R6) both
+/// thread through now; only `xns` remains rejected.
 ///
 /// **Why this lives in parse, not model:** rejection must run against the
 /// raw `WorkflowOptions.Update` proto, before [`workflow_from`] projects
@@ -776,9 +791,6 @@ fn reject_unsupported_workflow_update_ref(
 ) -> Result<()> {
     for r in refs {
         let mut unsupported: Vec<&'static str> = Vec::new();
-        if r.cli.is_some() {
-            unsupported.push("cli");
-        }
         if r.xns.is_some() {
             unsupported.push("xns");
         }

@@ -2730,6 +2730,41 @@ fn signal_ref_cli_attrs(svc: &crate::model::ServiceModel, signal_rpc: &str) -> S
     parts.join(", ")
 }
 
+/// Sibling of `signal_ref_cli_attrs` for `WorkflowOptions.update[N].cli`.
+/// Same first-ref-wins policy across workflows.
+fn update_ref_cli_attrs(svc: &crate::model::ServiceModel, update_rpc: &str) -> String {
+    let Some(uref) = svc
+        .workflows
+        .iter()
+        .flat_map(|wf| &wf.attached_updates)
+        .find(|uref| {
+            uref.rpc_method == update_rpc
+                && (uref.cli_name.is_some()
+                    || !uref.cli_aliases.is_empty()
+                    || uref.cli_usage.is_some())
+        })
+    else {
+        return String::new();
+    };
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(name) = uref.cli_name.as_ref() {
+        parts.push(format!("name = \"update-{}\"", name.escape_default()));
+    }
+    if !uref.cli_aliases.is_empty() {
+        let aliases = uref
+            .cli_aliases
+            .iter()
+            .map(|a| format!("\"update-{}\"", a.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!("alias = [{aliases}]"));
+    }
+    if let Some(usage) = uref.cli_usage.as_ref() {
+        parts.push(format!("about = \"{}\"", usage.escape_default()));
+    }
+    parts.join(", ")
+}
+
 fn cli_command_attrs(verb: &str, wf: &crate::model::WorkflowModel) -> String {
     let mut parts: Vec<String> = Vec::new();
     if let Some(name) = wf.cli_name.as_ref() {
@@ -2887,14 +2922,20 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     // becomes an `Update<Name>(Update<Name>Args)` variant. Dispatch
     // calls `client.<update>(workflow_id, input?, wait_policy)` with
     // `wait_policy = None` so the proto-declared default (or the
-    // `Completed` fallback) takes effect.
+    // `Completed` fallback) takes effect. Per-`WorkflowOptions.update[N].cli`
+    // overrides flow into the `#[command(...)]` attribute via the
+    // same first-ref-wins helper used for signal refs.
     for u in &svc.updates {
         let u_pascal = u.rpc_method.to_pascal_case();
+        let update_attrs = update_ref_cli_attrs(svc, &u.rpc_method);
         let _ = writeln!(
             out,
             "        /// Send the `{}` update to a workflow by id.",
             u.registered_name
         );
+        if !update_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({update_attrs})]");
+        }
         let _ = writeln!(out, "        Update{u_pascal}(Update{u_pascal}Args),");
     }
     let _ = writeln!(out, "    }}");
