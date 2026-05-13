@@ -1185,6 +1185,9 @@ fn fabricate_query_model(
         registered_name: target.registered_name.clone(),
         input_type: target.input_type.clone(),
         output_type: target.output_type.clone(),
+        cli_name: None,
+        cli_aliases: Vec::new(),
+        cli_usage: None,
     }
 }
 
@@ -1204,6 +1207,9 @@ fn fabricate_update_model(
         validate: false,
         id_expression: None,
         default_wait_policy: None,
+        cli_name: None,
+        cli_aliases: Vec::new(),
+        cli_usage: None,
     }
 }
 
@@ -2751,9 +2757,11 @@ fn signal_ref_cli_attrs(svc: &crate::model::ServiceModel, signal_rpc: &str) -> S
 }
 
 /// Sibling of `signal_ref_cli_attrs` for `WorkflowOptions.update[N].cli`.
-/// Same first-ref-wins policy across workflows.
+/// Two sources, in priority order:
+///   1. First workflow ref carrying overrides (first-ref-wins).
+///   2. Method-level `(temporal.v1.update).cli` fallback default.
 fn update_ref_cli_attrs(svc: &crate::model::ServiceModel, update_rpc: &str) -> String {
-    let Some(uref) = svc
+    let workflow_override = svc
         .workflows
         .iter()
         .flat_map(|wf| &wf.attached_updates)
@@ -2762,25 +2770,68 @@ fn update_ref_cli_attrs(svc: &crate::model::ServiceModel, update_rpc: &str) -> S
                 && (uref.cli_name.is_some()
                     || !uref.cli_aliases.is_empty()
                     || uref.cli_usage.is_some())
-        })
-    else {
-        return String::new();
+        });
+    let (name, aliases, usage) = match workflow_override {
+        Some(uref) => (
+            uref.cli_name.as_deref(),
+            uref.cli_aliases.as_slice(),
+            uref.cli_usage.as_deref(),
+        ),
+        None => {
+            let Some(u) = svc.updates.iter().find(|u| u.rpc_method == update_rpc) else {
+                return String::new();
+            };
+            if u.cli_name.is_none() && u.cli_aliases.is_empty() && u.cli_usage.is_none() {
+                return String::new();
+            }
+            (
+                u.cli_name.as_deref(),
+                u.cli_aliases.as_slice(),
+                u.cli_usage.as_deref(),
+            )
+        }
     };
     let mut parts: Vec<String> = Vec::new();
-    if let Some(name) = uref.cli_name.as_ref() {
-        parts.push(format!("name = \"update-{}\"", name.escape_default()));
+    if let Some(n) = name {
+        parts.push(format!("name = \"update-{}\"", n.escape_default()));
     }
-    if !uref.cli_aliases.is_empty() {
-        let aliases = uref
-            .cli_aliases
+    if !aliases.is_empty() {
+        let joined = aliases
             .iter()
             .map(|a| format!("\"update-{}\"", a.escape_default()))
             .collect::<Vec<_>>()
             .join(", ");
-        parts.push(format!("alias = [{aliases}]"));
+        parts.push(format!("alias = [{joined}]"));
     }
-    if let Some(usage) = uref.cli_usage.as_ref() {
-        parts.push(format!("about = \"{}\"", usage.escape_default()));
+    if let Some(u) = usage {
+        parts.push(format!("about = \"{}\"", u.escape_default()));
+    }
+    parts.join(", ")
+}
+
+/// Build the `#[command(...)]` attribute list for the `Query<Name>`
+/// CLI subcommand from method-level `(temporal.v1.query).cli` overrides.
+/// Queries have no per-ref `cli` field (`WorkflowOptions.query[N]` only
+/// carries `ref` + `xns`), so this is the only override path.
+fn query_cli_attrs(q: &crate::model::QueryModel) -> String {
+    if q.cli_name.is_none() && q.cli_aliases.is_empty() && q.cli_usage.is_none() {
+        return String::new();
+    }
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(n) = q.cli_name.as_deref() {
+        parts.push(format!("name = \"query-{}\"", n.escape_default()));
+    }
+    if !q.cli_aliases.is_empty() {
+        let joined = q
+            .cli_aliases
+            .iter()
+            .map(|a| format!("\"query-{}\"", a.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!("alias = [{joined}]"));
+    }
+    if let Some(u) = q.cli_usage.as_deref() {
+        parts.push(format!("about = \"{}\"", u.escape_default()));
     }
     parts.join(", ")
 }
@@ -2928,14 +2979,21 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     // R6 — per-query CLI subcommands. Each `(temporal.v1.query)` rpc
     // becomes a `Query<Name>(Query<Name>Args)` variant that calls into
     // the existing `client.<query>(workflow_id, input)` method and
-    // debug-prints the typed output.
+    // debug-prints the typed output. Method-level
+    // `(temporal.v1.query).cli` overrides thread into the variant's
+    // `#[command(...)]` — queries have no per-ref CLI knob, so this is
+    // the only override path.
     for q in &svc.queries {
         let q_pascal = q.rpc_method.to_pascal_case();
+        let query_attrs = query_cli_attrs(q);
         let _ = writeln!(
             out,
             "        /// Run the `{}` query against a workflow by id.",
             q.registered_name
         );
+        if !query_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({query_attrs})]");
+        }
         let _ = writeln!(out, "        Query{q_pascal}(Query{q_pascal}Args),");
     }
     // R6 — per-update CLI subcommands. Each `(temporal.v1.update)` rpc

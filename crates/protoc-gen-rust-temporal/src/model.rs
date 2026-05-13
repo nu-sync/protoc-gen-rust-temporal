@@ -232,6 +232,12 @@ pub struct QueryModel {
     pub registered_name: String,
     pub input_type: ProtoType,
     pub output_type: ProtoType,
+    /// Method-level `(temporal.v1.query).cli` overrides. The
+    /// `WorkflowOptions.query[N]` ref has no `cli` field of its own,
+    /// so this is the only CLI-override path for queries.
+    pub cli_name: Option<String>,
+    pub cli_aliases: Vec<String>,
+    pub cli_usage: Option<String>,
 }
 
 #[derive(Debug)]
@@ -255,6 +261,12 @@ pub struct UpdateModel {
     /// codegen folds this value in. `None` here means the proto didn't
     /// declare one, so the call must pass `Some(...)`.
     pub default_wait_policy: Option<WaitPolicyKind>,
+    /// Method-level `(temporal.v1.update).cli` overrides. Fallback
+    /// default for the `Update<Name>` CLI subcommand when no
+    /// `WorkflowOptions.update[N].cli` workflow ref carries overrides.
+    pub cli_name: Option<String>,
+    pub cli_aliases: Vec<String>,
+    pub cli_usage: Option<String>,
 }
 
 /// Mirror of cludden's `WaitPolicy` enum (sans `Unspecified`, which we

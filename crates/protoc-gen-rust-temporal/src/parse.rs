@@ -641,11 +641,22 @@ fn query_from(
     } else {
         opts.name
     };
+    let (cli_name, cli_aliases, cli_usage) = match opts.cli.as_ref() {
+        Some(c) => (
+            (!c.name.is_empty()).then(|| c.name.clone()),
+            c.aliases.clone(),
+            (!c.usage.is_empty()).then(|| c.usage.clone()),
+        ),
+        None => (None, Vec::new(), None),
+    };
     QueryModel {
         rpc_method,
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
+        cli_name,
+        cli_aliases,
+        cli_usage,
     }
 }
 
@@ -683,6 +694,14 @@ fn update_from(
         opts.wait_policy
     };
     let default_wait_policy = wait_policy_from_proto(raw_wait);
+    let (cli_name, cli_aliases, cli_usage) = match opts.cli.as_ref() {
+        Some(c) => (
+            (!c.name.is_empty()).then(|| c.name.clone()),
+            c.aliases.clone(),
+            (!c.usage.is_empty()).then(|| c.usage.clone()),
+        ),
+        None => (None, Vec::new(), None),
+    };
     Ok(UpdateModel {
         rpc_method,
         registered_name,
@@ -691,6 +710,9 @@ fn update_from(
         validate: opts.validate,
         id_expression,
         default_wait_policy,
+        cli_name,
+        cli_aliases,
+        cli_usage,
     })
 }
 

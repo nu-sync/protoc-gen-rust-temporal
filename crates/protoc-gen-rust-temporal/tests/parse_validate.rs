@@ -1620,6 +1620,116 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn query_options_cli_threads_into_subcommand() {
+    // R6 — method-level `(temporal.v1.query).cli` overrides flow into
+    // the `Query<Name>` clap subcommand's `#[command(name, alias,
+    // about)]`. Queries have no per-ref `cli` field, so this is the
+    // only override path.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package qry_cli.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              query: [{ ref: "Status" }]
+            };
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {
+              cli: { name: "show", aliases: ["see"], usage: "Show the workflow phase." }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate)
+        .expect("(temporal.v1.query).cli must parse cleanly");
+    let q = services[0]
+        .queries
+        .iter()
+        .find(|q| q.rpc_method == "Status")
+        .expect("Status query must be in the model");
+    assert_eq!(q.cli_name.as_deref(), Some("show"));
+    assert_eq!(q.cli_aliases, vec!["see"]);
+    assert_eq!(q.cli_usage.as_deref(), Some("Show the workflow phase."));
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "#[command(name = \"query-show\", alias = [\"query-see\"], about = \"Show the workflow phase.\")]"
+        ),
+        "(temporal.v1.query).cli overrides must surface on the QueryStatus variant: {source}"
+    );
+}
+
+#[test]
+fn update_options_cli_acts_as_fallback_default_for_subcommand() {
+    // R6 — method-level `(temporal.v1.update).cli` overrides act as
+    // the fallback default for the `Update<Name>` clap subcommand
+    // when no `WorkflowOptions.update[N].cli` workflow ref carries
+    // overrides. Per-ref overrides win when both are present —
+    // mirrors the signal precedence policy.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package upd_default.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {
+              cli: { name: "bump", aliases: ["nudge"], usage: "Bump the run." }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate)
+        .expect("(temporal.v1.update).cli must parse cleanly");
+    let u = services[0]
+        .updates
+        .iter()
+        .find(|u| u.rpc_method == "Touch")
+        .expect("Touch update must be in the model");
+    assert_eq!(u.cli_name.as_deref(), Some("bump"));
+    assert_eq!(u.cli_aliases, vec!["nudge"]);
+    assert_eq!(u.cli_usage.as_deref(), Some("Bump the run."));
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "#[command(name = \"update-bump\", alias = [\"update-nudge\"], about = \"Bump the run.\")]"
+        ),
+        "(temporal.v1.update).cli must surface on the UpdateTouch variant when no ref override exists: {source}"
+    );
+}
+
+#[test]
 fn signal_options_cli_acts_as_fallback_default_for_subcommand() {
     // R6 — method-level `(temporal.v1.signal).cli` overrides act as
     // the fallback default for the `Signal<Name>` clap subcommand

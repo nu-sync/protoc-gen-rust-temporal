@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `(temporal.v1.query).cli` + `(temporal.v1.update).cli` method-level honoured):
+  parallel of the signal-method-level work. Both `QueryOptions.cli`
+  and `UpdateOptions.cli` move from intentionally-ignored to supported.
+  Queries have no per-ref `cli` knob (`WorkflowOptions.query[N]`
+  carries only `ref` + `xns`), so the method-level annotation is the
+  only override path; render's new `query_cli_attrs` threads it into
+  the `Query<Name>` clap variant. Updates layer on top of the existing
+  per-ref work — `update_ref_cli_attrs` falls back to the method-level
+  `UpdateModel.cli_*` fields when no workflow ref carries overrides,
+  same precedence as signals. `QueryModel` and `UpdateModel` each gain
+  `cli_name` / `cli_aliases` / `cli_usage`; the `fabricate_*` paths
+  emit `None`s for cross-service refs. Two new positive parse_validate
+  tests pin both override paths. With this commit, every method-level
+  CLI override field across signals, queries, and updates is wired
+  through. No bridge signature change; no fixture goldens touched.
+  118 parse_validate / 17 bridge tests green.
 - 2026-05-13 (R6 — `(temporal.v1.signal).cli` method-level fallback honoured):
   the method-level `cli` annotation on signal rpcs moves from
   intentionally-ignored to supported. It acts as the fallback default

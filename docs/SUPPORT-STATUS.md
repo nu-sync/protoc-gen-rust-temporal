@@ -120,7 +120,7 @@ rejected by `validate.rs::validate_signal_outputs`.
 | Field | Status | Notes |
 |---|---|---|
 | `name` | supported | |
-| `cli` | intentionally ignored | R6. |
+| `cli` | supported | Threads into the `Query<Name>` CLI subcommand's `#[command(name, alias, about)]`. Queries have no per-ref `cli` knob (`WorkflowOptions.query[N]` only carries `ref` + `xns`), so this is the only override path. |
 | `xns` | intentionally ignored | R8. |
 | `patches` | intentionally ignored | R8. |
 
@@ -133,7 +133,7 @@ rejected by `validate.rs::validate_signal_outputs`.
 | `id` | supported | Workflow-id template targeting the parent workflow, resolved against the update input. Compiled to a private `<update>_workflow_id(input)` helper plus a `<update>_by_template(input, wait_policy)` client convenience that forwards to the update-by-id call. Only `{{ .Field }}` segments supported (R7 will add Bloblang). |
 | `wait_for_stage` | supported | The update method's `wait_policy` arg is `Option<temporal_runtime::WaitPolicy>`; when the caller passes `None`, codegen folds in the proto-declared default. Fallback when proto declares none: `Completed`. |
 | `wait_policy` (deprecated) | supported (fallback to `wait_for_stage`) | Cludden's Go plugin still honours the deprecated `wait_policy` on legacy protos; we do the same. `wait_for_stage` takes precedence when both are set. |
-| `cli` | intentionally ignored | R6. |
+| `cli` | supported | Acts as the fallback default for the `Update<Name>` CLI subcommand's `#[command(name, alias, about)]` when no `WorkflowOptions.update[N].cli` workflow ref carries overrides. Workflow-ref overrides win when both are set. |
 | `xns` | intentionally ignored | R8. |
 | `patches` | intentionally ignored | R8. |
 
