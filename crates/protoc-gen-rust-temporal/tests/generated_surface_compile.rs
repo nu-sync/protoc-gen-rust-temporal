@@ -583,9 +583,19 @@ pub mod temporal_runtime {
             }
         }
 
+        #[derive(Debug, Clone, Copy, Default)]
+        pub enum ChildWorkflowCancellationType {
+            #[default]
+            Abandon,
+            TryCancel,
+            WaitCancellationCompleted,
+            WaitCancellationRequested,
+        }
+
         #[derive(Debug, Default)]
         pub struct ChildWorkflowOptions {
             pub parent_close_policy: i32,
+            pub cancel_type: ChildWorkflowCancellationType,
         }
 
         #[derive(Debug)]

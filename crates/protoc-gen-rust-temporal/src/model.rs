@@ -74,6 +74,11 @@ pub struct WorkflowModel {
     /// `<workflow>_default_child_options()` factory. `None` lets the
     /// server pick its default (`Terminate`).
     pub parent_close_policy: Option<ParentClosePolicyKind>,
+    /// Proto-declared `wait_for_cancellation`. Child-only — folds into
+    /// `<workflow>_default_child_options()` as `cancel_type:
+    /// ChildWorkflowCancellationType::WaitCancellationCompleted`. `false`
+    /// (default) emits no setter so the SDK's default behaviour stays.
+    pub wait_for_cancellation: bool,
     /// Proto-declared default retry policy for the workflow. `None` means
     /// the proto omits the field and the server picks defaults.
     pub retry_policy: Option<RetryPolicySpec>,

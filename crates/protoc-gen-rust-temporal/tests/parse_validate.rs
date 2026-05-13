@@ -810,6 +810,90 @@ fn worker_full_render_golden() {
 }
 
 #[test]
+fn workflow_wait_for_cancellation_emits_cancel_type_in_default_child_options() {
+    // R5 — proto `wait_for_cancellation = true` on a workflow folds into
+    // `<rpc>_default_child_options()` as
+    // `cancel_type: ChildWorkflowCancellationType::WaitCancellationCompleted`.
+    // `false` (default) emits no setter so the SDK's default
+    // (`ABANDON` per the coresdk proto) stays in place.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wfc.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:           "tq"
+              wait_for_cancellation: true
+            };
+          }
+        }
+        message In  { string name = 1; }
+        message Out { string id = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    assert!(svc.workflows[0].wait_for_cancellation);
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        workflows: true,
+        ..Default::default()
+    };
+    let source = render::render(svc, &opts);
+    assert!(
+        source.contains("pub fn run_default_child_options()"),
+        "wait_for_cancellation alone must still produce a child-options factory: {source}"
+    );
+    assert!(
+        source.contains("cancel_type: temporal_runtime::worker::ChildWorkflowCancellationType::WaitCancellationCompleted,"),
+        "factory must set cancel_type to WaitCancellationCompleted: {source}"
+    );
+}
+
+#[test]
+fn workflow_parent_close_policy_and_wait_for_cancellation_combine() {
+    // Both fields together → factory body emits *both* setters.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package combine.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:           "tq"
+              parent_close_policy:   PARENT_CLOSE_POLICY_ABANDON
+              wait_for_cancellation: true
+            };
+          }
+        }
+        message In  { string name = 1; }
+        message Out { string id = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        workflows: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "parent_close_policy: temporal_runtime::worker::ParentClosePolicy::Abandon.into(),"
+        ),
+        "must emit parent_close_policy setter: {source}"
+    );
+    assert!(
+        source.contains("cancel_type: temporal_runtime::worker::ChildWorkflowCancellationType::WaitCancellationCompleted,"),
+        "must emit cancel_type setter: {source}"
+    );
+}
+
+#[test]
 fn workflow_parent_close_policy_emits_default_child_options_factory() {
     // R5 — proto `parent_close_policy = PARENT_CLOSE_POLICY_ABANDON` now
     // folds into a per-workflow `<workflow>_default_child_options()`
@@ -1851,10 +1935,10 @@ fn workflow_with_multiple_unsupported_fields_lists_all() {
         service Svc {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
-              task_queue:           "tq"
-              search_attributes:    "string.foo = \"bar\""
-              wait_for_cancellation: true
-              versioning_behavior:   VERSIONING_BEHAVIOR_PINNED
+              task_queue:          "tq"
+              search_attributes:   "string.foo = \"bar\""
+              versioning_behavior: VERSIONING_BEHAVIOR_PINNED
+              typed_search_attributes: "root = {}"
             };
           }
         }
@@ -1867,7 +1951,7 @@ fn workflow_with_multiple_unsupported_fields_lists_all() {
         .to_string();
     for field in [
         "search_attributes",
-        "wait_for_cancellation",
+        "typed_search_attributes",
         "versioning_behavior",
     ] {
         assert!(

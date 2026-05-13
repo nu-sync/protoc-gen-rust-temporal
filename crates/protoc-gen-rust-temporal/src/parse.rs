@@ -347,6 +347,7 @@ fn workflow_from(
         id_reuse_policy: id_reuse_policy_from_proto(opts.id_reuse_policy),
         id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
         parent_close_policy: parent_close_policy_from_proto(opts.parent_close_policy),
+        wait_for_cancellation: opts.wait_for_cancellation,
         retry_policy: opts.retry_policy.map(retry_policy_from_proto),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
@@ -516,9 +517,6 @@ fn reject_unsupported_workflow_options(
     }
     if !opts.typed_search_attributes.is_empty() {
         unsupported.push("typed_search_attributes");
-    }
-    if opts.wait_for_cancellation {
-        unsupported.push("wait_for_cancellation");
     }
     if opts.versioning_behavior != 0 {
         unsupported.push("versioning_behavior");

@@ -1215,6 +1215,7 @@ where
 #[cfg(feature = "worker")]
 pub mod worker {
     pub use super::ParentClosePolicy;
+    pub use temporalio_common::protos::coresdk::child_workflow::ChildWorkflowCancellationType;
     pub use temporalio_common::protos::coresdk::workflow_commands::ActivityCancellationType;
     pub use temporalio_common::{ActivityDefinition, SignalDefinition, WorkflowDefinition};
     pub use temporalio_sdk::activities::{

@@ -41,7 +41,7 @@ issue or add the row. The diagnostic-coverage test
 | `typed_search_attributes` | rejected | R5 + R7. |
 | `parent_close_policy` | supported | Folds into a per-workflow `<rpc>_default_child_options() -> ChildWorkflowOptions` factory that bakes the policy in. Caller passes the result into `start_<workflow>_child(ctx, input, opts)`. |
 | `workflow_id_conflict_policy` | supported | Plumbed through to `WorkflowStartOptions.id_conflict_policy`. Caller can override via `<Workflow>StartOptions::id_conflict_policy`. |
-| `wait_for_cancellation` | rejected | R5. |
+| `wait_for_cancellation` | supported | Child-only. Folds into `<rpc>_default_child_options()` as `cancel_type: ChildWorkflowCancellationType::WaitCancellationCompleted`. `false` (default) leaves the SDK's `Abandon` default in place. |
 | `enable_eager_start` | supported | Plumbed through to `WorkflowStartOptions.enable_eager_workflow_start`. The generated `<Workflow>StartOptions` exposes `enable_eager_workflow_start: Option<bool>` so call sites can override the proto-declared default. |
 | `retry_policy` | supported | Compiled to a `temporal_runtime::RetryPolicy` literal at the start path; caller can override via `<Workflow>StartOptions::retry_policy`. |
 | `versioning_behavior` | rejected | R5. |

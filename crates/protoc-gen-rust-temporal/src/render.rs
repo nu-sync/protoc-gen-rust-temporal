@@ -1976,13 +1976,15 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         let _ = writeln!(out, "    }}");
 
         // R5 — `<workflow>_default_child_options() -> ChildWorkflowOptions`
-        // emits a factory that bakes in the proto-declared
-        // `parent_close_policy`. Only emitted when the proto declares it;
-        // otherwise the caller builds `ChildWorkflowOptions::default()`
-        // themselves.
-        if let Some(pcp) = wf.parent_close_policy {
+        // factory. Bakes proto-declared child-workflow fields in:
+        //   - `parent_close_policy` (Option<ParentClosePolicyKind>)
+        //   - `wait_for_cancellation` (bool → cancel_type
+        //     ::WaitCancellationCompleted)
+        // Emitted when at least one is set; caller builds
+        // `ChildWorkflowOptions::default()` otherwise.
+        let emit_child_factory = wf.parent_close_policy.is_some() || wf.wait_for_cancellation;
+        if emit_child_factory {
             let factory_fn = format!("{}_default_child_options", wf.rpc_method.to_snake_case());
-            let variant = pcp.rust_variant();
             let _ = writeln!(
                 out,
                 "    pub fn {factory_fn}() -> temporal_runtime::worker::ChildWorkflowOptions {{"
@@ -1991,10 +1993,19 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
                 out,
                 "        temporal_runtime::worker::ChildWorkflowOptions {{"
             );
-            let _ = writeln!(
-                out,
-                "            parent_close_policy: temporal_runtime::worker::ParentClosePolicy::{variant}.into(),"
-            );
+            if let Some(pcp) = wf.parent_close_policy {
+                let variant = pcp.rust_variant();
+                let _ = writeln!(
+                    out,
+                    "            parent_close_policy: temporal_runtime::worker::ParentClosePolicy::{variant}.into(),"
+                );
+            }
+            if wf.wait_for_cancellation {
+                let _ = writeln!(
+                    out,
+                    "            cancel_type: temporal_runtime::worker::ChildWorkflowCancellationType::WaitCancellationCompleted,"
+                );
+            }
             let _ = writeln!(out, "            ..::std::default::Default::default()");
             let _ = writeln!(out, "        }}");
             let _ = writeln!(out, "    }}");

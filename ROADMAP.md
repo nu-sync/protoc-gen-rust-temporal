@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R5 — workflow `wait_for_cancellation`): graduates from
+  rejected to supported. `(temporal.v1.workflow).wait_for_cancellation = true`
+  folds into the per-workflow `<rpc>_default_child_options()` factory as
+  `cancel_type: ChildWorkflowCancellationType::WaitCancellationCompleted`.
+  `false` (default) leaves the SDK's default `Abandon` in place.
+  Bridge re-exports `ChildWorkflowCancellationType` from
+  `temporalio_common::protos::coresdk::child_workflow`. Factory now
+  emits when *either* `parent_close_policy` or `wait_for_cancellation`
+  is declared; both setters compose. Two new tests pin the alone-and-
+  combined paths; support-status drift table loses another row.
 - 2026-05-13 (R5 — `parent_close_policy`): `(temporal.v1.workflow).parent_close_policy`
   graduates from rejected to supported. Under `workflows=true`, every
   workflow that declares the policy now ships
@@ -540,7 +550,7 @@ toward majority parity.
 | Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks still pending. | R2 |
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` factory shipped 2026-05-13 (non-Empty in/out only); Empty-input/output helpers still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
-| Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy`, `parent_close_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), `wait_for_cancellation` (child-only — needs more design), `versioning_behavior` (worker-side, no SDK 0.4 support) still pending. | R5 |
+| Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy`, `parent_close_policy`, `wait_for_cancellation` shipped 2026-05-13; search attrs (need R7 Bloblang) and `versioning_behavior` (worker-side, no SDK 0.4 support) still pending. | R5 |
 | Activity runtime options | All six fields graduated to `<activity>_default_options()` 2026-05-13 (incl. `wait_for_cancellation` → `ActivityCancellationType::WaitCancellationCompleted`). | R5/R3 |
 | Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
