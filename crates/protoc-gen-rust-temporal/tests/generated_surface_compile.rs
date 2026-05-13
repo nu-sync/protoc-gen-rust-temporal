@@ -586,8 +586,53 @@ pub mod temporal_runtime {
         #[derive(Debug)]
         pub enum WorkflowTermination {}
 
+        #[derive(Debug, Clone, Copy)]
+        pub enum ActivityCloseTimeouts {
+            ScheduleToClose(std::time::Duration),
+            StartToClose(std::time::Duration),
+            Both {
+                start_to_close: std::time::Duration,
+                schedule_to_close: std::time::Duration,
+            },
+        }
+
+        // Stub builder enough to support the per-activity factory emit:
+        // takes a close-timeout kicker via `with_*` constructors, then
+        // chains optional setters and finishes with `.build()`.
+        #[derive(Debug)]
+        pub struct ActivityOptionsBuilder;
+        impl ActivityOptionsBuilder {
+            pub fn task_queue<S: Into<String>>(self, _v: S) -> Self {
+                self
+            }
+            pub fn schedule_to_start_timeout(self, _d: std::time::Duration) -> Self {
+                self
+            }
+            pub fn heartbeat_timeout(self, _d: std::time::Duration) -> Self {
+                self
+            }
+            pub fn retry_policy(self, _rp: super::RetryPolicy) -> Self {
+                self
+            }
+            pub fn build(self) -> ActivityOptions {
+                ActivityOptions
+            }
+        }
         #[derive(Debug, Default)]
         pub struct ActivityOptions;
+        impl ActivityOptions {
+            pub fn with_close_timeouts(_t: ActivityCloseTimeouts) -> ActivityOptionsBuilder {
+                ActivityOptionsBuilder
+            }
+            pub fn with_start_to_close_timeout(_d: std::time::Duration) -> ActivityOptionsBuilder {
+                ActivityOptionsBuilder
+            }
+            pub fn with_schedule_to_close_timeout(
+                _d: std::time::Duration,
+            ) -> ActivityOptionsBuilder {
+                ActivityOptionsBuilder
+            }
+        }
 
         #[derive(Debug, Default)]
         pub struct LocalActivityOptions;

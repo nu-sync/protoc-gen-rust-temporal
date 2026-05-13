@@ -84,13 +84,13 @@ issue or add the row. The diagnostic-coverage test
 | Field | Status | Notes |
 |---|---|---|
 | `name` | supported | Cross-language activity name; defaults to the proto's fully-qualified method name. Used by the `activities=true` emit. |
-| `task_queue` | rejected | R5. |
-| `schedule_to_close_timeout` | rejected | R5. |
-| `schedule_to_start_timeout` | rejected | R5. |
-| `start_to_close_timeout` | rejected | R5. |
-| `heartbeat_timeout` | rejected | R5. |
-| `wait_for_cancellation` | rejected | R5. |
-| `retry_policy` | rejected | R5. |
+| `task_queue` | supported | Folds into the per-activity `<rpc>_default_options()` factory. |
+| `schedule_to_close_timeout` | supported | Used as the `close_timeouts` kicker (either alone via `ScheduleToClose`, or paired with `start_to_close_timeout` via `Both`). |
+| `schedule_to_start_timeout` | supported | Chains onto the factory builder. |
+| `start_to_close_timeout` | supported | Used as the `close_timeouts` kicker; preferred when paired (via `Both`). |
+| `heartbeat_timeout` | supported | Chains onto the factory builder. |
+| `wait_for_cancellation` | rejected | No clean mapping to the SDK's `ActivityCancellationType` enum yet. |
+| `retry_policy` | supported | The factory converts the proto retry policy to the SDK's `RetryPolicy` and chains it onto the builder. |
 
 ## SignalOptions (`(temporal.v1.signal)`)
 

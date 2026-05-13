@@ -1200,9 +1200,9 @@ pub mod worker {
     };
     pub use temporalio_sdk::workflows::{WorkflowImplementation, WorkflowImplementer};
     pub use temporalio_sdk::{
-        ActivityExecutionError, ActivityOptions, ChildWorkflowOptions, ChildWorkflowStartError,
-        ContinueAsNewOptions, ExternalWorkflowHandle, LocalActivityOptions, StartedChildWorkflow,
-        WorkflowContext,
+        ActivityCloseTimeouts, ActivityExecutionError, ActivityOptions, ChildWorkflowOptions,
+        ChildWorkflowStartError, ContinueAsNewOptions, ExternalWorkflowHandle,
+        LocalActivityOptions, StartedChildWorkflow, WorkflowContext,
     };
     pub use temporalio_sdk::{
         SignalExternalOk, SignalExternalWfResult, Worker, WorkflowTermination,

@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R3 — activity option builders): every activity that
+  declares at least one close-timeout in `(temporal.v1.activity)` now
+  also ships `pub fn <rpc>_default_options() -> ActivityOptions` that
+  builds the SDK's `ActivityOptions` with the proto defaults baked in.
+  Picks the right `ActivityCloseTimeouts` variant (`StartToClose`,
+  `ScheduleToClose`, or `Both`) and chains `task_queue`,
+  `schedule_to_start_timeout`, `heartbeat_timeout`, and `retry_policy`
+  onto the builder. Five previously-rejected `ActivityOptions` fields
+  flip from rejected to supported; `wait_for_cancellation` stays
+  rejected (no clean mapping to the SDK's `ActivityCancellationType`
+  yet). Bridge re-exports `ActivityCloseTimeouts`. Four new tests,
+  support-status drift test absorbs the new rows.
 - 2026-05-13 (R2 — external-signal markers + helpers): under
   `workflows=true`, every non-Empty signal attached to at least one
   non-Empty workflow now ships a `<RPC>Signal` marker +
@@ -497,10 +509,10 @@ toward majority parity.
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks still pending. | R2 |
-| Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` shipped 2026-05-13 (non-Empty in/out only); option builders + Empty-input/output helpers still pending. | R3 |
+| Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` factory shipped 2026-05-13 (non-Empty in/out only); Empty-input/output helpers still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
-| Activity runtime options | Mostly not emitted. | R5 |
+| Activity runtime options | Five of six fields graduate to `<activity>_default_options()` 2026-05-13; `wait_for_cancellation` still rejected. | R5/R3 |
 | Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |

@@ -188,6 +188,23 @@ pub struct ActivityModel {
     pub registered_name: String,
     pub input_type: ProtoType,
     pub output_type: ProtoType,
+    /// Proto-declared `ActivityOptions` defaults compiled into a generated
+    /// `<activity>_default_options()` factory. `None` here means no
+    /// runtime-affecting field was declared and no factory is emitted.
+    pub default_options: Option<ActivityOptionsSpec>,
+}
+
+/// Compiled form of `(temporal.v1.activity)` runtime fields. Held on the
+/// model so render can emit a `<activity>_default_options() -> ActivityOptions`
+/// factory bound to the SDK's typestate builder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActivityOptionsSpec {
+    pub task_queue: Option<String>,
+    pub schedule_to_close_timeout: Option<Duration>,
+    pub schedule_to_start_timeout: Option<Duration>,
+    pub start_to_close_timeout: Option<Duration>,
+    pub heartbeat_timeout: Option<Duration>,
+    pub retry_policy: Option<RetryPolicySpec>,
 }
 
 /// A proto type reference, resolved to its fully-qualified name.

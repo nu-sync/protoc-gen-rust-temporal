@@ -1517,6 +1517,80 @@ fn proto_module_path(package: &str) -> String {
 /// than `async fn` so the `Send` bound is explicit (the consumer's adapter to
 /// `temporalio-sdk`'s `#[activities]` macro needs a Send future to
 /// satisfy `tokio::task::spawn`-style boundaries).
+/// Emit `pub fn <activity>_default_options() -> temporal_runtime::worker::ActivityOptions`.
+/// Picks the right `ActivityCloseTimeouts` variant based on which of
+/// schedule_to_close_timeout / start_to_close_timeout is set, then chains
+/// the bon-builder setters for the remaining optional fields. Skipped at
+/// the call site when the proto declares no close timeout (the SDK can't
+/// construct ActivityOptions without one — see parse.rs).
+fn render_activity_default_options_fn(
+    out: &mut String,
+    rpc_method: &str,
+    spec: &crate::model::ActivityOptionsSpec,
+) {
+    let fn_name = format!("{}_default_options", rpc_method.to_snake_case());
+    let _ = writeln!(
+        out,
+        "    pub fn {fn_name}() -> temporal_runtime::worker::ActivityOptions {{"
+    );
+    // Compose the close-timeouts kicker based on which subset is set.
+    let builder_start = match (spec.start_to_close_timeout, spec.schedule_to_close_timeout) {
+        (Some(stc), Some(sch)) => format!(
+            "temporal_runtime::worker::ActivityOptions::with_close_timeouts(temporal_runtime::worker::ActivityCloseTimeouts::Both {{ start_to_close: {stc_lit}, schedule_to_close: {sch_lit} }})",
+            stc_lit = duration_literal_naked(stc),
+            sch_lit = duration_literal_naked(sch),
+        ),
+        (Some(stc), None) => format!(
+            "temporal_runtime::worker::ActivityOptions::with_start_to_close_timeout({})",
+            duration_literal_naked(stc),
+        ),
+        (None, Some(sch)) => format!(
+            "temporal_runtime::worker::ActivityOptions::with_schedule_to_close_timeout({})",
+            duration_literal_naked(sch),
+        ),
+        (None, None) => unreachable!(
+            "render_activity_default_options_fn called with neither close-timeout set — parse.rs gates this"
+        ),
+    };
+    let _ = writeln!(out, "        let builder = {builder_start};");
+    let mut builder_expr = String::from("builder");
+    if let Some(tq) = &spec.task_queue {
+        builder_expr = format!(
+            "{builder_expr}.task_queue(\"{}\".to_string())",
+            tq.escape_default()
+        );
+    }
+    if let Some(d) = spec.schedule_to_start_timeout {
+        builder_expr = format!(
+            "{builder_expr}.schedule_to_start_timeout({})",
+            duration_literal_naked(d)
+        );
+    }
+    if let Some(d) = spec.heartbeat_timeout {
+        builder_expr = format!(
+            "{builder_expr}.heartbeat_timeout({})",
+            duration_literal_naked(d)
+        );
+    }
+    if let Some(rp) = spec.retry_policy.as_ref() {
+        // The SDK's `ActivityOptions.retry_policy` takes
+        // `temporalio-common`'s api `RetryPolicy`, which our facade
+        // converts to via `From<temporal_runtime::RetryPolicy>`. Emit the
+        // facade literal then convert.
+        let lit = retry_policy_literal(rp);
+        builder_expr = format!("{builder_expr}.retry_policy(({lit}).into())");
+    }
+    let _ = writeln!(out, "        {builder_expr}.build()");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// Bare `Duration::new(s, ns)` literal — used by activity-options literal
+/// generation where we can't surround in `Some(...)`.
+fn duration_literal_naked(d: std::time::Duration) -> String {
+    format!("Duration::new({}, {})", d.as_secs(), d.subsec_nanos())
+}
+
 fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     use heck::{ToShoutySnakeCase, ToSnakeCase};
 
@@ -1622,6 +1696,15 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
             "        ctx.start_activity({marker_struct}, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)"
         );
         let _ = writeln!(out, "    }}");
+
+        // R3 — proto-default `ActivityOptions` factory. Emitted whenever
+        // the proto declares at least one runtime-affecting field
+        // (timeouts, task_queue override, retry_policy). Callers use it
+        // as a starting point and pass the result straight into
+        // `execute_<activity>`.
+        if let Some(spec) = act.default_options.as_ref() {
+            render_activity_default_options_fn(out, &act.rpc_method, spec);
+        }
 
         // R3 — local-activity variant. Mirrors the helper above but routes
         // through `start_local_activity` + `LocalActivityOptions`. Local

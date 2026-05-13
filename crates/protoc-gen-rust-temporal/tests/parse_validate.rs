@@ -440,6 +440,176 @@ fn worker_activities_only_render_golden() {
 }
 
 #[test]
+fn activity_default_options_factory_emitted_when_proto_declares_timeouts() {
+    // R3 — every activity that declares at least one close-timeout in its
+    // `(temporal.v1.activity)` annotation now ships an
+    // `<activity>_default_options()` factory that constructs the SDK's
+    // `ActivityOptions` with those proto defaults baked in. Other fields
+    // (task_queue, schedule_to_start_timeout, heartbeat_timeout,
+    // retry_policy) chain onto the builder.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package act_defaults.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          rpc Work(WorkInput) returns (WorkOutput) {
+            option (temporal.v1.activity) = {
+              task_queue:                "heavy-pool"
+              start_to_close_timeout:    { seconds: 30 }
+              schedule_to_start_timeout: { seconds: 5 }
+              heartbeat_timeout:         { seconds: 10 }
+              retry_policy:              { max_attempts: 4 }
+            };
+          }
+        }
+        message In {}  message Out {}
+        message WorkInput  { string note = 1; }
+        message WorkOutput { bool ok = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        activities: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+
+    assert!(
+        source
+            .contains("pub fn work_default_options() -> temporal_runtime::worker::ActivityOptions"),
+        "must emit per-activity default-options factory: {source}"
+    );
+    assert!(
+        source.contains(
+            "temporal_runtime::worker::ActivityOptions::with_start_to_close_timeout(Duration::new(30, 0))"
+        ),
+        "only-start-to-close path must kick the builder with that variant: {source}"
+    );
+    assert!(
+        source.contains(".task_queue(\"heavy-pool\".to_string())"),
+        "task_queue must chain onto the builder: {source}"
+    );
+    assert!(
+        source.contains(".schedule_to_start_timeout(Duration::new(5, 0))"),
+        "schedule_to_start_timeout must chain: {source}"
+    );
+    assert!(
+        source.contains(".heartbeat_timeout(Duration::new(10, 0))"),
+        "heartbeat_timeout must chain: {source}"
+    );
+    assert!(
+        source.contains(".retry_policy("),
+        "retry_policy must chain via .into() conversion: {source}"
+    );
+}
+
+#[test]
+fn activity_default_options_picks_both_variant_when_proto_sets_both_close_timeouts() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package act_defaults.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          rpc Work(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout:    { seconds: 30 }
+              schedule_to_close_timeout: { seconds: 600 }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        activities: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "ActivityCloseTimeouts::Both { start_to_close: Duration::new(30, 0), schedule_to_close: Duration::new(600, 0) }"
+        ),
+        "both-close-timeout path must produce the `Both` close-timeouts variant: {source}"
+    );
+}
+
+#[test]
+fn activity_default_options_omitted_when_proto_skips_close_timeouts() {
+    // No close timeout declared → no factory (SDK can't build
+    // ActivityOptions without `close_timeouts`). The activity still gets
+    // its name const + marker; just no default-options helper.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package act_defaults.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          rpc Work(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              task_queue: "ignored"
+              heartbeat_timeout: { seconds: 5 }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        activities: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        !source.contains("work_default_options"),
+        "no close-timeout → no default-options factory: {source}"
+    );
+}
+
+#[test]
+fn activity_with_only_wait_for_cancellation_is_still_rejected() {
+    // After the activity-options graduation, the only remaining
+    // ActivityOptions rejection is `wait_for_cancellation` (no clean
+    // mapping to the SDK's `ActivityCancellationType` enum yet).
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package act_reject.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Work(In) returns (Out) {
+            option (temporal.v1.activity) = { wait_for_cancellation: true };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("wait_for_cancellation"),
+        "must still reject wait_for_cancellation: {err}"
+    );
+}
+
+#[test]
 fn activities_emit_renders_per_activity_marker_structs() {
     // R3 — every activity with non-Empty input AND output gets a marker
     // struct + ActivityDefinition impl, so workflow code can call
@@ -1869,34 +2039,9 @@ fn workflow_id_with_bloblang_expression_is_rejected() {
     );
 }
 
-#[test]
-fn activity_with_timeouts_is_rejected() {
-    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
-        r#"
-        syntax = "proto3";
-        package guard.v1;
-        import "temporal/v1/temporal.proto";
-
-        service Svc {
-          rpc Work(In) returns (Out) {
-            option (temporal.v1.activity) = {
-              task_queue: "workers"
-              start_to_close_timeout: { seconds: 30 }
-            };
-          }
-        }
-        message In {}
-        message Out {}
-        "#,
-    );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
-    assert!(
-        err.contains("task_queue") && err.contains("start_to_close_timeout"),
-        "expected activity diagnostic listing both unsupported fields, got: {err}"
-    );
-}
+// Old `activity_with_timeouts_is_rejected` replaced by the positive
+// `activity_default_options_*` tests above — those fields now flow into
+// the per-activity factory instead of failing parse.
 
 /// Table-driven coverage of every `reject_unsupported_*` branch in
 /// `parse.rs`. When you add a new rejection rule, drop a row here naming
@@ -2003,48 +2148,6 @@ fn unsupported_field_support_status_table() {
             expect_field: "cli",
         },
         Case {
-            label: "ActivityOptions.schedule_to_close_timeout",
-            snippet: r#"
-              service Svc {
-                rpc Work(In) returns (Out) {
-                  option (temporal.v1.activity) = {
-                    schedule_to_close_timeout: { seconds: 60 }
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "schedule_to_close_timeout",
-        },
-        Case {
-            label: "ActivityOptions.schedule_to_start_timeout",
-            snippet: r#"
-              service Svc {
-                rpc Work(In) returns (Out) {
-                  option (temporal.v1.activity) = {
-                    schedule_to_start_timeout: { seconds: 30 }
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "schedule_to_start_timeout",
-        },
-        Case {
-            label: "ActivityOptions.heartbeat_timeout",
-            snippet: r#"
-              service Svc {
-                rpc Work(In) returns (Out) {
-                  option (temporal.v1.activity) = {
-                    heartbeat_timeout: { seconds: 5 }
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "heartbeat_timeout",
-        },
-        Case {
             label: "ActivityOptions.wait_for_cancellation",
             snippet: r#"
               service Svc {
@@ -2057,20 +2160,6 @@ fn unsupported_field_support_status_table() {
               message In {} message Out {}
             "#,
             expect_field: "wait_for_cancellation",
-        },
-        Case {
-            label: "ActivityOptions.retry_policy",
-            snippet: r#"
-              service Svc {
-                rpc Work(In) returns (Out) {
-                  option (temporal.v1.activity) = {
-                    retry_policy: { max_attempts: 5 }
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "retry_policy",
         },
         Case {
             label: "WorkflowOptions.patches",

@@ -481,6 +481,7 @@ fn activity_from(
 ) -> Result<ActivityModel> {
     let rpc_method = method.name().to_string();
     reject_unsupported_activity_options(&opts, service, &rpc_method)?;
+    let default_options = activity_options_spec_from_proto(&opts);
     let registered_name = if opts.name.is_empty() {
         default_registered_name(package, service, &rpc_method)
     } else {
@@ -491,6 +492,7 @@ fn activity_from(
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
+        default_options,
     })
 }
 
@@ -669,37 +671,19 @@ fn reject_unsupported_workflow_query_ref(
     Ok(())
 }
 
-/// In v1 the plugin only emits a name-const + trait surface for activities
-/// (under `activities=true`); none of `ActivityOptions`' runtime fields
-/// (timeouts, task_queue override, retry policy, wait-for-cancellation)
-/// flow into generated code. Refuse silent drops here for the same reason
-/// as workflow options.
+/// Most `ActivityOptions` fields now fold into the
+/// `<activity>_default_options()` factory under `activities=true` (see R3
+/// in ROADMAP.md). Only fields that have no clean Rust mapping yet stay
+/// rejected — currently just `wait_for_cancellation`, which maps to the
+/// SDK's `ActivityCancellationType` enum that we haven't surfaced.
 fn reject_unsupported_activity_options(
     opts: &ActivityOptions,
     service: &str,
     rpc: &str,
 ) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
-    if !opts.task_queue.is_empty() {
-        unsupported.push("task_queue");
-    }
-    if opts.schedule_to_close_timeout.is_some() {
-        unsupported.push("schedule_to_close_timeout");
-    }
-    if opts.schedule_to_start_timeout.is_some() {
-        unsupported.push("schedule_to_start_timeout");
-    }
-    if opts.start_to_close_timeout.is_some() {
-        unsupported.push("start_to_close_timeout");
-    }
-    if opts.heartbeat_timeout.is_some() {
-        unsupported.push("heartbeat_timeout");
-    }
     if opts.wait_for_cancellation {
         unsupported.push("wait_for_cancellation");
-    }
-    if opts.retry_policy.is_some() {
-        unsupported.push("retry_policy");
     }
     if unsupported.is_empty() {
         return Ok(());
@@ -708,6 +692,34 @@ fn reject_unsupported_activity_options(
         "{service}.{rpc}: (temporal.v1.activity) sets runtime-affecting field(s) {} that the v1 Rust activity emit (activities=true) does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
         unsupported.join(", "),
     ))
+}
+
+fn activity_options_spec_from_proto(
+    opts: &ActivityOptions,
+) -> Option<crate::model::ActivityOptionsSpec> {
+    let task_queue = (!opts.task_queue.is_empty()).then(|| opts.task_queue.clone());
+    let schedule_to_close_timeout = opts.schedule_to_close_timeout.and_then(duration_from_proto);
+    let schedule_to_start_timeout = opts.schedule_to_start_timeout.and_then(duration_from_proto);
+    let start_to_close_timeout = opts.start_to_close_timeout.and_then(duration_from_proto);
+    let heartbeat_timeout = opts.heartbeat_timeout.and_then(duration_from_proto);
+    let retry_policy = opts.retry_policy.clone().map(retry_policy_from_proto);
+    // The SDK's `ActivityOptions` requires `close_timeouts` (a non-Option
+    // enum) at construction time, so we can't build a factory unless the
+    // proto declares at least one of the close-timeout variants. If only
+    // `task_queue` / `heartbeat_timeout` / `retry_policy` are declared
+    // without a close timeout, fall through to no factory — the caller
+    // can still build ActivityOptions by hand.
+    if start_to_close_timeout.is_none() && schedule_to_close_timeout.is_none() {
+        return None;
+    }
+    Some(crate::model::ActivityOptionsSpec {
+        task_queue,
+        schedule_to_close_timeout,
+        schedule_to_start_timeout,
+        start_to_close_timeout,
+        heartbeat_timeout,
+        retry_policy,
+    })
 }
 
 /// Default cross-language registration name for any annotated rpc.
