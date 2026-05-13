@@ -32,6 +32,7 @@ use crate::temporal::v1::{
 use heck::ToSnakeCase;
 
 const SERVICE_EXT: &str = "temporal.v1.service";
+const SERVICE_CLI_EXT: &str = "temporal.v1.cli";
 const WORKFLOW_EXT: &str = "temporal.v1.workflow";
 const ACTIVITY_EXT: &str = "temporal.v1.activity";
 const SIGNAL_EXT: &str = "temporal.v1.signal";
@@ -40,6 +41,7 @@ const UPDATE_EXT: &str = "temporal.v1.update";
 
 struct ExtensionSet {
     service: ExtensionDescriptor,
+    service_cli: ExtensionDescriptor,
     workflow: ExtensionDescriptor,
     activity: ExtensionDescriptor,
     signal: ExtensionDescriptor,
@@ -51,6 +53,7 @@ impl ExtensionSet {
     fn load(pool: &DescriptorPool) -> Result<Self> {
         Ok(Self {
             service: get_ext(pool, SERVICE_EXT)?,
+            service_cli: get_ext(pool, SERVICE_CLI_EXT)?,
             workflow: get_ext(pool, WORKFLOW_EXT)?,
             activity: get_ext(pool, ACTIVITY_EXT)?,
             signal: get_ext(pool, SIGNAL_EXT)?,
@@ -185,6 +188,7 @@ fn parse_service(
     let service_name = service.name().to_string();
 
     let default_task_queue = service_default_task_queue(service, &ext.service)?;
+    let cli_options = service_cli_spec(service, &ext.service_cli)?;
 
     let mut workflows = Vec::new();
     let mut signals = Vec::new();
@@ -275,11 +279,36 @@ fn parse_service(
         service: service_name,
         source_file: file.name().to_string(),
         default_task_queue,
+        cli_options,
         workflows,
         signals,
         queries,
         updates,
         activities,
+    }))
+}
+
+/// Parse the service-level `(temporal.v1.cli)` annotation, if present.
+/// Cludden's plugin uses this distinct extension (separate from
+/// `(temporal.v1.service)`) to override the top-level CLI binary's
+/// surface — name, about text, aliases, and an `ignore` flag that
+/// suppresses CLI emit entirely.
+fn service_cli_spec(
+    service: &ServiceDescriptor,
+    service_cli_ext: &ExtensionDescriptor,
+) -> Result<Option<crate::model::ServiceCliSpec>> {
+    let opts: DynamicMessage = service.options();
+    if !opts.has_extension(service_cli_ext) {
+        return Ok(None);
+    }
+    let value = opts.get_extension(service_cli_ext);
+    let bytes = encode_message_value(&value)?;
+    let parsed = crate::temporal::v1::CliOptions::decode(bytes.as_slice())?;
+    Ok(Some(crate::model::ServiceCliSpec {
+        ignore: parsed.ignore,
+        name: (!parsed.name.is_empty()).then_some(parsed.name),
+        usage: (!parsed.usage.is_empty()).then_some(parsed.usage),
+        aliases: parsed.aliases,
     }))
 }
 

@@ -138,6 +138,23 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — service-level `(temporal.v1.cli)` honoured):
+  cludden's plugin uses a distinct extension `(temporal.v1.cli)`
+  (separate from `(temporal.v1.service)`) to configure the top-level
+  CLI binary. We previously read the workflow-level `cli` block but
+  silently dropped the service-level one. Now every nested field
+  threads through: `ignore = true` suppresses the entire CLI module
+  (overriding the per-workflow `cli.ignore` heuristic); `name` /
+  `usage` / `aliases` override the `Cli` struct's
+  `#[command(name = …, about = …, alias = […])]` attributes (default
+  fallbacks: service name in snake_case, `"Generated Temporal CLI for
+  <pkg>.<Svc>"`, no aliases). New `ServiceCliSpec` on `ServiceModel`;
+  new `SERVICE_CLI_EXT = "temporal.v1.cli"` extension lookup wired
+  into `ExtensionSet`. Two new inline parse_validate tests: positive
+  override emit, and ignore-suppresses-module. No bridge signature
+  change; no fixture goldens touched (no fixture uses the annotation,
+  and the unannotated render still produces byte-identical output
+  via the default fallbacks).
 - 2026-05-13 (R6 — `--wait` prints the typed workflow result):
   the generated CLI's `Start<Wf>` and `Attach<Wf>` variants previously
   discarded the workflow result when `--wait` was set (`let _ =

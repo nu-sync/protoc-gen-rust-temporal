@@ -25,6 +25,18 @@ issue or add the row. The diagnostic-coverage test
 | `patches` | rejected | Workflow patch-versioning. R8 (advanced subsystems). |
 | `namespace` | rejected | Deprecated in the schema; would change the effective Temporal namespace. R5 once a namespace option exists at the workflow runtime layer. |
 
+## CLIOptions (`(temporal.v1.cli)` — service-level)
+
+Separate extension from `(temporal.v1.service)`; configures the top-level
+`Cli` struct generated under `cli=true`.
+
+| Field | Status | Notes |
+|---|---|---|
+| `ignore` | supported | `true` suppresses the entire CLI module for the service, overriding the per-workflow `cli.ignore` heuristic. |
+| `name` | supported | Threads into the `Cli` struct's `#[command(name = …)]`. Falls back to the service name in snake_case when unset. |
+| `usage` | supported | Threads into the `Cli` struct's `#[command(about = …)]`. Falls back to a generated `"Generated Temporal CLI for <pkg>.<Svc>"` line when unset. |
+| `aliases` | supported | Threads into the `Cli` struct's `#[command(alias = [...])]`. Empty when the proto omits the field. |
+
 ## WorkflowOptions (`(temporal.v1.workflow)`)
 
 | Field | Status | Notes |

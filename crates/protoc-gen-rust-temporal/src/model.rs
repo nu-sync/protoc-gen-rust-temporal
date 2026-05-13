@@ -22,6 +22,23 @@
 
 use std::time::Duration;
 
+/// Parsed `(temporal.v1.cli)` service-level annotation. Each field is
+/// `None` / empty when the proto omits it; the renderer applies them
+/// only when set so unannotated services emit the historical defaults.
+#[derive(Debug, Clone, Default)]
+pub struct ServiceCliSpec {
+    /// `ignore = true` → suppress the entire CLI module for this
+    /// service (overrides the heuristic that drops the module only
+    /// when every workflow is `cli.ignore`'d).
+    pub ignore: bool,
+    /// Top-level command name override (`#[command(name = …)]`).
+    pub name: Option<String>,
+    /// Top-level command help-text override (`#[command(about = …)]`).
+    pub usage: Option<String>,
+    /// Extra top-level command aliases (`#[command(alias = […])]`).
+    pub aliases: Vec<String>,
+}
+
 /// One Temporal-bearing proto service after parsing + validation.
 #[derive(Debug)]
 pub struct ServiceModel {
@@ -34,6 +51,11 @@ pub struct ServiceModel {
     /// `temporal.v1.service.task_queue` if the service carries the annotation.
     /// Used as the default `task_queue` when a workflow does not override it.
     pub default_task_queue: Option<String>,
+    /// Service-level `(temporal.v1.cli)` overrides for the top-level
+    /// `Cli` struct's `#[command(name, about, alias)]` attributes.
+    /// `None` when the proto omits the annotation. `Some(spec)` with
+    /// `ignore = true` suppresses the CLI module entirely.
+    pub cli_options: Option<ServiceCliSpec>,
     pub workflows: Vec<WorkflowModel>,
     pub signals: Vec<SignalModel>,
     pub queries: Vec<QueryModel>,

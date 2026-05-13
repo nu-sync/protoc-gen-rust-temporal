@@ -82,7 +82,10 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
     // is unset — workflows opting out keep the CLI scaffold from referencing
     // workflows the consumer doesn't want exposed.
     let has_visible_cli_workflow = svc.workflows.iter().any(|wf| !wf.cli_ignore);
-    if options.cli && has_visible_cli_workflow {
+    // `(temporal.v1.cli).ignore = true` at the service level suppresses
+    // the entire CLI module — overrides the per-workflow heuristic.
+    let service_cli_ignore = svc.cli_options.as_ref().is_some_and(|c| c.ignore);
+    if options.cli && has_visible_cli_workflow && !service_cli_ignore {
         render_cli_module(&mut out, svc);
     }
 
@@ -2700,13 +2703,31 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out);
 
     let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Parser)]");
-    let _ = writeln!(
-        out,
-        "    #[command(name = \"{}\", about = \"Generated Temporal CLI for {}.{}\")]",
-        svc.service.to_snake_case(),
-        svc.package,
-        svc.service,
-    );
+    // Service-level `(temporal.v1.cli).{name,usage,aliases}` overrides
+    // the default `#[command(name = "<service_snake>", about = …)]`.
+    let cli_spec = svc.cli_options.as_ref();
+    let cli_name = cli_spec
+        .and_then(|c| c.name.clone())
+        .unwrap_or_else(|| svc.service.to_snake_case());
+    let cli_about = cli_spec
+        .and_then(|c| c.usage.clone())
+        .unwrap_or_else(|| format!("Generated Temporal CLI for {}.{}", svc.package, svc.service));
+    let mut command_parts = vec![
+        format!("name = \"{}\"", cli_name.escape_default()),
+        format!("about = \"{}\"", cli_about.escape_default()),
+    ];
+    if let Some(spec) = cli_spec {
+        if !spec.aliases.is_empty() {
+            let aliases = spec
+                .aliases
+                .iter()
+                .map(|a| format!("\"{}\"", a.escape_default()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            command_parts.push(format!("alias = [{aliases}]"));
+        }
+    }
+    let _ = writeln!(out, "    #[command({})]", command_parts.join(", "));
     let _ = writeln!(out, "    pub struct Cli {{");
     let _ = writeln!(out, "        #[command(subcommand)]");
     let _ = writeln!(out, "        pub command: Command,");
@@ -2977,6 +2998,7 @@ mod tests {
             service: service.to_string(),
             source_file: "test.proto".to_string(),
             default_task_queue: None,
+            cli_options: None,
             workflows: vec![],
             signals: vec![],
             queries: vec![],

@@ -1850,6 +1850,87 @@ fn cli_emit_renders_update_subcommands() {
 }
 
 #[test]
+fn service_cli_options_override_top_level_command_attrs() {
+    // R6 — `(temporal.v1.cli)` at the service level overrides the
+    // top-level `#[command(name, about, alias)]` on the generated
+    // `Cli` struct. `ignore = true` suppresses the entire CLI module.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package svccli.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.cli) = {
+            name: "tempctl"
+            usage: "Drive the temporal demo."
+            aliases: ["temp", "tctl-demo"]
+          };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("service-level cli must parse");
+    let spec = services[0]
+        .cli_options
+        .as_ref()
+        .expect("ServiceCliSpec must populate");
+    assert_eq!(spec.name.as_deref(), Some("tempctl"));
+    assert_eq!(spec.usage.as_deref(), Some("Drive the temporal demo."));
+    assert_eq!(spec.aliases, vec!["temp", "tctl-demo"]);
+    assert!(!spec.ignore);
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "#[command(name = \"tempctl\", about = \"Drive the temporal demo.\", alias = [\"temp\", \"tctl-demo\"])]"
+        ),
+        "service-level cli overrides must surface on the Cli struct's #[command(...)]: {source}"
+    );
+}
+
+#[test]
+fn service_cli_ignore_suppresses_entire_cli_module() {
+    // `(temporal.v1.cli).ignore = true` suppresses the entire CLI
+    // module — even if `cli=true` plugin option is set and visible
+    // workflows exist.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package svccli.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.cli) = { ignore: true };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("must parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        !source.contains("pub mod svc_cli"),
+        "service-level cli.ignore must suppress the entire CLI module: {source}"
+    );
+}
+
+#[test]
 fn cli_emit_off_by_default() {
     let services = parse_and_validate("cli_emit");
     let source = render::render(&services[0], &Default::default());
