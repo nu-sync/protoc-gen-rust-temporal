@@ -284,6 +284,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         fn name() -> &'static str { LOAD_ACTIVITY_NAME }
     }
     impl LoadActivity {
+        pub const NAME: &'static str = self::LOAD_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::LOAD_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::LOAD_ACTIVITY_OUTPUT_TYPE;
     }
@@ -396,6 +397,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         fn name(&self) -> &str { self::CANCEL_SIGNAL_NAME }
     }
     impl CancelSignal {
+        pub const NAME: &'static str = self::CANCEL_SIGNAL_NAME;
         pub const INPUT_TYPE: &'static str = self::CANCEL_SIGNAL_INPUT_TYPE;
     }
     pub async fn signal_cancel_external<W>(

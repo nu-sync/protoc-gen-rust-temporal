@@ -2489,7 +2489,15 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
             "{}_ACTIVITY_OUTPUT_TYPE",
             act.rpc_method.to_shouty_snake_case()
         );
+        let name_const = format!("{}_ACTIVITY_NAME", act.rpc_method.to_shouty_snake_case());
         let _ = writeln!(out, "    impl {marker_struct} {{");
+        // Re-expose `NAME` as an inherent const so generic code can
+        // read `<A>::NAME` without importing the SDK
+        // `ActivityDefinition` trait.
+        let _ = writeln!(
+            out,
+            "        pub const NAME: &'static str = self::{name_const};"
+        );
         let _ = writeln!(
             out,
             "        pub const INPUT_TYPE: &'static str = self::{in_const};"
@@ -2657,7 +2665,16 @@ fn render_external_signal_helpers(out: &mut String, svc: &ServiceModel) {
             "{}_SIGNAL_INPUT_TYPE",
             sig.rpc_method.to_shouty_snake_case()
         );
+        // Re-expose the registered name as `NAME` const too — the
+        // SDK trait's `name(&self)` requires an instance, but
+        // generic code with only the type-system marker (e.g.
+        // `<S as MarkerType>`) can read `S::NAME` directly.
+        let name_const = format!("{}_SIGNAL_NAME", sig.rpc_method.to_shouty_snake_case());
         let _ = writeln!(out, "    impl {signal_marker} {{");
+        let _ = writeln!(
+            out,
+            "        pub const NAME: &'static str = self::{name_const};"
+        );
         let _ = writeln!(
             out,
             "        pub const INPUT_TYPE: &'static str = self::{in_const};"

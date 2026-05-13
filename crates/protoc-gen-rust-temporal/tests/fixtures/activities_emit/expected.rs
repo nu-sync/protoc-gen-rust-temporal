@@ -239,6 +239,7 @@ pub mod acts_v1_chunk_service_temporal {
         fn name() -> &'static str { PROCESS_ACTIVITY_NAME }
     }
     impl ProcessActivity {
+        pub const NAME: &'static str = self::PROCESS_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::PROCESS_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::PROCESS_ACTIVITY_OUTPUT_TYPE;
     }
@@ -264,6 +265,7 @@ pub mod acts_v1_chunk_service_temporal {
         fn name() -> &'static str { HEARTBEAT_ACTIVITY_NAME }
     }
     impl HeartbeatActivity {
+        pub const NAME: &'static str = self::HEARTBEAT_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::HEARTBEAT_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::HEARTBEAT_ACTIVITY_OUTPUT_TYPE;
     }

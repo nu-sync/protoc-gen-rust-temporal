@@ -351,6 +351,7 @@ pub mod wf_v1_order_service_temporal {
         fn name(&self) -> &str { self::CANCEL_SIGNAL_NAME }
     }
     impl CancelSignal {
+        pub const NAME: &'static str = self::CANCEL_SIGNAL_NAME;
         pub const INPUT_TYPE: &'static str = self::CANCEL_SIGNAL_INPUT_TYPE;
     }
     pub async fn signal_cancel_external<W>(

@@ -74,6 +74,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
         fn name() -> &'static str { FETCH_ACTIVITY_NAME }
     }
     impl FetchActivity {
+        pub const NAME: &'static str = self::FETCH_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::FETCH_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::FETCH_ACTIVITY_OUTPUT_TYPE;
     }
@@ -99,6 +100,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
         fn name() -> &'static str { PING_ACTIVITY_NAME }
     }
     impl PingActivity {
+        pub const NAME: &'static str = self::PING_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::PING_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::PING_ACTIVITY_OUTPUT_TYPE;
     }

@@ -1289,6 +1289,29 @@ fn workflow_id_template_const_omitted_when_unset() {
 }
 
 #[test]
+fn signal_and_activity_markers_expose_name_const() {
+    // R4 — every marker struct now also re-exposes the registered
+    // `NAME` as an inherent const. The SDK's `name(&self)` /
+    // `name()` requires an instance / type-import; the const lets
+    // generic code read the wire name with just `<S>::NAME` /
+    // `<A>::NAME` regardless of which trait is in scope.
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const NAME: &'static str = self::CANCEL_SIGNAL_NAME;"),
+        "signal marker must re-expose NAME: {source}"
+    );
+    let services_act = parse_and_validate("activities_emit");
+    let opts_act = load_fixture_options("activities_emit");
+    let source_act = render::render(&services_act[0], &opts_act);
+    assert!(
+        source_act.contains("pub const NAME: &'static str = self::"),
+        "activity marker must re-expose NAME: {source_act}"
+    );
+}
+
+#[test]
 fn marker_structs_derive_standard_traits() {
     // R6 ergonomics — marker structs (`<Activity>Activity`,
     // `<Sig>Signal`, `<Wf>Workflow`) hold no state; deriving the

@@ -182,6 +182,20 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R4 — `NAME` const on signal + activity markers):
+  every marker struct now also re-exposes the registered name as
+  `pub const NAME: &'static str = self::<RPC>_<KIND>_NAME;`. The
+  SDK's `name(&self)` (signals) / `name()` (activities) paths
+  require the trait import to be in scope at the call site. The
+  inherent const lets generic code read the wire name with just
+  `<S>::NAME` / `<A>::NAME` regardless of which trait the caller
+  has imported. Pairs with the existing `INPUT_TYPE` / `OUTPUT_TYPE`
+  / `TASK_QUEUE` re-exposures so every marker carries its full
+  metadata uniformly. One new positive parse_validate test pins
+  both the signal-side (`worker_full`) and activity-side
+  (`activities_emit`) emit. Several fixture goldens reblessed
+  (every marker gained the `NAME` const line). 169 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — marker structs derive ergonomic traits):
   every generated marker struct (`<Activity>Activity`, `<Sig>Signal`,
   `<Wf>Workflow` for child-workflow refs) is now declared with
