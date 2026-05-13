@@ -1897,6 +1897,17 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Cloning accessor — sugar over `.inner.clone()`. Lets callers
+    // obtain an owned `WorkflowHandle` without consuming the typed
+    // wrapper, useful for handing the bridge handle to a custom
+    // polling loop while continuing to use the typed surface.
+    let _ = writeln!(
+        out,
+        "        pub fn clone_inner(&self) -> temporal_runtime::WorkflowHandle {{"
+    );
+    let _ = writeln!(out, "            self.inner.clone()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Consuming accessor — drop the typed wrapper and recover the
     // bridge handle for downstream code that wants to use the
     // bridge surface directly (e.g. custom polling loops).

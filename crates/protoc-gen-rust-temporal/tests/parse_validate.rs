@@ -2787,6 +2787,26 @@ fn handle_exposes_from_inner_constructor() {
 }
 
 #[test]
+fn handle_exposes_clone_inner_accessor() {
+    // R6 ergonomics — `<Wf>Handle::clone_inner(&self) ->
+    // WorkflowHandle` parallels `<Service>Client::clone_inner`.
+    // Lets callers obtain an owned bridge handle without
+    // consuming the typed wrapper, useful for handing the bridge
+    // handle to a custom polling loop while continuing to use
+    // the typed surface.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn clone_inner(&self) -> temporal_runtime::WorkflowHandle {"),
+        "missing clone_inner accessor on handle: {source}"
+    );
+    assert!(
+        source.contains("self.inner.clone()"),
+        "clone_inner body must clone the inner bridge handle: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_into_inner_consuming_accessor() {
     // R6 ergonomics — `<Wf>Handle::into_inner(self)` returns the
     // underlying `WorkflowHandle` by value, letting downstream

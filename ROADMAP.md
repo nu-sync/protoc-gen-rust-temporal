@@ -511,6 +511,20 @@ Progress:
   parse_validate test pins the fn signature. Several fixture
   goldens reblessed (every Handle gained the new method). 181
   parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::clone_inner()` accessor):
+  parallel of the previous `<Service>Client::clone_inner` shipment
+  for typed handles. Every `<Wf>Handle` now exposes
+  `clone_inner(&self) -> WorkflowHandle` — sugar over
+  `.inner.clone()`. Lets callers obtain an owned bridge handle
+  without consuming the typed wrapper, useful for handing the
+  bridge handle to a custom polling loop while continuing to use
+  the typed surface. Pairs with the existing `<Wf>Handle`
+  accessor matrix: `client()` (borrow client), `into_inner()`
+  (consume to bridge handle), and now `clone_inner()` (borrow +
+  clone bridge handle). One new positive parse_validate test pins
+  the fn signature + body. Several fixture goldens reblessed
+  (every Handle gained the accessor). 198 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::clone_inner()` accessor):
   every generated `<Service>Client` now exposes
   `clone_inner(&self) -> TemporalClient` — sugar over the existing
