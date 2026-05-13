@@ -3471,8 +3471,8 @@ fn cli_args_structs_derive_debug() {
     let opts = load_fixture_options("cli_emit");
     let source = render::render(&services[0], &opts);
     assert!(
-        source.contains("#[derive(Debug, temporal_runtime::clap::Args)]"),
-        "Args structs must derive Debug alongside clap::Args: {source}"
+        source.contains("#[derive(Debug, Clone, temporal_runtime::clap::Args)]"),
+        "Args structs must derive Debug + Clone alongside clap::Args: {source}"
     );
     // Old single-derive form must not survive.
     assert!(

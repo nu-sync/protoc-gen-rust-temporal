@@ -436,6 +436,18 @@ Progress:
   parse_validate tests pin the whitespace and newline rejection
   shapes. 151 parse_validate tests green. No bridge signature
   change; no fixture goldens touched.
+- 2026-05-13 (R6 — CLI Args structs derive `Clone`):
+  every generated CLI Args struct now also derives `Clone`
+  alongside `Debug` and `clap::Args`. Lets dispatch code clone
+  args before consuming them in async paths (e.g. retry on
+  spurious failures, fan-out to multiple workers, defer to a
+  background task without blocking the main parse path). Args
+  fields are user-supplied scalars (`String`, `bool`, `PathBuf`,
+  optional flags) that all derive `Clone` themselves so this is
+  free at the type level. Existing `cli_args_structs_derive_debug`
+  test tightened to expect the combined `Debug, Clone, clap::Args`
+  derive. Several fixture goldens reblessed. 179 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — top-level Cli + Command derive `Debug`):
   rounds out the Debug surface for the `cli=true` scaffold. The
   generated `Cli` struct (with `#[command(…)]` attrs) and the
