@@ -69,6 +69,11 @@ pub mod workerfull_v1_orchestration_service_temporal {
             Self { client }
         }
 
+        pub async fn connect(url: &str, namespace: &str) -> Result<Self> {
+            let client = temporal_runtime::connect(url, namespace).await?;
+            Ok(Self::new(client))
+        }
+
         pub fn inner(&self) -> &temporal_runtime::TemporalClient {
             &self.client
         }

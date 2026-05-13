@@ -646,6 +646,22 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "            Self {{ client }}");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Convenience constructor — connects to Temporal and wraps the
+    // resulting client in one call. Lets `main` skip the boilerplate
+    // of `temporal_runtime::connect(...).await?` followed by
+    // `<Service>Client::new(...)`. Errors surface verbatim from the
+    // bridge.
+    let _ = writeln!(
+        out,
+        "        pub async fn connect(url: &str, namespace: &str) -> Result<Self> {{"
+    );
+    let _ = writeln!(
+        out,
+        "            let client = temporal_runtime::connect(url, namespace).await?;"
+    );
+    let _ = writeln!(out, "            Ok(Self::new(client))");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     let _ = writeln!(
         out,
         "        pub fn inner(&self) -> &temporal_runtime::TemporalClient {{"

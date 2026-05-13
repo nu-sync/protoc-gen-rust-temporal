@@ -182,6 +182,24 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::connect(url, namespace)` convenience):
+  every generated client now exposes a one-call `connect`
+  constructor that wraps `temporal_runtime::connect(url, namespace)`
+  + `Self::new(...)`. Lets `main` go from
+  ```
+  let client = temporal_runtime::connect(url, ns).await?;
+  let svc = MyServiceClient::new(client);
+  ```
+  to
+  ```
+  let svc = MyServiceClient::connect(url, ns).await?;
+  ```
+  Errors from the bridge propagate verbatim. Stub runtime in
+  `generated_surface_compile.rs` updated with a `connect` stub. One
+  new positive parse_validate test pins the fn signature, the
+  bridge call, and the `Self::new` wrap. Several fixture goldens
+  reblessed (every Client gained the new method). 164 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R1 — workflow id template runtime emptiness guard):
   the generated `<wf>_id(input)` helper now asserts non-empty after
   the template substitution. Field refs that resolve to empty

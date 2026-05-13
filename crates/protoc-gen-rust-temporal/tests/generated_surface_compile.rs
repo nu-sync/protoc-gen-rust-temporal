@@ -364,6 +364,10 @@ pub mod temporal_runtime {
         ProtoPayload
     }
 
+    pub async fn connect(_url: &str, _namespace: &str) -> anyhow::Result<TemporalClient> {
+        Ok(TemporalClient)
+    }
+
     pub async fn start_workflow_proto<I: TemporalProtoMessage>(
         _client: &TemporalClient,
         _workflow_name: &'static str,

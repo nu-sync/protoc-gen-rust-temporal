@@ -2532,6 +2532,27 @@ fn start_options_exposes_with_field_builders() {
 }
 
 #[test]
+fn client_exposes_connect_convenience_constructor() {
+    // R6 ergonomics — `<Service>Client::connect(url, namespace)`
+    // wraps `temporal_runtime::connect()` + `Self::new()` in one
+    // call. Lets `main` skip the explicit two-step setup.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub async fn connect(url: &str, namespace: &str) -> Result<Self>"),
+        "missing connect convenience constructor: {source}"
+    );
+    assert!(
+        source.contains("let client = temporal_runtime::connect(url, namespace).await?;"),
+        "connect must call temporal_runtime::connect: {source}"
+    );
+    assert!(
+        source.contains("Ok(Self::new(client))"),
+        "connect must wrap via Self::new: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_plugin_version_const() {
     // R4 — `<Service>Client::GENERATED_BY_PLUGIN_VERSION: &'static str`
     // embeds the protoc-gen-rust-temporal version that produced the
