@@ -3911,6 +3911,83 @@ fn search_attributes_double_literal_compiles_to_encoder_call() {
 }
 
 #[test]
+fn search_attributes_string_literal_accepts_minimal_json_escapes() {
+    // R7 slice 2 — the string lexer accepts the same minimal escape
+    // set the encoder emits: `\\` (backslash) and `\"` (double quote).
+    // Other escape sequences still fall through to the standard
+    // unsupported diagnostic.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_esc.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"Quoted\": \"with\\\"quote\", \"Slashed\": \"path\\\\to\\\\thing\" }"
+            };
+          }
+        }
+        message In {}  message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept minimal escapes");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let SearchAttributesSpec::Static(entries) = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the spec")
+    else {
+        panic!("expected Static spec");
+    };
+    // Model carries the *unescaped* string.
+    assert!(
+        entries.contains(&(
+            "Quoted".to_string(),
+            SearchAttributeLiteral::String("with\"quote".to_string())
+        )),
+        "escaped quote must unescape in the model: {entries:?}"
+    );
+    assert!(
+        entries.contains(&(
+            "Slashed".to_string(),
+            SearchAttributeLiteral::String("path\\to\\thing".to_string())
+        )),
+        "escaped backslashes must unescape in the model: {entries:?}"
+    );
+}
+
+#[test]
+fn search_attributes_string_literal_rejects_unknown_escape() {
+    // `\n`, `\t`, etc. are not in the minimal slice-2 escape set;
+    // fall through to the standard unsupported diagnostic.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_esc_bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": \"line\\nbreak\" }"
+            };
+          }
+        }
+        message In {}  message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "non-minimal escape must surface the unsupported diagnostic: {err}"
+    );
+}
+
+#[test]
 fn search_attributes_string_field_ref_resolves_against_input() {
     // R7 slice 3a — `this.<field>` references against `string`-typed
     // singular input fields land as `SearchAttributeLiteral::StringField`

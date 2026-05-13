@@ -989,13 +989,24 @@ fn parse_search_attribute_literal(
         return Some(SearchAttributeLiteral::Bool(false));
     }
     if let Some(inner) = raw.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-        if inner.contains('\\') {
-            // Slice 2 keeps the string-literal lexer minimal (no
-            // escapes); fall through so the caller surfaces the
-            // standard unsupported-field diagnostic.
-            return None;
+        // Slice-2 string lexer: accept the minimal JSON escape set the
+        // sibling encoder emits (`\\` and `\"`). Other escape sequences
+        // fall through to the standard unsupported-`search_attributes`
+        // diagnostic so users see the limitation at codegen.
+        let mut unescaped = String::with_capacity(inner.len());
+        let mut chars = inner.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                match chars.next() {
+                    Some('\\') => unescaped.push('\\'),
+                    Some('"') => unescaped.push('"'),
+                    _ => return None,
+                }
+            } else {
+                unescaped.push(c);
+            }
         }
-        return Some(SearchAttributeLiteral::String(inner.to_string()));
+        return Some(SearchAttributeLiteral::String(unescaped));
     }
     if let Ok(n) = raw.parse::<i64>() {
         return Some(SearchAttributeLiteral::Int(n));

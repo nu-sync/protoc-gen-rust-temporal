@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 slice 2 — string literal accepts `\\` and `\"` escapes):
+  the Bloblang string-literal lexer previously rejected any string
+  containing a backslash, blocking proto authors from declaring
+  search-attribute literals with quotes or backslashes in their
+  values. The lexer now unescapes the minimal set the encoder emits
+  (`\\` → `\`, `\"` → `"`) symmetrically; other escape sequences
+  (`\n`, `\t`, etc.) still fall through to the standard
+  unsupported-`search_attributes` diagnostic. Render's
+  `.escape_default()` call re-applies the Rust-compatible escapes
+  when emitting the literal back as Rust source, keeping the
+  parse/emit round-trip consistent. Two new positive parse_validate
+  tests pin the accepted-escapes path and the still-rejected
+  unknown-escape path. 138 parse_validate / 26 bridge tests green.
+  No bridge signature change; no fixture goldens touched.
 - 2026-05-13 (R7 slice 3 — narrow-int field refs widen to i64):
   field-ref support extends from `int64`-only to also cover the full
   set of fixed-width signed/unsigned integer scalars on the input
