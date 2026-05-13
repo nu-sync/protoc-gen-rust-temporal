@@ -2514,6 +2514,9 @@ fn cli_command_attrs(verb: &str, wf: &crate::model::WorkflowModel) -> String {
             .join(", ");
         parts.push(format!("alias = [{aliases}]"));
     }
+    if let Some(usage) = wf.cli_usage.as_ref() {
+        parts.push(format!("about = \"{}\"", usage.escape_default()));
+    }
     parts.join(", ")
 }
 

@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `cli.usage` per-workflow honoured):
+  `(temporal.v1.workflow).cli.usage` moves from rejected to supported.
+  Emits as `#[command(about = "<usage>")]` on both the start and attach
+  subcommand variants, overriding clap's docstring-derived default.
+  Completes the `WorkflowOptions.cli` block — every nested field
+  (`ignore`, `name`, `usage`, `aliases`) now threads through to the
+  generated CLI. The existing `cli.usage` rejection test was rewritten
+  as a positive emit test asserting the attribute lands twice (one per
+  variant). The dead `reject_unsupported_workflow_cli_options` helper
+  is gone; no other call sites referenced it. No bridge signature
+  change; no fixture goldens touched (no fixture sets `cli.usage`).
 - 2026-05-13 (R6 — `cli.name` + `cli.aliases` per-workflow honoured):
   `(temporal.v1.workflow).cli.name` and `cli.aliases` move from
   rejected to supported. The CLI emit threads them into the per-workflow

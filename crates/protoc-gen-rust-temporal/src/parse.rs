@@ -473,9 +473,6 @@ fn workflow_from(
         )
     };
 
-    if let Some(cli) = opts.cli.as_ref() {
-        reject_unsupported_workflow_cli_options(cli, service_name, &rpc_method)?;
-    }
     let cli_ignore = opts.cli.as_ref().is_some_and(|c| c.ignore);
     let cli_name = opts
         .cli
@@ -486,6 +483,10 @@ fn workflow_from(
         .as_ref()
         .map(|c| c.aliases.clone())
         .unwrap_or_default();
+    let cli_usage = opts
+        .cli
+        .as_ref()
+        .and_then(|c| (!c.usage.is_empty()).then(|| c.usage.clone()));
     let enable_eager_workflow_start = opts.enable_eager_start;
     Ok(WorkflowModel {
         rpc_method,
@@ -507,6 +508,7 @@ fn workflow_from(
         cli_ignore,
         cli_name,
         cli_aliases,
+        cli_usage,
         enable_eager_workflow_start,
         attached_signals: opts
             .signal
@@ -753,30 +755,6 @@ fn reject_unsupported_workflow_update_ref(
         ));
     }
     Ok(())
-}
-
-/// `WorkflowOptions.cli` is the per-workflow CLI override block.
-/// `ignore` filters the workflow out of the scaffold; `name` and
-/// `aliases` thread into the generated clap subcommand's `#[command(name
-/// = …, alias = …)]` attributes. `usage` (help text override) still
-/// requires a deeper rewrite of the per-variant docstring path and
-/// stays rejected.
-fn reject_unsupported_workflow_cli_options(
-    cli: &crate::temporal::v1::CliCommandOptions,
-    service: &str,
-    rpc: &str,
-) -> Result<()> {
-    let mut unsupported: Vec<&'static str> = Vec::new();
-    if !cli.usage.is_empty() {
-        unsupported.push("cli.usage");
-    }
-    if unsupported.is_empty() {
-        return Ok(());
-    }
-    Err(anyhow!(
-        "{service}.{rpc}: (temporal.v1.workflow).cli sets field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
-        unsupported.join(", "),
-    ))
 }
 
 /// Sibling of [`reject_unsupported_workflow_update_ref`] for `signal` refs

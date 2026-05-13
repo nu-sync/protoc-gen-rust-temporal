@@ -49,7 +49,7 @@ issue or add the row. The diagnostic-coverage test
 | `namespace` | rejected | Deprecated in the schema; same rationale as `ServiceOptions.namespace`. |
 | `cli.ignore` | supported | Filters the workflow out of the `cli=true` scaffold. |
 | `cli.name` | supported | Threads into the per-workflow clap variants as `#[command(name = "start-<override>")]` / `#[command(name = "attach-<override>")]` so callers see the rename uniformly for both verbs. |
-| `cli.usage` | rejected | R6. Would change the subcommand help text — needs the per-variant docstring path rewritten. |
+| `cli.usage` | supported | Emitted as `#[command(about = "<usage>")]` on both the start and attach variants, overriding the clap docstring-derived default. |
 | `cli.aliases` | supported | Threads into the per-workflow clap variants as `#[command(alias = ["start-<a>", …])]` / `#[command(alias = ["attach-<a>", …])]`. Both verbs share the same alias list. |
 
 ### WorkflowOptions.Signal[] (nested)

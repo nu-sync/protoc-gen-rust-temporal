@@ -102,6 +102,10 @@ pub struct WorkflowModel {
     /// `WorkflowOptions.cli.aliases`: extra clap subcommand aliases. Both
     /// `start-<wf>` and `attach-<wf>` variants inherit them.
     pub cli_aliases: Vec<String>,
+    /// `WorkflowOptions.cli.usage`: help-text override emitted as
+    /// `#[command(about = "<usage>")]` on both the start and attach
+    /// variants. `None` leaves the docstring-derived default in place.
+    pub cli_usage: Option<String>,
     /// `WorkflowOptions.enable_eager_start`: ask the server for eager
     /// workflow execution (the request can be satisfied by a local worker
     /// if one has slots, cutting first-task latency). NOTE the upstream

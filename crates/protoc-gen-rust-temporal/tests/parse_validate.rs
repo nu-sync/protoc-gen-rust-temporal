@@ -1432,10 +1432,10 @@ fn workflow_cli_name_and_aliases_emit_clap_overrides() {
 }
 
 #[test]
-fn workflow_cli_usage_is_still_rejected() {
-    // `cli.usage` (help text override) requires rewriting the docstring
-    // path on each variant — until that lands, dropping it silently
-    // would surprise users who expect the override to take effect.
+fn workflow_cli_usage_emits_clap_about_override() {
+    // R6 — `(temporal.v1.workflow).cli.usage` lands as
+    // `#[command(about = "<usage>")]` on both the start and attach
+    // variants, overriding clap's docstring-derived default.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
@@ -1453,12 +1453,26 @@ fn workflow_cli_usage_is_still_rejected() {
         message In {} message Out {}
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
+    let services = parse::parse(&pool, &files_to_generate).expect("cli.usage must parse cleanly");
+    assert_eq!(
+        services[0].workflows[0].cli_usage.as_deref(),
+        Some("Run the thing.")
+    );
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
     assert!(
-        err.contains("cli.usage") && err.contains("does not yet honour"),
-        "expected cli.usage diagnostic, got: {err}"
+        source.contains("#[command(about = \"Run the thing.\")]"),
+        "cli.usage must surface as #[command(about = ...)] on the variants: {source}"
+    );
+    assert_eq!(
+        source
+            .matches("#[command(about = \"Run the thing.\")]")
+            .count(),
+        2,
+        "cli.usage must apply to both start + attach variants: {source}"
     );
 }
 
