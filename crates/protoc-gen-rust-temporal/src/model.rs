@@ -218,6 +218,12 @@ pub struct SignalModel {
     pub input_type: ProtoType,
     /// Must be `google.protobuf.Empty` — validated.
     pub output_type: ProtoType,
+    /// Method-level `(temporal.v1.signal).cli` overrides. Act as the
+    /// fallback default for the `Signal<Name>` CLI subcommand when no
+    /// `WorkflowOptions.signal[N].cli` workflow ref carries overrides.
+    pub cli_name: Option<String>,
+    pub cli_aliases: Vec<String>,
+    pub cli_usage: Option<String>,
 }
 
 #[derive(Debug)]

@@ -138,6 +138,19 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `(temporal.v1.signal).cli` method-level fallback honoured):
+  the method-level `cli` annotation on signal rpcs moves from
+  intentionally-ignored to supported. It acts as the fallback default
+  for the `Signal<Name>` CLI subcommand's `#[command(name, alias,
+  about)]` when no `WorkflowOptions.signal[N].cli` workflow ref
+  carries overrides. Per-ref overrides win when both are set —
+  same first-ref-wins policy as before.
+  `SignalModel` gains `cli_name` / `cli_aliases` / `cli_usage`;
+  `signal_ref_cli_attrs` falls back to those when no workflow override
+  is present. Two new positive parse_validate tests: method-level
+  fallback emit and ref-wins-over-method-level priority. No bridge
+  signature change; no fixture goldens touched. 116 parse_validate /
+  17 bridge tests green.
 - 2026-05-13 (R6 — `WorkflowOptions.update[N].cli` per-ref overrides honoured):
   parallel of the signal-ref work. The nested `cli` field on update
   refs moves from rejected to supported. `UpdateRef` gains

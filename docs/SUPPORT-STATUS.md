@@ -108,7 +108,7 @@ Separate extension from `(temporal.v1.service)`; configures the top-level
 | Field | Status | Notes |
 |---|---|---|
 | `name` | supported | |
-| `cli` | intentionally ignored | R6. |
+| `cli` | supported | Acts as the fallback default for the `Signal<Name>` CLI subcommand's `#[command(name, alias, about)]` when no `WorkflowOptions.signal[N].cli` workflow ref carries overrides. Workflow-ref overrides win when both are set. |
 | `xns` | intentionally ignored | R8. |
 | `patches` | intentionally ignored | R8. |
 

@@ -1620,6 +1620,102 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn signal_options_cli_acts_as_fallback_default_for_subcommand() {
+    // R6 — method-level `(temporal.v1.signal).cli` overrides act as
+    // the fallback default for the `Signal<Name>` clap subcommand
+    // when no `WorkflowOptions.signal[N].cli` workflow ref carries
+    // overrides. Per-ref overrides win when both are present.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sig_default.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {
+              cli: { name: "stop", aliases: ["halt"], usage: "Stop the workflow." }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate)
+        .expect("(temporal.v1.signal).cli must parse cleanly");
+    let sig = services[0]
+        .signals
+        .iter()
+        .find(|s| s.rpc_method == "Cancel")
+        .expect("Cancel signal must be in the model");
+    assert_eq!(sig.cli_name.as_deref(), Some("stop"));
+    assert_eq!(sig.cli_aliases, vec!["halt"]);
+    assert_eq!(sig.cli_usage.as_deref(), Some("Stop the workflow."));
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "#[command(name = \"signal-stop\", alias = [\"signal-halt\"], about = \"Stop the workflow.\")]"
+        ),
+        "method-level signal.cli must surface on the SignalCancel variant when no ref override exists: {source}"
+    );
+}
+
+#[test]
+fn signal_ref_cli_override_wins_over_method_level_default() {
+    // The per-ref override wins. The method-level default is left
+    // unused when a workflow ref provides its own values.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sig_prio.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" cli: { name: "abort" } }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = { cli: { name: "stop" } };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("must parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("name = \"signal-abort\""),
+        "per-ref override must win: {source}"
+    );
+    assert!(
+        !source.contains("name = \"signal-stop\""),
+        "method-level default must not appear when ref override is present: {source}"
+    );
+}
+
+#[test]
 fn signal_ref_cli_override_threads_into_subcommand() {
     // R6 — when a workflow's `WorkflowOptions.signal[N].cli` declares
     // overrides for the signal ref, those override the auto-generated

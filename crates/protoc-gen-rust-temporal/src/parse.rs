@@ -610,11 +610,22 @@ fn signal_from(
     } else {
         opts.name
     };
+    let (cli_name, cli_aliases, cli_usage) = match opts.cli.as_ref() {
+        Some(c) => (
+            (!c.name.is_empty()).then(|| c.name.clone()),
+            c.aliases.clone(),
+            (!c.usage.is_empty()).then(|| c.usage.clone()),
+        ),
+        None => (None, Vec::new(), None),
+    };
     SignalModel {
         rpc_method,
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
+        cli_name,
+        cli_aliases,
+        cli_usage,
     }
 }
 

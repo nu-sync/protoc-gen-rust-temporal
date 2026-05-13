@@ -1170,6 +1170,9 @@ fn fabricate_signal_model(
         registered_name: target.registered_name.clone(),
         input_type: target.input_type.clone(),
         output_type: target.output_type.clone(),
+        cli_name: None,
+        cli_aliases: Vec::new(),
+        cli_usage: None,
     }
 }
 
@@ -2690,15 +2693,16 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
 /// `verb` is `"start"` or `"attach"`; it's prepended to the override so
 /// the user-facing names stay disambiguated between the two variants
 /// generated per workflow.
-/// Pick the first `WorkflowOptions.signal[N].cli` override that any
-/// workflow on the service declares for `signal_rpc`. The CLI emit is
-/// service-scoped (one `Signal<Name>` variant per signal regardless of
-/// how many workflows ref it), so when multiple workflows declare
-/// conflicting overrides for the same signal we deterministically
-/// pick the first by `svc.workflows` order. Same-shape overrides
-/// (name + aliases + usage) all flow from the same picked ref.
+/// Pick the CLI override values for the `Signal<Name>` subcommand on
+/// the service-scoped CLI. Two sources, in priority order:
+///   1. The first `WorkflowOptions.signal[N].cli` override declared by
+///      any workflow on the service (deterministic by workflow order).
+///   2. The method-level `(temporal.v1.signal).cli` fallback default.
+///
+/// Returns the empty string when no override exists, suppressing the
+/// `#[command(...)]` attribute entirely.
 fn signal_ref_cli_attrs(svc: &crate::model::ServiceModel, signal_rpc: &str) -> String {
-    let Some(sref) = svc
+    let workflow_override = svc
         .workflows
         .iter()
         .flat_map(|wf| &wf.attached_signals)
@@ -2707,25 +2711,41 @@ fn signal_ref_cli_attrs(svc: &crate::model::ServiceModel, signal_rpc: &str) -> S
                 && (sref.cli_name.is_some()
                     || !sref.cli_aliases.is_empty()
                     || sref.cli_usage.is_some())
-        })
-    else {
-        return String::new();
+        });
+    let (name, aliases, usage) = match workflow_override {
+        Some(sref) => (
+            sref.cli_name.as_deref(),
+            sref.cli_aliases.as_slice(),
+            sref.cli_usage.as_deref(),
+        ),
+        None => {
+            let Some(sig) = svc.signals.iter().find(|s| s.rpc_method == signal_rpc) else {
+                return String::new();
+            };
+            if sig.cli_name.is_none() && sig.cli_aliases.is_empty() && sig.cli_usage.is_none() {
+                return String::new();
+            }
+            (
+                sig.cli_name.as_deref(),
+                sig.cli_aliases.as_slice(),
+                sig.cli_usage.as_deref(),
+            )
+        }
     };
     let mut parts: Vec<String> = Vec::new();
-    if let Some(name) = sref.cli_name.as_ref() {
-        parts.push(format!("name = \"signal-{}\"", name.escape_default()));
+    if let Some(n) = name {
+        parts.push(format!("name = \"signal-{}\"", n.escape_default()));
     }
-    if !sref.cli_aliases.is_empty() {
-        let aliases = sref
-            .cli_aliases
+    if !aliases.is_empty() {
+        let joined = aliases
             .iter()
             .map(|a| format!("\"signal-{}\"", a.escape_default()))
             .collect::<Vec<_>>()
             .join(", ");
-        parts.push(format!("alias = [{aliases}]"));
+        parts.push(format!("alias = [{joined}]"));
     }
-    if let Some(usage) = sref.cli_usage.as_ref() {
-        parts.push(format!("about = \"{}\"", usage.escape_default()));
+    if let Some(u) = usage {
+        parts.push(format!("about = \"{}\"", u.escape_default()));
     }
     parts.join(", ")
 }
