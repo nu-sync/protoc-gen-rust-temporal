@@ -138,6 +138,11 @@ pub mod empty_v1_nop_service_temporal {
     }
 
     impl TickHandle {
+        pub const WORKFLOW_NAME: &'static str = self::TICK_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::TICK_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::TICK_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::TICK_TASK_QUEUE;
+
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

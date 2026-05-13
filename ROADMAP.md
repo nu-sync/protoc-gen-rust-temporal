@@ -182,6 +182,21 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R4 — `<Wf>Handle` identity consts):
+  every generated workflow handle struct now exposes inherent
+  identity consts re-exposing the per-rpc module-level metadata:
+  `WORKFLOW_NAME`, `INPUT_TYPE`, `OUTPUT_TYPE` (always emitted),
+  plus `TASK_QUEUE` when the effective task queue resolves to
+  Some. Lets diagnostic logging spell `<MyHandle>::WORKFLOW_NAME`
+  / `<MyHandle>::INPUT_TYPE` directly off the typed handle without
+  routing through the bridge or trait. Pairs with the previous
+  marker-struct, Definition-trait, and Client identity-const
+  shipments — every typed surface that names a workflow now
+  carries the same uniform metadata. One new positive
+  parse_validate test pins all four const shapes against the
+  `minimal_workflow` fixture. 16 fixture goldens reblessed (every
+  Handle gained the four const lines). 165 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::connect(url, namespace)` convenience):
   every generated client now exposes a one-call `connect`
   constructor that wraps `temporal_runtime::connect(url, namespace)`

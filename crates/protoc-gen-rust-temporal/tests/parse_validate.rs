@@ -2532,6 +2532,34 @@ fn start_options_exposes_with_field_builders() {
 }
 
 #[test]
+fn handle_struct_exposes_identity_consts() {
+    // R4 — every `<Wf>Handle` struct now exposes inherent identity
+    // consts (`WORKFLOW_NAME`, `INPUT_TYPE`, `OUTPUT_TYPE`,
+    // `TASK_QUEUE` when declared) re-exposing the per-rpc
+    // module-level consts. Lets diagnostic logging spell
+    // `<MyHandle>::WORKFLOW_NAME` directly off the typed handle
+    // without a bridge round-trip.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const WORKFLOW_NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;"),
+        "Handle must re-expose WORKFLOW_NAME: {source}"
+    );
+    assert!(
+        source.contains("pub const INPUT_TYPE: &'static str = self::RUN_JOB_INPUT_TYPE;"),
+        "Handle must re-expose INPUT_TYPE: {source}"
+    );
+    assert!(
+        source.contains("pub const OUTPUT_TYPE: &'static str = self::RUN_JOB_OUTPUT_TYPE;"),
+        "Handle must re-expose OUTPUT_TYPE: {source}"
+    );
+    assert!(
+        source.contains("pub const TASK_QUEUE: &'static str = self::RUN_JOB_TASK_QUEUE;"),
+        "Handle must re-expose TASK_QUEUE when declared: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_connect_convenience_constructor() {
     // R6 ergonomics — `<Service>Client::connect(url, namespace)`
     // wraps `temporal_runtime::connect()` + `Self::new()` in one

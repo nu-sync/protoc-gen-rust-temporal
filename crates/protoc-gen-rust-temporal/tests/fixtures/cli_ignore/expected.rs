@@ -207,6 +207,11 @@ pub mod cli_v1_report_service_temporal {
     }
 
     impl GenerateHandle {
+        pub const WORKFLOW_NAME: &'static str = self::GENERATE_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::GENERATE_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::GENERATE_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::GENERATE_TASK_QUEUE;
+
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }
@@ -292,6 +297,11 @@ pub mod cli_v1_report_service_temporal {
     }
 
     impl InternalHandle {
+        pub const WORKFLOW_NAME: &'static str = self::INTERNAL_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::INTERNAL_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::INTERNAL_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::INTERNAL_TASK_QUEUE;
+
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

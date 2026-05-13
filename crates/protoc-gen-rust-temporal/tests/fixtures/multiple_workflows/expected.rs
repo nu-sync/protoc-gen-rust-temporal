@@ -210,6 +210,11 @@ pub mod multi_v1_multi_service_temporal {
     }
 
     impl AlphaHandle {
+        pub const WORKFLOW_NAME: &'static str = self::ALPHA_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::ALPHA_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::ALPHA_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::ALPHA_TASK_QUEUE;
+
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }
@@ -301,6 +306,11 @@ pub mod multi_v1_multi_service_temporal {
     }
 
     impl BetaHandle {
+        pub const WORKFLOW_NAME: &'static str = self::BETA_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::BETA_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::BETA_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::BETA_TASK_QUEUE;
+
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

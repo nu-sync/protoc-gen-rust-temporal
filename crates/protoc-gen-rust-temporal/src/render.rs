@@ -1489,6 +1489,33 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out);
 
     let _ = writeln!(out, "    impl {handle_struct} {{");
+    // Identity consts mirroring the per-workflow module-level
+    // consts. Lets diagnostic logging spell `<H>::WORKFLOW_NAME`
+    // and `<H>::INPUT_TYPE` etc. directly off the typed handle
+    // without a round trip through the bridge or trait.
+    let workflow_const = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
+    let in_const = format!("{}_INPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+    let out_const = format!("{}_OUTPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+    let _ = writeln!(
+        out,
+        "        pub const WORKFLOW_NAME: &'static str = self::{workflow_const};"
+    );
+    let _ = writeln!(
+        out,
+        "        pub const INPUT_TYPE: &'static str = self::{in_const};"
+    );
+    let _ = writeln!(
+        out,
+        "        pub const OUTPUT_TYPE: &'static str = self::{out_const};"
+    );
+    if effective_task_queue(svc, wf).is_some() {
+        let tq_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "        pub const TASK_QUEUE: &'static str = self::{tq_const};"
+        );
+    }
+    let _ = writeln!(out);
     let _ = writeln!(out, "        pub fn workflow_id(&self) -> &str {{");
     let _ = writeln!(out, "            self.inner.workflow_id()");
     let _ = writeln!(out, "        }}");
