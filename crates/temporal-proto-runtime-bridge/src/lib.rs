@@ -158,6 +158,26 @@ pub enum WorkflowIdConflictPolicy {
     TerminateExisting,
 }
 
+/// Policy a child workflow follows when its parent workflow closes.
+/// Mirrors `(temporal.v1.workflow).parent_close_policy`. `Unspecified`
+/// is modelled as `Option::None` at call sites.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParentClosePolicy {
+    Terminate,
+    Abandon,
+    RequestCancel,
+}
+
+impl From<ParentClosePolicy> for sdk_enums::ParentClosePolicy {
+    fn from(value: ParentClosePolicy) -> Self {
+        match value {
+            ParentClosePolicy::Terminate => Self::Terminate,
+            ParentClosePolicy::Abandon => Self::Abandon,
+            ParentClosePolicy::RequestCancel => Self::RequestCancel,
+        }
+    }
+}
+
 impl From<WorkflowIdConflictPolicy> for sdk_enums::WorkflowIdConflictPolicy {
     fn from(value: WorkflowIdConflictPolicy) -> Self {
         match value {
@@ -1194,6 +1214,7 @@ where
 /// plugin's emit is unaffected.
 #[cfg(feature = "worker")]
 pub mod worker {
+    pub use super::ParentClosePolicy;
     pub use temporalio_common::protos::coresdk::workflow_commands::ActivityCancellationType;
     pub use temporalio_common::{ActivityDefinition, SignalDefinition, WorkflowDefinition};
     pub use temporalio_sdk::activities::{

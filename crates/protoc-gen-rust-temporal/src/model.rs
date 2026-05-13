@@ -69,6 +69,11 @@ pub struct WorkflowModel {
     /// Proto-declared default policy when the start request collides with a
     /// running workflow id. `None` lets the server pick its default.
     pub id_conflict_policy: Option<IdConflictPolicy>,
+    /// Proto-declared parent-close policy. Only meaningful when the
+    /// workflow runs as a child; render folds it into the per-workflow
+    /// `<workflow>_default_child_options()` factory. `None` lets the
+    /// server pick its default (`Terminate`).
+    pub parent_close_policy: Option<ParentClosePolicyKind>,
     /// Proto-declared default retry policy for the workflow. `None` means
     /// the proto omits the field and the server picks defaults.
     pub retry_policy: Option<RetryPolicySpec>,
@@ -298,6 +303,26 @@ pub struct RetryPolicySpec {
 impl RetryPolicySpec {
     pub fn backoff_coefficient(&self) -> f64 {
         f64::from_bits(self.backoff_coefficient_bits)
+    }
+}
+
+/// Policy a child workflow follows when its parent workflow closes.
+/// Mirrors `(temporal.v1.workflow).parent_close_policy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParentClosePolicyKind {
+    Terminate,
+    Abandon,
+    RequestCancel,
+}
+
+impl ParentClosePolicyKind {
+    /// Variant identifier on `temporal_runtime::worker::ParentClosePolicy`.
+    pub fn rust_variant(self) -> &'static str {
+        match self {
+            Self::Terminate => "Terminate",
+            Self::Abandon => "Abandon",
+            Self::RequestCancel => "RequestCancel",
+        }
     }
 }
 

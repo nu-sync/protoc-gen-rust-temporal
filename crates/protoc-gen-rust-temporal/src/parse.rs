@@ -19,11 +19,12 @@ use prost_reflect::{
 };
 
 use crate::model::{
-    ActivityModel, IdConflictPolicy, IdReusePolicy, IdTemplateSegment, ProtoType, QueryModel,
-    QueryRef, RetryPolicySpec, ServiceModel, SignalModel, SignalRef, UpdateModel, UpdateRef,
-    WaitPolicyKind, WorkflowModel,
+    ActivityModel, IdConflictPolicy, IdReusePolicy, IdTemplateSegment, ParentClosePolicyKind,
+    ProtoType, QueryModel, QueryRef, RetryPolicySpec, ServiceModel, SignalModel, SignalRef,
+    UpdateModel, UpdateRef, WaitPolicyKind, WorkflowModel,
 };
 use crate::temporal::api::enums::v1::WorkflowIdConflictPolicy as ProtoConflictPolicy;
+use crate::temporal::v1::ParentClosePolicy as ProtoParentClosePolicy;
 use crate::temporal::v1::{
     ActivityOptions, IdReusePolicy as ProtoPolicy, QueryOptions, ServiceOptions, SignalOptions,
     UpdateOptions, WaitPolicy as ProtoWaitPolicy, WorkflowOptions,
@@ -345,6 +346,7 @@ fn workflow_from(
         id_expression,
         id_reuse_policy: id_reuse_policy_from_proto(opts.id_reuse_policy),
         id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
+        parent_close_policy: parent_close_policy_from_proto(opts.parent_close_policy),
         retry_policy: opts.retry_policy.map(retry_policy_from_proto),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
@@ -514,9 +516,6 @@ fn reject_unsupported_workflow_options(
     }
     if !opts.typed_search_attributes.is_empty() {
         unsupported.push("typed_search_attributes");
-    }
-    if opts.parent_close_policy != 0 {
-        unsupported.push("parent_close_policy");
     }
     if opts.wait_for_cancellation {
         unsupported.push("wait_for_cancellation");
@@ -740,6 +739,15 @@ fn id_reuse_policy_from_proto(raw: i32) -> Option<IdReusePolicy> {
         ProtoPolicy::WorkflowIdReusePolicyTerminateIfRunning => {
             Some(IdReusePolicy::TerminateIfRunning)
         }
+    }
+}
+
+fn parent_close_policy_from_proto(raw: i32) -> Option<ParentClosePolicyKind> {
+    match ProtoParentClosePolicy::try_from(raw).ok()? {
+        ProtoParentClosePolicy::Unspecified => None,
+        ProtoParentClosePolicy::Terminate => Some(ParentClosePolicyKind::Terminate),
+        ProtoParentClosePolicy::Abandon => Some(ParentClosePolicyKind::Abandon),
+        ProtoParentClosePolicy::RequestCancel => Some(ParentClosePolicyKind::RequestCancel),
     }
 }
 

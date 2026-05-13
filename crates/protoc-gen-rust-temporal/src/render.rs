@@ -1975,6 +1975,31 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         );
         let _ = writeln!(out, "    }}");
 
+        // R5 — `<workflow>_default_child_options() -> ChildWorkflowOptions`
+        // emits a factory that bakes in the proto-declared
+        // `parent_close_policy`. Only emitted when the proto declares it;
+        // otherwise the caller builds `ChildWorkflowOptions::default()`
+        // themselves.
+        if let Some(pcp) = wf.parent_close_policy {
+            let factory_fn = format!("{}_default_child_options", wf.rpc_method.to_snake_case());
+            let variant = pcp.rust_variant();
+            let _ = writeln!(
+                out,
+                "    pub fn {factory_fn}() -> temporal_runtime::worker::ChildWorkflowOptions {{"
+            );
+            let _ = writeln!(
+                out,
+                "        temporal_runtime::worker::ChildWorkflowOptions {{"
+            );
+            let _ = writeln!(
+                out,
+                "            parent_close_policy: temporal_runtime::worker::ParentClosePolicy::{variant}.into(),"
+            );
+            let _ = writeln!(out, "            ..::std::default::Default::default()");
+            let _ = writeln!(out, "        }}");
+            let _ = writeln!(out, "    }}");
+        }
+
         let child_fn = format!("start_{}_child", wf.rpc_method.to_snake_case());
         let _ = writeln!(out, "    pub async fn {child_fn}<W>(");
         let _ = writeln!(

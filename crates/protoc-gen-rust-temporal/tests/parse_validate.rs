@@ -810,6 +810,73 @@ fn worker_full_render_golden() {
 }
 
 #[test]
+fn workflow_parent_close_policy_emits_default_child_options_factory() {
+    // R5 — proto `parent_close_policy = PARENT_CLOSE_POLICY_ABANDON` now
+    // folds into a per-workflow `<workflow>_default_child_options()`
+    // factory that bakes the policy in. Caller passes the result straight
+    // into `start_<workflow>_child(ctx, input, opts)`.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package pcp.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              parent_close_policy: PARENT_CLOSE_POLICY_ABANDON
+            };
+          }
+        }
+        message In  { string name = 1; }
+        message Out { string id = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    use protoc_gen_rust_temporal::model::ParentClosePolicyKind;
+    assert_eq!(
+        svc.workflows[0].parent_close_policy,
+        Some(ParentClosePolicyKind::Abandon),
+        "model must carry the proto-declared policy"
+    );
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        workflows: true,
+        ..Default::default()
+    };
+    let source = render::render(svc, &opts);
+    assert!(
+        source.contains(
+            "pub fn run_default_child_options() -> temporal_runtime::worker::ChildWorkflowOptions"
+        ),
+        "must emit per-workflow default-child-options factory: {source}"
+    );
+    assert!(
+        source.contains(
+            "parent_close_policy: temporal_runtime::worker::ParentClosePolicy::Abandon.into(),"
+        ),
+        "factory must set parent_close_policy with the proto-declared variant: {source}"
+    );
+    assert!(
+        source.contains("..::std::default::Default::default()"),
+        "factory must spread the rest from Default to stay future-proof: {source}"
+    );
+}
+
+#[test]
+fn workflow_without_parent_close_policy_omits_default_child_options() {
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        !source.contains("run_default_child_options"),
+        "no proto-declared parent_close_policy → no factory: {source}"
+    );
+}
+
+#[test]
 fn workflows_emit_renders_child_workflow_marker_and_helper() {
     // R2 — under `workflows=true`, every workflow with non-Empty input AND
     // output ships a `<RPC>Workflow` marker struct + WorkflowDefinition
@@ -2118,21 +2185,6 @@ fn unsupported_field_support_status_table() {
               message In {} message Out {}
             "#,
             expect_field: "typed_search_attributes",
-        },
-        Case {
-            label: "WorkflowOptions.parent_close_policy",
-            snippet: r#"
-              service Svc {
-                rpc Run(In) returns (Out) {
-                  option (temporal.v1.workflow) = {
-                    task_queue: "tq"
-                    parent_close_policy: PARENT_CLOSE_POLICY_ABANDON
-                  };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "parent_close_policy",
         },
         Case {
             label: "WorkflowOptions.versioning_behavior",

@@ -571,8 +571,22 @@ pub mod temporal_runtime {
             }
         }
 
+        #[derive(Debug, Clone, Copy)]
+        pub enum ParentClosePolicy {
+            Terminate,
+            Abandon,
+            RequestCancel,
+        }
+        impl From<ParentClosePolicy> for i32 {
+            fn from(p: ParentClosePolicy) -> i32 {
+                p as i32
+            }
+        }
+
         #[derive(Debug, Default)]
-        pub struct ChildWorkflowOptions;
+        pub struct ChildWorkflowOptions {
+            pub parent_close_policy: i32,
+        }
 
         #[derive(Debug)]
         pub struct ChildWorkflowStartError;

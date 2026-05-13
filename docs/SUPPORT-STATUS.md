@@ -39,7 +39,7 @@ issue or add the row. The diagnostic-coverage test
 | `retry_policy` | rejected | R5. |
 | `search_attributes` | rejected | R5 + R7 (Bloblang). |
 | `typed_search_attributes` | rejected | R5 + R7. |
-| `parent_close_policy` | rejected | R5. |
+| `parent_close_policy` | supported | Folds into a per-workflow `<rpc>_default_child_options() -> ChildWorkflowOptions` factory that bakes the policy in. Caller passes the result into `start_<workflow>_child(ctx, input, opts)`. |
 | `workflow_id_conflict_policy` | supported | Plumbed through to `WorkflowStartOptions.id_conflict_policy`. Caller can override via `<Workflow>StartOptions::id_conflict_policy`. |
 | `wait_for_cancellation` | rejected | R5. |
 | `enable_eager_start` | supported | Plumbed through to `WorkflowStartOptions.enable_eager_workflow_start`. The generated `<Workflow>StartOptions` exposes `enable_eager_workflow_start: Option<bool>` so call sites can override the proto-declared default. |
