@@ -138,6 +138,14 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 — design note): published `docs/R7-BLOBLANG.md` —
+  the pre-implementation design note that captures the SDK contract
+  (`WorkflowStartOptions.search_attributes: Option<HashMap<String, Payload>>`
+  takes a pre-built map, no Bloblang interpreter), a proposed
+  minimum-viable subset (literal map → field references → typed search
+  attributes, three independently shippable slices), and the per-slice
+  test strategy. Lets a future contributor scope an R7 PR to one slice
+  without reading the Bloblang spec end-to-end.
 - 2026-05-13 (R1 — full cross-service ref emit): well-formed dotted
   refs (`xs.v1.OtherService.Cancel`) now produce typed Handle methods
   on the parent workflow. Parse-time resolution captures the target's
@@ -571,6 +579,11 @@ Target capabilities:
 - Support search attributes and typed search attributes generated from input
   messages.
 - Keep diagnostics precise for unsupported expression features.
+
+Design note: [`docs/R7-BLOBLANG.md`](docs/R7-BLOBLANG.md) (2026-05-13)
+captures the SDK contract, proposed minimum-viable subset, three-slice
+implementation strategy, and per-slice test plan. A contributor picking
+up R7 starts from that document rather than from scratch.
 
 Done when:
 
