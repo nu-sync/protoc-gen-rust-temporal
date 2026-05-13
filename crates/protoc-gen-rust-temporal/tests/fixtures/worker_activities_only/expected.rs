@@ -29,6 +29,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const SERVICE_NAME: &'static str = "ActivityWorkerService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "workeract.v1.ActivityWorkerService";
         pub const SOURCE_FILE: &'static str = "input.proto";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

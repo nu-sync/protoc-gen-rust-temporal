@@ -2445,6 +2445,24 @@ fn start_options_exposes_with_field_builders() {
 }
 
 #[test]
+fn client_exposes_plugin_version_const() {
+    // R4 — `<Service>Client::GENERATED_BY_PLUGIN_VERSION: &'static str`
+    // embeds the protoc-gen-rust-temporal version that produced the
+    // file at codegen time. Forensic tooling (debugging "code doesn't
+    // compile, must be a generator bug" reports) reads this to
+    // identify the responsible plugin release without needing the
+    // build environment.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const GENERATED_BY_PLUGIN_VERSION: &'static str = \"protoc-gen-rust-temporal "
+        ),
+        "GENERATED_BY_PLUGIN_VERSION const missing or wrong: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_source_file_const() {
     // R4 — `<Service>Client::SOURCE_FILE: &'static str` carries the
     // proto file path as protoc saw it. Lets tooling correlate

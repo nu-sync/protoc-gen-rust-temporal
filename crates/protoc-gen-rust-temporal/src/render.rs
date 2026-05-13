@@ -550,6 +550,15 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         "        pub const SOURCE_FILE: &'static str = \"{}\";",
         svc.source_file.escape_default()
     );
+    // Plugin version embedded at codegen time. Lets tooling identify
+    // which `protoc-gen-rust-temporal` release produced the file —
+    // useful when debugging "code doesn't compile, must be a generator
+    // bug" reports.
+    let _ = writeln!(
+        out,
+        "        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = \"protoc-gen-rust-temporal {}\";",
+        env!("CARGO_PKG_VERSION")
+    );
     let emit = |out: &mut String, ident: &str, names: &[&str]| {
         if names.is_empty() {
             return;

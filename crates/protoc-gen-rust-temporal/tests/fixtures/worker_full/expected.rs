@@ -58,6 +58,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const SERVICE_NAME: &'static str = "OrchestrationService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "workerfull.v1.OrchestrationService";
         pub const SOURCE_FILE: &'static str = "input.proto";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Run"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Cancel"];
         pub const QUERY_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Status"];

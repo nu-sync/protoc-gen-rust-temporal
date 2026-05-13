@@ -22,6 +22,7 @@ pub mod empty_v1_nop_service_temporal {
         pub const SERVICE_NAME: &'static str = "NopService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "empty.v1.NopService";
         pub const SOURCE_FILE: &'static str = "input.proto";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["empty.v1.NopService.Tick"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {

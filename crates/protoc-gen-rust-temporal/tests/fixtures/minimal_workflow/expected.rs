@@ -57,6 +57,7 @@ pub mod jobs_v1_job_service_temporal {
         pub const SERVICE_NAME: &'static str = "JobService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "jobs.v1.JobService";
         pub const SOURCE_FILE: &'static str = "input.proto";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["jobs.v1.JobService.RunJob"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["jobs.v1.JobService.CancelJob"];
         pub const QUERY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.GetStatus"];

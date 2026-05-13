@@ -477,6 +477,19 @@ Progress:
   hunting. Two new parse_validate tests pin both rejections. No
   bridge signature change; no fixture goldens touched (no fixture
   declared a colliding alias).
+- 2026-05-13 (R4 — `<Service>Client::GENERATED_BY_PLUGIN_VERSION` const):
+  every generated `<Service>Client` now exposes a
+  `GENERATED_BY_PLUGIN_VERSION: &'static str` const carrying the
+  protoc-gen-rust-temporal version that produced the file (resolved
+  via `env!("CARGO_PKG_VERSION")` at codegen time, embedded as a
+  literal). Lets forensic tooling identify the responsible plugin
+  release when debugging "code doesn't compile, must be a generator
+  bug" reports — no need to consult build.rs output. Pairs with the
+  existing `PACKAGE` / `SERVICE_NAME` / `FULLY_QUALIFIED_SERVICE_NAME`
+  / `SOURCE_FILE` identity consts. One new positive parse_validate
+  test pins the const shape. 16 fixture goldens reblessed (every
+  Client gained one line). 160 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R4 — `<Service>Client::SOURCE_FILE` const):
   every generated `<Service>Client` now exposes a `SOURCE_FILE:
   &'static str` const carrying the proto file path exactly as protoc
