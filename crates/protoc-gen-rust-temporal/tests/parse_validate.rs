@@ -1847,7 +1847,7 @@ fn cli_emit_renders_clap_subcommands() {
         "missing CLI module: {source}"
     );
     assert!(
-        source.contains("#[derive(temporal_runtime::clap::Parser)]"),
+        source.contains("#[derive(Debug, temporal_runtime::clap::Parser)]"),
         "missing Cli derive"
     );
     assert!(
@@ -3437,6 +3437,26 @@ fn signal_ref_cli_override_threads_into_subcommand() {
             "#[command(name = \"signal-abort\", alias = [\"signal-halt\"], about = \"Halt the run.\")]"
         ),
         "signal-ref cli overrides must surface on the SignalCancel variant: {source}"
+    );
+}
+
+#[test]
+fn cli_top_level_parser_and_subcommand_derive_debug() {
+    // R6 ergonomics — the top-level `Cli` parser + the `Command`
+    // subcommand enum both derive `Debug` alongside the clap
+    // derives. Lets `tracing::info!(?cli, "parsed")` produce
+    // structured output of the matched subcommand + its parsed
+    // args during dispatch logging.
+    let services = parse_and_validate("cli_emit");
+    let opts = load_fixture_options("cli_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("#[derive(Debug, temporal_runtime::clap::Parser)]"),
+        "Cli struct must derive Debug + Parser: {source}"
+    );
+    assert!(
+        source.contains("#[derive(Debug, temporal_runtime::clap::Subcommand)]"),
+        "Command enum must derive Debug + Subcommand: {source}"
     );
 }
 

@@ -436,6 +436,20 @@ Progress:
   parse_validate tests pin the whitespace and newline rejection
   shapes. 151 parse_validate tests green. No bridge signature
   change; no fixture goldens touched.
+- 2026-05-13 (R6 — top-level Cli + Command derive `Debug`):
+  rounds out the Debug surface for the `cli=true` scaffold. The
+  generated `Cli` struct (with `#[command(…)]` attrs) and the
+  inner `Command` subcommand enum now derive `Debug` alongside
+  the clap derives. Lets `tracing::info!(?cli, "parsed")` produce
+  structured output of the matched subcommand variant + its
+  parsed Args during dispatch logging — particularly useful when
+  bug reports include the CLI invocation but not the raw args.
+  Existing test that pinned the bare-Parser derive form was
+  updated to expect the combined derive. One new positive
+  parse_validate test pins the new shape on both Cli + Command.
+  Several fixture goldens reblessed (every `cli=true` fixture
+  gained the Debug derive on both surfaces). 179 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — CLI Args structs derive `Debug`):
   every generated CLI `<Verb><Wf>Args` / `Signal<Name>Args` /
   `Query<Name>Args` / `Update<Name>Args` struct now derives

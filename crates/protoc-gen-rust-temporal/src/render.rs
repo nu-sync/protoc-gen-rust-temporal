@@ -3682,7 +3682,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "    use {proto_mod}::*;");
     let _ = writeln!(out);
 
-    let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Parser)]");
+    let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Parser)]");
     // Service-level `(temporal.v1.cli).{name,usage,aliases}` overrides
     // the default `#[command(name = "<service_snake>", about = …)]`.
     let cli_spec = svc.cli_options.as_ref();
@@ -3714,7 +3714,10 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
-    let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Subcommand)]");
+    let _ = writeln!(
+        out,
+        "    #[derive(Debug, temporal_runtime::clap::Subcommand)]"
+    );
     let _ = writeln!(out, "    pub enum Command {{");
     for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();

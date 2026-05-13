@@ -422,14 +422,14 @@ pub mod report_service_cli {
     use crate::temporal_runtime;
     use crate::cli::v1::*;
 
-    #[derive(temporal_runtime::clap::Parser)]
+    #[derive(Debug, temporal_runtime::clap::Parser)]
     #[command(name = "report_service", about = "Generated Temporal CLI for cli.v1.ReportService")]
     pub struct Cli {
         #[command(subcommand)]
         pub command: Command,
     }
 
-    #[derive(temporal_runtime::clap::Subcommand)]
+    #[derive(Debug, temporal_runtime::clap::Subcommand)]
     pub enum Command {
         /// Start a new `cli.v1.ReportService.Generate` workflow.
         StartGenerate(StartGenerateArgs),
