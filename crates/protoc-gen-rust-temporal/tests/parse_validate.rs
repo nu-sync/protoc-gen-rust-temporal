@@ -3972,6 +3972,38 @@ fn workflow_id_template_rejects_message_field() {
 }
 
 #[test]
+fn workflow_id_template_rejects_enum_field() {
+    // prost emits enum fields as bare `i32`, so substituting them
+    // via `format!("{}", ...)` would print the numeric tag — almost
+    // never what the proto author intends. Reject so the surprise
+    // surfaces at codegen.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package id_enum.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              id:         "job-{{ .Status }}"
+            };
+          }
+        }
+        enum Status { STATUS_UNSPECIFIED = 0; STATUS_ACTIVE = 1; }
+        message In  { Status status = 1; }
+        message Out {}
+        "#,
+    );
+    let err = format!("{:#}", parse::parse(&pool, &files).unwrap_err());
+    assert!(
+        err.contains("enum") && err.contains("numeric tag") && err.contains("Status"),
+        "diagnostic must explain enum-as-numeric-tag for `Status`, got: {err}"
+    );
+}
+
+#[test]
 fn workflow_id_template_rejects_bytes_field() {
     let (pool, files, _tmp) = compile_fixture_inline(
         r#"

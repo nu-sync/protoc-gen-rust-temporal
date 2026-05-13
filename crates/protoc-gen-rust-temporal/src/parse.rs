@@ -1254,7 +1254,19 @@ fn parse_id_template(
             prost_reflect::Kind::Bytes => {
                 anyhow::bail!(
                     "id template references `{field_name}` on input `{}`, but `bytes` fields don't have a stable string form; \
-                     only string / int / bool / float / enum fields can be substituted",
+                     only string / int / bool / float fields can be substituted",
+                    input.full_name(),
+                );
+            }
+            prost_reflect::Kind::Enum(_) => {
+                // prost emits enum fields as bare `i32` (open-enum), so
+                // `format!("{}", input.<enum>)` would print the numeric
+                // tag (`1`, `2`, …) — almost never what the proto
+                // author wants. Reject so the surprise surfaces at
+                // codegen instead of in production with mystery ids.
+                anyhow::bail!(
+                    "id template references `{field_name}` on input `{}`, but enum fields surface as numeric tags in the generated id (not the variant name); \
+                     convert the enum to a string before passing it through, or reference a sibling field",
                     input.full_name(),
                 );
             }

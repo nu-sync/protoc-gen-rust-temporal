@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — id-template enum field-kind validation):
+  extends the per-kind id-template validation to also reject enum
+  field refs. prost emits enum fields as bare `i32` (the open-enum
+  pattern), so substituting them via `format!("{}", input.<enum>)`
+  would print the numeric tag (`1`, `2`, …) — almost never what the
+  proto author intends. The diagnostic explicitly mentions
+  "numeric tag" so authors can debug without staring at generated
+  Rust. One new positive parse_validate test covers an `enum Status`
+  field rejection. 142 parse_validate tests green. No bridge
+  signature change; no fixture goldens touched.
 - 2026-05-13 (R1 — id-template field-kind validation at parse):
   `parse_id_template` previously only checked that the referenced
   field *existed* on the input message — leaving repeated, message,
