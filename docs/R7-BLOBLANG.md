@@ -1,6 +1,17 @@
 # R7 — Bloblang-Backed Templates: design note
 
-**Status:** Pre-implementation. Captures the contract the plugin
+**Status:** Slices 1, 2, and 3a shipped (2026-05-13). The active
+support matrix lives in `docs/SUPPORT-STATUS.md` under
+`WorkflowOptions.search_attributes`. The slice numbers in this design
+note are the original *design* slices and do not match the shipped
+roadmap numbering one-to-one — the shipped flow numbered the primitive
+literal-map work as slice 2 and consolidated the design's slice 2
+(field references) + slice 3 (typed) under slice 3 (with `a` =
+string-field refs already in, `b` = non-string refs +
+`typed_search_attributes` still pending). The contract below is still
+authoritative; the slice headings are for historical context.
+
+Pre-implementation context follows. Captures the contract the plugin
 needs to honour and the minimum viable evaluator shape. Update when
 implementation begins.
 

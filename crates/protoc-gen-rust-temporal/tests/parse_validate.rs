@@ -2491,6 +2491,117 @@ fn search_attributes_static_literal_map_compiles_to_hashmap() {
 }
 
 #[test]
+fn search_attributes_string_field_ref_resolves_against_input() {
+    // R7 slice 3a — `this.<field>` references against `string`-typed
+    // singular input fields land as `SearchAttributeLiteral::StringField`
+    // and emit the per-call encoder reading from the start path's
+    // `input` binding.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_field.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"CustomerId\": this.customer_id, \"Env\": \"prod\" }"
+            };
+          }
+        }
+        message In  { string customer_id = 1; }
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept this.<field> for strings");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let SearchAttributesSpec::Static(entries) = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the slice-3a spec")
+    else {
+        panic!("expected Static spec");
+    };
+    assert!(
+        entries.contains(&(
+            "CustomerId".to_string(),
+            SearchAttributeLiteral::StringField("customer_id".to_string())
+        )),
+        "field-ref entry must parse to StringField with snake_case name: {entries:?}"
+    );
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "temporal_runtime::encode_search_attribute_string(input.customer_id.as_str())"
+        ),
+        "field-ref encoder must read from the start path's `input` binding: {source}"
+    );
+}
+
+#[test]
+fn search_attributes_field_ref_to_unknown_field_is_rejected() {
+    // Field-refs against a non-existent input field fall through to the
+    // standard "does not yet honour search_attributes" diagnostic so the
+    // user sees the limitation at codegen time.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_field_bad.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": this.does_not_exist }"
+            };
+          }
+        }
+        message In  { string customer_id = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "missing-field ref must surface the unsupported diagnostic: {err}"
+    );
+}
+
+#[test]
+fn search_attributes_field_ref_to_non_string_is_rejected() {
+    // Slice 3a only graduates `string`-typed fields. Int / bool / repeated
+    // / message refs stay refused so the encoder coverage matches what
+    // the bridge actually offers.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_field_int.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": this.priority }"
+            };
+          }
+        }
+        message In  { int64 priority = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "non-string field ref must surface the unsupported diagnostic: {err}"
+    );
+}
+
+#[test]
 fn search_attributes_richer_expressions_still_rejected() {
     // R7 slice 1 explicitly does NOT support field references or
     // literal key/value entries — those land in slices 2 / 3. The

@@ -341,13 +341,22 @@ pub enum SearchAttributesSpec {
     Static(Vec<(String, SearchAttributeLiteral)>),
 }
 
-/// One literal entry in a `Static` `SearchAttributesSpec`. Mirrors
-/// the three primitive Bloblang literal types slice 2 accepts.
+/// One entry in a `Static` `SearchAttributesSpec`. Slices 2 + 3:
+/// - `String` / `Int` / `Bool` — slice-2 primitive literals.
+/// - `StringField` — slice-3 `this.<field>` reference where `<field>`
+///   resolves to a `string`-typed field on the workflow input message.
+///   The string is the Rust snake_case field name (validated against
+///   the descriptor at parse time).
+///
+/// Slice 3 only models string-field references for the first cut;
+/// integer / bool field references graduate when the encoder coverage
+/// catches up.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchAttributeLiteral {
     String(String),
     Int(i64),
     Bool(bool),
+    StringField(String),
 }
 
 /// Compiled form of `(temporal.v1.workflow).retry_policy`. Holds the

@@ -453,7 +453,7 @@ fn workflow_from(
     service_name: &str,
 ) -> Result<WorkflowModel> {
     let rpc_method = method.name().to_string();
-    reject_unsupported_workflow_options(&opts, service_name, &rpc_method)?;
+    reject_unsupported_workflow_options(&opts, service_name, &rpc_method, &method.input())?;
     reject_unsupported_workflow_signal_ref(&opts.signal, service_name, &rpc_method)?;
     reject_unsupported_workflow_query_ref(&opts.query, service_name, &rpc_method)?;
     reject_unsupported_workflow_update_ref(&opts.update, service_name, &rpc_method)?;
@@ -489,7 +489,7 @@ fn workflow_from(
         id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
         parent_close_policy: parent_close_policy_from_proto(opts.parent_close_policy),
         wait_for_cancellation: opts.wait_for_cancellation,
-        search_attributes: parse_search_attributes_spec(&opts.search_attributes),
+        search_attributes: parse_search_attributes_spec(&opts.search_attributes, &method.input()),
         retry_policy: opts.retry_policy.map(retry_policy_from_proto),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
@@ -655,14 +655,17 @@ fn reject_unsupported_workflow_options(
     opts: &WorkflowOptions,
     service: &str,
     rpc: &str,
+    input: &prost_reflect::MessageDescriptor,
 ) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
-    // R7 slice 1 only honours the empty-map Bloblang literal
-    // (`root = {}`). Richer expressions are still refused here with the
-    // standard "does not yet honour" diagnostic. The honoured-empty
-    // case lands in the model below via `parse_search_attributes_spec`.
+    // R7 slices 1 + 2 + 3a: the empty-map literal (`root = {}`),
+    // primitive literal maps (`root = { "Key": "v", … }`), and
+    // `this.<field>` references for `string`-typed input fields all
+    // parse here. Anything else (richer Bloblang, non-string field
+    // refs, missing fields) falls through and lands in the standard
+    // "does not yet honour" diagnostic below.
     if !opts.search_attributes.is_empty()
-        && parse_search_attributes_spec(&opts.search_attributes).is_none()
+        && parse_search_attributes_spec(&opts.search_attributes, input).is_none()
     {
         unsupported.push("search_attributes");
     }
@@ -842,7 +845,10 @@ fn reject_unsupported_activity_options(
 /// (`true` / `false`). Field references (`this.<field>`) and richer
 /// Bloblang surface fall through to `None` and the caller surfaces the
 /// standard unsupported-field diagnostic.
-fn parse_search_attributes_spec(raw: &str) -> Option<crate::model::SearchAttributesSpec> {
+fn parse_search_attributes_spec(
+    raw: &str,
+    input: &prost_reflect::MessageDescriptor,
+) -> Option<crate::model::SearchAttributesSpec> {
     use crate::model::SearchAttributesSpec;
 
     let s = raw.trim();
@@ -880,14 +886,18 @@ fn parse_search_attributes_spec(raw: &str) -> Option<crate::model::SearchAttribu
         if key.contains('\\') {
             return None;
         }
-        let value = parse_search_attribute_literal(value_part)?;
+        let value = parse_search_attribute_literal(value_part, input)?;
         entries.push((key.to_string(), value));
     }
     Some(SearchAttributesSpec::Static(entries))
 }
 
-fn parse_search_attribute_literal(raw: &str) -> Option<crate::model::SearchAttributeLiteral> {
+fn parse_search_attribute_literal(
+    raw: &str,
+    input: &prost_reflect::MessageDescriptor,
+) -> Option<crate::model::SearchAttributeLiteral> {
     use crate::model::SearchAttributeLiteral;
+    use heck::ToSnakeCase;
     let raw = raw.trim();
     if raw == "true" {
         return Some(SearchAttributeLiteral::Bool(true));
@@ -906,6 +916,30 @@ fn parse_search_attribute_literal(raw: &str) -> Option<crate::model::SearchAttri
     }
     if let Ok(n) = raw.parse::<i64>() {
         return Some(SearchAttributeLiteral::Int(n));
+    }
+    // R7 slice 3a: `this.<field>` references resolve against the
+    // workflow's input message. Only singular `string` fields graduate
+    // — int / bool / repeated land in slice 3b. Anything else falls
+    // through and the caller surfaces the standard
+    // unsupported-`search_attributes` diagnostic.
+    if let Some(field_token) = raw.strip_prefix("this.") {
+        let field_token = field_token.trim();
+        if field_token.is_empty()
+            || !field_token
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return None;
+        }
+        let rust_field = field_token.to_snake_case();
+        let descriptor = input.fields().find(|f| f.name() == rust_field)?;
+        if descriptor.is_list() || descriptor.is_map() {
+            return None;
+        }
+        if !matches!(descriptor.kind(), prost_reflect::Kind::String) {
+            return None;
+        }
+        return Some(SearchAttributeLiteral::StringField(rust_field));
     }
     None
 }

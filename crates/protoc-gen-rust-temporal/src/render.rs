@@ -888,6 +888,9 @@ fn search_attributes_literal(spec: Option<&crate::model::SearchAttributesSpec>) 
                     SearchAttributeLiteral::Bool(v) => {
                         format!("temporal_runtime::encode_search_attribute_bool({v})")
                     }
+                    SearchAttributeLiteral::StringField(field) => format!(
+                        "temporal_runtime::encode_search_attribute_string(input.{field}.as_str())"
+                    ),
                 };
                 s.push_str(&format!(
                     "sa.insert(\"{}\".to_string(), {encoder_call}); ",

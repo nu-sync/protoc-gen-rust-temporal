@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 — slice 3a lands: `this.<field>` for strings):
+  `(temporal.v1.workflow).search_attributes` Bloblang expressions of
+  the form `root = { "K": this.<field>, … }` now resolve at parse time
+  against the workflow's input message descriptor and emit per-entry
+  `encode_search_attribute_string(input.<field>.as_str())` calls in
+  the start path body. Scope locked to singular `string` fields for
+  this cut — int / bool / repeated / message refs and richer Bloblang
+  remain refused with the standard unsupported-`search_attributes`
+  diagnostic so the encoder coverage stays in lock-step with what the
+  bridge offers. Slice 3b (non-string field refs +
+  `typed_search_attributes`) is the remaining R7 work. Three new
+  parse_validate tests pin: the positive emit + snake-case mapping,
+  the missing-field rejection, and the non-string-field rejection.
+  No bridge signature change, no fixture goldens touched (each
+  fixture either declares no `search_attributes` or stays on slice 2
+  primitives).
 - 2026-05-13 (R7 — slice 2 lands end-to-end): literal-map
   search-attribute Bloblang expressions now flow from proto to wire.
   `(temporal.v1.workflow).search_attributes = "root = { \"Env\":
