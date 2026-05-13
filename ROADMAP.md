@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6/R1 — reject cross-workflow `cli.name` / `cli.aliases` collisions):
+  two workflows on the same service can no longer claim the same
+  CLI subcommand value via `cli.name` or any entry in `cli.aliases`.
+  Either would produce duplicate clap subcommand names
+  (`start-<value>` etc.) and clap rejects duplicates at runtime;
+  catching the collision at codegen surfaces the bug clearly,
+  naming both workflows and the offending value. Two new positive
+  parse_validate tests pin the name-vs-name and name-vs-alias
+  collision shapes. 147 parse_validate tests green. No bridge
+  signature change; no fixture goldens touched.
 - 2026-05-13 (R6/R1 — reject conflicting per-ref CLI overrides across workflows):
   the recent signal-ref/update-ref CLI override work used a
   "first-ref-wins" policy in render because the CLI emit is

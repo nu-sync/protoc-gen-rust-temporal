@@ -15,9 +15,44 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
     reject_workflow_alias_collisions_across_workflows(model)?;
     reject_handler_registered_name_collisions(model)?;
     reject_conflicting_ref_cli_overrides(model)?;
+    reject_workflow_cli_name_collisions(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
+    Ok(())
+}
+
+/// Reject when two workflows on the same service declare the same
+/// `(temporal.v1.workflow).cli.name` (or the same entry in
+/// `cli.aliases`). They'd produce identical clap subcommand names
+/// (`start-<value>` / `attach-<value>` / `cancel-<value>` /
+/// `terminate-<value>`) on the CLI scaffold, and clap rejects
+/// duplicate subcommand names at runtime — better to surface the
+/// conflict at codegen with the workflow names called out.
+fn reject_workflow_cli_name_collisions(model: &ServiceModel) -> Result<()> {
+    // Each CLI subcommand value maps to its owning workflow; first
+    // insertion wins, the second is the duplicate-subcommand bug.
+    let mut owners: HashMap<&str, &str> = HashMap::new();
+    for wf in &model.workflows {
+        if let Some(name) = wf.cli_name.as_deref() {
+            if let Some(prior) = owners.insert(name, wf.rpc_method.as_str()) {
+                bail!(
+                    "{service}: cli subcommand value `{name}` is declared by both `{prior}` and `{owner}` — clap would reject the duplicate at runtime; reconcile the cli.name / cli.aliases values",
+                    service = model.service,
+                    owner = wf.rpc_method,
+                );
+            }
+        }
+        for alias in &wf.cli_aliases {
+            if let Some(prior) = owners.insert(alias.as_str(), wf.rpc_method.as_str()) {
+                bail!(
+                    "{service}: cli subcommand value `{alias}` is declared by both `{prior}` and `{owner}` — clap would reject the duplicate at runtime; reconcile the cli.name / cli.aliases values",
+                    service = model.service,
+                    owner = wf.rpc_method,
+                );
+            }
+        }
+    }
     Ok(())
 }
 

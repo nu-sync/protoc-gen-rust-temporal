@@ -1698,6 +1698,91 @@ fn workflow_attached_handler_name_consts_emit() {
 }
 
 #[test]
+fn cross_workflow_cli_name_collision_fails_validation() {
+    // Two workflows on the same service can't claim the same
+    // `cli.name` — they'd produce identical clap subcommand names
+    // (`start-go` etc.) and clap rejects duplicates at runtime.
+    // Refuse at codegen with a diagnostic naming both workflows.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package cli_name_clash.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "go" }
+            };
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "go" }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("duplicate cli.name across workflows must be rejected")
+        .to_string();
+    assert!(
+        err.contains("cli subcommand")
+            && err.contains("`go`")
+            && err.contains("Alpha")
+            && err.contains("Beta"),
+        "diagnostic must name value + both workflows, got: {err}"
+    );
+}
+
+#[test]
+fn cross_workflow_cli_alias_vs_name_collision_fails_validation() {
+    // The same value showing up as workflow A's `cli.name` and
+    // workflow B's `cli.aliases` entry is the same duplicate-
+    // subcommand bug.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package cli_alias_clash.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "go" }
+            };
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "beta-cmd" aliases: ["go"] }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("alias-vs-name cli collision must be rejected")
+        .to_string();
+    assert!(
+        err.contains("cli subcommand")
+            && err.contains("`go`")
+            && err.contains("Alpha")
+            && err.contains("Beta"),
+        "diagnostic must name value + both workflows, got: {err}"
+    );
+}
+
+#[test]
 fn conflicting_signal_ref_cli_overrides_across_workflows_fail_validation() {
     // The CLI emit is service-scoped — only one `Signal<Name>`
     // variant per signal — so contradictory per-ref overrides across
