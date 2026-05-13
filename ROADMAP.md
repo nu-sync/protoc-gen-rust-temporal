@@ -122,6 +122,14 @@ Progress:
   `ServiceOptions.namespace` now refuse at parse with the standard "does not
   yet honour" diagnostic. `reject_unsupported_service_options` is the new
   service-level rejection sink. Support-status table grew by four rows.
+- 2026-05-13: published `docs/SUPPORT-STATUS.md` — the single source-of-truth
+  index of every `temporal.v1.*` annotation field with its current status
+  (supported / rejected / intentionally ignored). Closes the R1 ask for an
+  explicit support-status table in code+tests. New test
+  `support_status_doc_lists_every_rejected_field` cross-checks that every
+  field named in a `reject_unsupported_*` list appears in the doc so the
+  table cannot drift from the rejection rules. `CLAUDE.md` now requires
+  reading it before adding or relaxing a rejection.
 
 Deliverables:
 

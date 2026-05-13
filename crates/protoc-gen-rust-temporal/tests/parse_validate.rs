@@ -1395,6 +1395,59 @@ fn unsupported_field_support_status_table() {
     }
 }
 
+/// `docs/SUPPORT-STATUS.md` is the published index of every annotation
+/// field's status. The diagnostic-coverage table above already enforces that
+/// each rejection rule fires; this test enforces the *companion* invariant:
+/// every field name a rejection rule mentions must also appear in the doc,
+/// so users reading the table can find the limitation without spelunking
+/// `parse.rs`. Drift between the rejection lists and the doc is the most
+/// likely silent-drop regression on this side of R1.
+#[test]
+fn support_status_doc_lists_every_rejected_field() {
+    let crate_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let parse_src =
+        std::fs::read_to_string(crate_root.join("src/parse.rs")).expect("read parse.rs");
+    let doc = std::fs::read_to_string(
+        crate_root
+            .join("..")
+            .join("..")
+            .join("docs/SUPPORT-STATUS.md"),
+    )
+    .expect("read docs/SUPPORT-STATUS.md");
+
+    // Pull every literal in `unsupported.push("…")`. That's the canonical
+    // place where each rejected field is named — adding a new rejection
+    // without updating the doc fails this assertion.
+    let mut rejected_fields: Vec<String> = Vec::new();
+    for line in parse_src.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("unsupported.push(\"") {
+            if let Some(end) = rest.find("\")") {
+                rejected_fields.push(rest[..end].to_string());
+            }
+        }
+    }
+    assert!(
+        !rejected_fields.is_empty(),
+        "regex extraction is wrong: no rejected fields found in parse.rs"
+    );
+
+    for field in &rejected_fields {
+        // Strip the "(deprecated)" suffix and any trailing whitespace before
+        // the lookup — the doc names the bare field, the diagnostic decorates
+        // deprecated ones.
+        let needle = field
+            .split_whitespace()
+            .next()
+            .expect("non-empty field name");
+        assert!(
+            doc.contains(&format!("`{needle}`")),
+            "docs/SUPPORT-STATUS.md must mention `{needle}` (declared rejected in parse.rs but not documented). \
+             Add a row to the relevant Options table."
+        );
+    }
+}
+
 /// Cross-service refs — Go's plugin resolves `ref: "other.v1.OtherService.Cancel"`
 /// against any sibling service in the descriptor pool. The Rust plugin does
 /// not yet (R1). Users porting from Go must see an explicit "cross-service

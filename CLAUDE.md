@@ -33,6 +33,9 @@ remain hand-written against `temporalio-sdk`.
 - `WIRE-FORMAT.md` — the `(encoding, messageType, data)` Payload triple. Pinned at v1; must stay byte-identical to the TS sibling and to cludden's Go runtime.
 - `docs/RUNTIME-API.md` — every symbol the generated code calls from the consumer-supplied `crate::temporal_runtime` facade, and when each emit branch fires.
 - `docs/sdk-shape.md` — verified deviations between `temporalio-sdk` 0.4's spec and reality.
+- `docs/SUPPORT-STATUS.md` — single index of every `temporal.v1.*` annotation
+  field with its current support status (supported / rejected / intentionally
+  ignored). Required reading before adding or relaxing a rejection rule.
 
 ## Workspace layout
 
