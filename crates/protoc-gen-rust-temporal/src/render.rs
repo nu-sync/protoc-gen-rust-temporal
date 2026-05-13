@@ -1756,6 +1756,13 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.workflow_id()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Owned form — saves the `.to_string()` ceremony at call sites
+    // that need to store the id in a struct, send across a channel,
+    // or pass to APIs that take `String` by value.
+    let _ = writeln!(out, "        pub fn workflow_id_owned(&self) -> String {{");
+    let _ = writeln!(out, "            self.inner.workflow_id().to_string()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Consuming accessor — drop the typed wrapper and recover the
     // bridge handle for downstream code that wants to use the
     // bridge surface directly (e.g. custom polling loops).

@@ -2876,6 +2876,26 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_workflow_id_owned_accessor() {
+    // R6 ergonomics — `<Wf>Handle::workflow_id_owned()` returns
+    // an owned `String` to save the `.to_string()` ceremony at
+    // call sites that need to store the id in a struct, send
+    // across a channel, or pass to APIs that take `String` by
+    // value. Pairs with the existing `workflow_id() -> &str`
+    // borrowing accessor.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn workflow_id_owned(&self) -> String {"),
+        "missing workflow_id_owned accessor: {source}"
+    );
+    assert!(
+        source.contains("self.inner.workflow_id().to_string()"),
+        "workflow_id_owned must clone the bridge str: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_has_run_id_predicate() {
     // R6 ergonomics — `<Wf>Handle::has_run_id()` is a cheap
     // predicate over `self.inner.run_id().is_some()` letting

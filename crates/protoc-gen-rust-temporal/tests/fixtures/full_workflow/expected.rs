@@ -313,6 +313,10 @@ pub mod full_v1_full_service_temporal {
             self.inner.workflow_id()
         }
 
+        pub fn workflow_id_owned(&self) -> String {
+            self.inner.workflow_id().to_string()
+        }
+
         pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
             self.inner
         }

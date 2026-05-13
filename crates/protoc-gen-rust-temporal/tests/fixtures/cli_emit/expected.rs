@@ -295,6 +295,10 @@ pub mod cli_v1_report_service_temporal {
             self.inner.workflow_id()
         }
 
+        pub fn workflow_id_owned(&self) -> String {
+            self.inner.workflow_id().to_string()
+        }
+
         pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
             self.inner
         }
@@ -439,6 +443,10 @@ pub mod cli_v1_report_service_temporal {
     impl AggregateHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
+        }
+
+        pub fn workflow_id_owned(&self) -> String {
+            self.inner.workflow_id().to_string()
         }
 
         pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {

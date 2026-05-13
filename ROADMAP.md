@@ -283,6 +283,17 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::workflow_id_owned()` accessor):
+  every generated `<Wf>Handle` now exposes
+  `workflow_id_owned(&self) -> String` returning an owned String.
+  Saves the `.to_string()` ceremony at call sites that need to
+  store the id in a struct, send it across a channel, or pass
+  to APIs that take `String` by value. Pairs with the existing
+  `workflow_id(&self) -> &str` borrowing accessor — together
+  they cover both common ownership patterns. One new positive
+  parse_validate test pins the fn signature + body. Several
+  fixture goldens reblessed (every Handle gained the accessor).
+  188 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::has_run_id()` predicate):
   cheap convenience over `self.inner.run_id().is_some()`. Lets
   diagnostic code branch on whether a handle was returned by the
