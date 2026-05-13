@@ -11,6 +11,9 @@ pub mod jobs_v1_job_service_temporal {
     impl temporal_runtime::TemporalProtoMessage for CancelJobInput {
         const MESSAGE_TYPE: &'static str = "jobs.v1.CancelJobInput";
     }
+    impl temporal_runtime::TemporalProtoMessage for GetStatusInput {
+        const MESSAGE_TYPE: &'static str = "jobs.v1.GetStatusInput";
+    }
     impl temporal_runtime::TemporalProtoMessage for JobInput {
         const MESSAGE_TYPE: &'static str = "jobs.v1.JobInput";
     }
@@ -19,6 +22,9 @@ pub mod jobs_v1_job_service_temporal {
     }
     impl temporal_runtime::TemporalProtoMessage for JobStatusOutput {
         const MESSAGE_TYPE: &'static str = "jobs.v1.JobStatusOutput";
+    }
+    impl temporal_runtime::TemporalProtoMessage for PrepareWorkspaceInput {
+        const MESSAGE_TYPE: &'static str = "jobs.v1.PrepareWorkspaceInput";
     }
 
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
@@ -114,41 +120,10 @@ pub mod jobs_v1_job_service_temporal {
         }
 
         /// Run the `jobs.v1.JobService.GetStatus` query.
-        pub async fn get_status(&self) -> Result<JobStatusOutput> {
-            temporal_runtime::query_proto_empty::<JobStatusOutput>(&self.inner, "jobs.v1.JobService.GetStatus").await
+        pub async fn get_status(&self, input: GetStatusInput) -> Result<JobStatusOutput> {
+            temporal_runtime::query_proto::<GetStatusInput, JobStatusOutput>(&self.inner, "jobs.v1.JobService.GetStatus", &input).await
         }
 
-    }
-
-    /// Start `jobs.v1.JobService.RunJob` and atomically deliver the `jobs.v1.JobService.CancelJob` signal.
-    pub async fn cancel_job_with_start(
-        client: &temporal_runtime::TemporalClient,
-        signal_input: CancelJobInput,
-        workflow_input: JobInput,
-        opts: RunJobStartOptions,
-    ) -> Result<RunJobHandle> {
-        let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {
-            run_job_id(&workflow_input)
-        });
-        let task_queue = opts.task_queue.unwrap_or_else(|| "jobs".to_string());
-        let id_reuse_policy = opts.id_reuse_policy;
-        let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(3600)));
-        let run_timeout = opts.run_timeout;
-        let task_timeout = opts.task_timeout;
-        let inner = temporal_runtime::signal_with_start_workflow_proto(
-            client,
-            RUN_JOB_WORKFLOW_NAME,
-            &workflow_id,
-            &task_queue,
-            &workflow_input,
-            "jobs.v1.JobService.CancelJob",
-            &signal_input,
-            id_reuse_policy,
-            execution_timeout,
-            run_timeout,
-            task_timeout,
-        ).await?;
-        Ok(RunJobHandle { inner })
     }
 
 
@@ -157,10 +132,14 @@ pub mod jobs_v1_job_service_temporal {
     // your worker via temporalio-sdk's #[activities] macro;
     // see temporal-proto-runtime-bridge README for the adapter pattern.
 
-    pub const PROCESS_CHUNK_ACTIVITY_NAME: &str = "jobs.v1.JobService.ProcessChunk";
+    pub const PREPARE_WORKSPACE_ACTIVITY_NAME: &str = "jobs.v1.JobService.PrepareWorkspace";
+    pub const EXECUTE_COMMAND_ACTIVITY_NAME: &str = "jobs.v1.JobService.ExecuteCommand";
+    pub const COLLECT_OUTPUT_ACTIVITY_NAME: &str = "jobs.v1.JobService.CollectOutput";
 
     pub trait JobServiceActivities: Send + Sync + 'static {
-        fn process_chunk(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;
+        fn prepare_workspace(&self, ctx: temporal_runtime::ActivityContext, input: PrepareWorkspaceInput) -> impl ::std::future::Future<Output = Result<()>> + Send;
+        fn execute_command(&self, ctx: temporal_runtime::ActivityContext, input: JobInput) -> impl ::std::future::Future<Output = Result<JobOutput>> + Send;
+        fn collect_output(&self, ctx: temporal_runtime::ActivityContext, input: ()) -> impl ::std::future::Future<Output = Result<()>> + Send;
     }
 
     pub fn register_job_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker

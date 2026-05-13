@@ -24,7 +24,12 @@ Sibling project: [`nu-sync/protoc-gen-ts-temporal`](../protoc-gen-ts-temporal). 
 
 ## Reference implementation
 
-[`/Users/wcygan/Development/job-queue`](../job-queue) holds the **proof-of-concept** plugin (`crates/protoc-gen-rust-temporal-client/`, ~780 LOC) and a working multi-consumer demo (job-worker + job-api + jobctl all sharing one generated client over a Temporal dev server). It established:
+The original [`/Users/wcygan/Development/job-queue`](../job-queue)
+proof-of-concept held a prototype plugin
+(`crates/<prototype-plugin>/`, ~780 LOC) and a working
+multi-consumer demo (job-worker + job-api + jobctl all sharing one generated
+client over a Temporal dev server). The demo now lives in this repo at
+[`examples/job-queue`](./examples/job-queue/). The PoC established:
 
 - The `DescriptorPool::decode_file_descriptor_set` pattern for surviving extension data through prost-types (prost-types silently drops extensions on direct decode; you must reconstruct a `FileDescriptorSet` from the raw `CodeGeneratorRequest` bytes and feed it into the descriptor pool — `src/main.rs::extract_proto_file_blobs` is the working implementation).
 - The four-stage pipeline: `parse → validate → render → CodeGeneratorResponse`.
@@ -34,7 +39,8 @@ Sibling project: [`nu-sync/protoc-gen-ts-temporal`](../protoc-gen-ts-temporal). 
 
 What carries over: the descriptor-extraction trick, the four-stage pipeline shape, the test harness, the `TypedProtoMessage` wrapper, the SDK landmines doc. What changes: input schema (cludden's, not ours), drop the `-client` suffix on the crate name, expand emit surface to cover update + signal-with-start.
 
-This new repo is a **fresh rewrite**, not a move. The PoC stays in `job-queue/` until the new plugin is published and job-queue switches to consuming it.
+This repo is a **fresh rewrite** of the plugin. The multi-consumer job-queue
+demo has since been imported as the primary in-tree example.
 
 ## Schema source of truth
 
@@ -223,7 +229,7 @@ protoc-gen-rust-temporal/
 ├── docs/
 │   └── sdk-shape.md                   # ported/refreshed from job-queue
 ├── examples/
-│   └── job-queue-integration/         # consumes from job-queue's proto
+│   └── job-queue/                     # primary end-to-end consumer example
 └── .github/
     └── workflows/
         ├── ci.yml                     # cargo test + clippy + fmt + golden bless check

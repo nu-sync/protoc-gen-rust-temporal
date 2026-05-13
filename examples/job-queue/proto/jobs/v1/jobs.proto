@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package jobs.v1;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+// ── Inputs / outputs ──────────────────────────────────────────────────
+
+message JobInput {
+  string name = 1;
+  string command = 2;
+  uint32 timeout_seconds = 3;
+}
+
+message JobOutput {
+  int32 exit_code = 1;
+  string stdout = 2;
+  string stderr = 3;
+}
+
+message CancelJobInput {
+  string reason = 1;
+}
+
+message JobStatusOutput {
+  // pending | preparing | executing | collecting | done | cancelled
+  string stage = 1;
+  uint32 progress_pct = 2;
+}
+
+message GetStatusInput {}
+
+message PrepareWorkspaceInput {
+  string name = 1;
+}
+
+// ── Service contract ──────────────────────────────────────────────────
+
+service JobService {
+  option (temporal.v1.service) = {
+    task_queue: "jobs"
+  };
+
+  rpc RunJob(JobInput) returns (JobOutput) {
+    option (temporal.v1.workflow) = {
+      id: "job-{{ .Name }}"
+      execution_timeout: { seconds: 3600 }
+      signal: [{ ref: "CancelJob" }]
+      query:  [{ ref: "GetStatus" }]
+    };
+  }
+
+  rpc CancelJob(CancelJobInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc GetStatus(GetStatusInput) returns (JobStatusOutput) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc PrepareWorkspace(PrepareWorkspaceInput) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc ExecuteCommand(JobInput) returns (JobOutput) {
+    option (temporal.v1.activity) = {};
+  }
+
+  rpc CollectOutput(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {};
+  }
+}

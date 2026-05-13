@@ -5,12 +5,16 @@ members = [
     "crates/temporal-proto-runtime",
     "crates/temporal-proto-runtime-bridge",
     "compat-tests/rust",
-    "examples/job-queue-integration",
+    "examples/job-queue/crates/jobs-proto",
+    "examples/job-queue/crates/job-worker",
+    "examples/job-queue/crates/job-api",
+    "examples/job-queue/crates/jobctl",
 ]
 
 [workspace.package]
 edition = "2024"
 rust-version = "1.88"
+version = "0.1.0"
 license = "MIT"
 repository = "https://github.com/nu-sync/protoc-gen-rust-temporal"
 homepage = "https://github.com/nu-sync/protoc-gen-rust-temporal"
@@ -18,18 +22,36 @@ authors = ["nu-sync contributors"]
 
 [workspace.dependencies]
 anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 prost = "0.13"
 prost-types = "0.13"
 prost-reflect = "0.14"
 prost-build = "0.13"
 heck = "0.5"
+temporal-proto-runtime = { path = "crates/temporal-proto-runtime", features = ["sdk"] }
+temporal-proto-runtime-bridge = { path = "crates/temporal-proto-runtime-bridge", features = ["worker"] }
 # Phase 1 bridge crate dependencies. Exact-patch pin on the SDK is intentional
 # (design §"SDK pinning"): when temporalio-sdk 0.5 ships, we cut a new bridge
 # crate minor version; plugin emit stays unchanged.
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 temporalio-client = "=0.4.0"
 temporalio-common = "=0.4.0"
 temporalio-sdk = "=0.4.0"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+temporalio-sdk-core = "=0.4.0"
+temporalio-macros = "=0.4.0"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+futures-util = "0.3"
+async-trait = "0.1"
+bytes = "1"
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
+tempfile = "3"
+pretty_assertions = "1"

@@ -13,12 +13,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `lib.rs` and the generated code runs against the real SDK. See the design
   doc at `docs/superpowers/specs/2026-05-12-cludden-parity-design.md` Phase 1
   for the architectural rationale.
-- New `examples/job-queue-integration` cargo feature `bridge` that swaps the
-  stub `temporal_runtime.rs` for the bridge crate; `just verify-bridge`
-  exercises end-to-end compilation. CI gates this on every PR via the new
-  `verify-bridge` job.
+- New `examples/job-queue` primary example with generated client, Temporal
+  worker, axum HTTP API, and clap CLI wired against the bridge crate.
 - **Pinned cludden commit** documented in the design doc header (resolves the
   Phase 1 open follow-up).
+
+### Removed
+- The old compile-only job-queue fixture was removed in favor of the real
+  end-to-end example.
 
 ### Notes
 - Plugin output is unchanged for default-flag builds. Existing consumers on
@@ -63,8 +65,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`temporal-proto-runtime-bridge` `cli` feature** — opt-in `pub use clap;`
   re-export so plugin-emitted code can resolve `temporal_runtime::clap::*`
   without the consumer adding a direct clap dep.
-- Example crate gains a `cli` cargo feature flipping on the bridge's
-  feature, plus a CI step that runs `cargo check + clippy` with it.
+- The job-queue example exercises the bridge's worker surface through the
+  generated worker contracts and keeps CLI usage covered by the hand-written
+  `jobctl` consumer.
 
 ### Phase 3.0 (workflows — name consts only)
 
@@ -165,11 +168,10 @@ push`).
   prebuilt binaries for `{x86_64,aarch64}-unknown-linux-gnu`, plus
   publish hooks for crates.io and the BSR. macOS / Windows targets are
   parked until downstream demand justifies the runner cost.
-- Phase 5 example: `examples/job-queue-integration/` is now a workspace
-  member that prost-builds the example's `jobs.v1` types and compiles
-  the plugin's rendered output end-to-end against the documented
-  `temporal_runtime` facade. `cargo check --workspace` covers the full
-  pipeline.
+- Phase 5 example: the initial job-queue fixture is a workspace member that
+  prost-builds the example's `jobs.v1` types and compiles the plugin's
+  rendered output end-to-end against the documented `temporal_runtime`
+  facade. `cargo check --workspace` covers the full pipeline.
 - Plugin emits `impl temporal_runtime::TemporalProtoMessage` for every
   prost message type the rendered client surface touches. Consumers no
   longer hand-write the wire-format trait impls.

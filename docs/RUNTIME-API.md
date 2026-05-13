@@ -11,16 +11,11 @@ pointing at the call site.
 ships a concrete impl of every function documented below, backed by
 `temporalio-client 0.4`. Add it as a dep and `pub use temporal_proto_runtime_bridge as temporal_runtime;`
 in your `lib.rs` to wire the plugin's generated code to the real SDK
-without writing the facade yourself. The stub at
-`examples/job-queue-integration/src/temporal_runtime.rs` stays the
-canonical override reference for power users who need to substitute a
-custom transport, vendored SDK, or test stub.
-
-The canonical stub implementation lives in
-[`examples/job-queue-integration/src/temporal_runtime.rs`](../examples/job-queue-integration/src/temporal_runtime.rs).
-That file is a workspace member that `cargo check`s clean — copying it
-into a new consumer crate and replacing the `todo!()` bodies with real
-SDK calls is the supported on-ramp.
+without writing the facade yourself. The primary example at
+[`examples/job-queue`](../examples/job-queue/) uses that bridge from a
+real worker, HTTP API, and CLI. Power users who need to substitute a
+custom transport, vendored SDK, or test stub can provide their own
+`crate::temporal_runtime` module against the contract below.
 
 ## Versioning
 

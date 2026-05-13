@@ -15,9 +15,10 @@ Sibling project: `nu-sync/protoc-gen-ts-temporal`. Wire format is
 intentionally byte-identical (see `WIRE-FORMAT.md`) so one annotated proto
 produces Go, TS, and Rust clients with no proto changes.
 
-**v1 emits clients only.** Worker-side workflow/activity bodies are
-hand-written against `temporalio-sdk`; the plugin only validates `activity`
-annotations, it does not generate worker code.
+The plugin emits generated client code plus typed worker-side contracts
+(activity traits, workflow registration names/helpers, and optional CLI
+scaffolding). Workflow and activity bodies remain hand-written against
+`temporalio-sdk`.
 
 ## Required reading before non-trivial changes
 
@@ -32,8 +33,9 @@ annotations, it does not generate worker code.
 |---|---|
 | `crates/protoc-gen-rust-temporal/` | The plugin binary + library. Pipeline: `parse → validate → render → CodeGeneratorResponse`. |
 | `crates/temporal-proto-runtime/` | Optional consumer-facing helper: `TemporalProtoMessage` trait + `TypedProtoMessage<T>` wrapper. `sdk` feature pulls `temporalio-common` and ships the `TemporalSerializable`/`TemporalDeserializable` impls (orphan-rule workaround). |
+| `crates/temporal-proto-runtime-bridge/` | Default `crate::temporal_runtime` facade backed by `temporalio-client 0.4`, plus worker/CLI feature re-exports. |
 | `compat-tests/` | Cross-language Phase 3 audit. Rust + Go arms each emit a Payload JSON for the same fixture input; CI diffs them. |
-| `examples/job-queue-integration/` | Workspace-member reference consumer. Provides the canonical `temporal_runtime` facade stub (`src/temporal_runtime.rs`) that `cargo check`s clean — copy it into new consumer crates. |
+| `examples/job-queue/` | Primary end-to-end example with generated client, Temporal worker, axum HTTP API, and clap CLI. |
 | `crates/protoc-gen-rust-temporal/tests/fixtures/` | Per-emit-branch fixtures (`minimal_workflow`, `workflow_only`, `full_workflow`, `activity_only`, `empty_input_workflow`, `multiple_workflows`). |
 
 ## Common commands
@@ -157,8 +159,8 @@ When adding a new emit branch:
 1. Add a fixture under `tests/fixtures/<name>/input.proto`.
 2. Cover the parse + validate path in `parse_validate.rs`.
 3. If it changes user-visible generated code, also exercise it through
-   `protoc_invoke.rs` and update `examples/job-queue-integration/` so the
-   facade still compiles.
+   `protoc_invoke.rs` and update `examples/job-queue/` so the realistic
+   consumer still compiles.
 4. Update `docs/RUNTIME-API.md` if any new symbol on the
    `crate::temporal_runtime` facade gets emitted.
 
@@ -178,5 +180,6 @@ When adding a new emit branch:
   rely on newer std/stable features.
 - **One module per source proto.** Output is `<stem>_temporal.rs` so
   consumer build scripts can `include!` deterministically.
-- **No worker-side emit in v1.** `activity` annotations are validated but
-  produce no Rust code; this is intentional (see `SPEC.md` non-goals).
+- **Worker emit is contract-only.** The plugin emits typed worker contracts
+  and registration helpers; the user's workflow/activity bodies still live in
+  application code because `temporalio-sdk` registration is macro-shaped.

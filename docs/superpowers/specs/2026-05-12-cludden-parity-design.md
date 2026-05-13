@@ -107,7 +107,7 @@ Bridge crate provides one struct implementing all sub-traits. Power-user
 overrides impl only what they use.
 
 **Example crate migration.** The in-tree
-`examples/job-queue-integration` keeps its current stub `temporal_runtime.rs`
+`examples/job-queue` keeps its current stub `temporal_runtime.rs`
 as a minimal-override reference. A new `just verify-bridge` recipe
 builds a sibling configuration against the bridge crate end-to-end (no
 `todo!()` panics if bodies execute under a real client).
@@ -160,7 +160,7 @@ migration that retires hand-rolled code.
 
 - Publish `temporal-proto-runtime-bridge 0.1.0` implementing the current
   `RUNTIME-API.md` surface against `temporalio-client 0.4`.
-- Add `just verify-bridge` recipe to `examples/job-queue-integration`.
+- Add `just verify-bridge` recipe to `examples/job-queue`.
 - PoC drops `jobs-proto/src/temporal_runtime.rs` and re-exports the bridge.
 - **Exit criterion:** PoC's client-side integration tests still pass.
 
@@ -293,7 +293,7 @@ per flag combination that matters. Naming convention
 Each fixture asserts:
 1. In-process render matches a checked-in snapshot.
 2. Protoc-invoked output matches the in-process render.
-3. Output compiles when included via `examples/job-queue-integration`
+3. Output compiles when included via `examples/job-queue`
    (which gets sibling sub-examples per flag set).
 
 ### Layer 2 — Bridge crate (`cargo test -p temporal-proto-runtime-bridge`)
@@ -327,7 +327,7 @@ byte-identicality on every PR.
 
 Worker emit produces significantly more code per service than
 client-only emit. Each fixture gets its own `just regen-check` (the
-pattern from `examples/job-queue-integration`), all run under `cargo
+pattern from `examples/job-queue`), all run under `cargo
 test --features snapshot-check`. Drift is loud (full diff in CI output)
 and trivially fixable (`just regen` per fixture).
 
