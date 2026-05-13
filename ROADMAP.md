@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (bridge — `encode_proto_payload` / `decode_proto_payload` made public):
+  the two bridge helpers that build and validate `binary/protobuf`
+  payloads against `WIRE-FORMAT.md` were previously `fn`-private,
+  used only by the bridge's own internal call paths. They're now
+  `pub fn` so downstream tooling (custom dispatch layers, payload
+  migrators, codec servers, payload routers in proxies) can
+  construct + validate byte-identical payloads the generated client
+  uses without duplicating the metadata-triple logic. No behavioural
+  change — only visibility. Existing `encode_decode_round_trip`
+  bridge test now covers the public surface. `docs/RUNTIME-API.md`
+  bumped to 0.1.5.
 - 2026-05-13 (bridge — search-attribute decoder helpers):
   the bridge gains `decode_search_attribute_string` /
   `decode_search_attribute_int` / `decode_search_attribute_bool` as

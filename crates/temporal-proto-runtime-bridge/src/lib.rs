@@ -279,8 +279,12 @@ impl From<WaitPolicy> for sdk_enums::UpdateWorkflowExecutionLifecycleStage {
     }
 }
 
-/// Convenience: build a single `binary/protobuf` payload from a prost message.
-fn encode_proto_payload<T: TemporalProtoMessage>(msg: &T) -> Payload {
+/// Build a single `binary/protobuf` payload from a prost message. The
+/// metadata triple matches `WIRE-FORMAT.md`: `encoding = "binary/protobuf"`,
+/// `messageType = T::MESSAGE_TYPE`, raw prost bytes in `data`. Public so
+/// downstream tooling (custom dispatch layers, payload migrators, etc.) can
+/// construct the same byte-identical payloads the generated client emits.
+pub fn encode_proto_payload<T: TemporalProtoMessage>(msg: &T) -> Payload {
     let mut metadata = std::collections::HashMap::new();
     metadata.insert("encoding".to_string(), ENCODING.as_bytes().to_vec());
     metadata.insert(
@@ -300,8 +304,10 @@ fn encode_proto_payload<T: TemporalProtoMessage>(msg: &T) -> Payload {
 /// path (which would validate metadata for us), because the SDK returns
 /// raw `Payloads` for the workflow/query/update result helpers we use here.
 /// Skipping the check would let a misconfigured worker hand back arbitrary
-/// bytes that decode as garbage instead of failing loudly.
-fn decode_proto_payload<T: TemporalProtoMessage>(payload: &Payload) -> Result<T> {
+/// bytes that decode as garbage instead of failing loudly. Public so
+/// downstream tooling building payload routers outside the generated
+/// client can validate + decode against the same contract.
+pub fn decode_proto_payload<T: TemporalProtoMessage>(payload: &Payload) -> Result<T> {
     let encoding = payload.metadata.get("encoding").map(Vec::as_slice);
     if encoding != Some(ENCODING.as_bytes()) {
         anyhow::bail!(
