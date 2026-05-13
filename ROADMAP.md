@@ -138,6 +138,23 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — cross-service with-start free fns emit):
+  `render_with_start_functions` previously dropped cross-service
+  refs silently when looking up the SignalModel / UpdateModel from
+  `svc.signals` / `svc.updates`. It now falls back to
+  `fabricate_signal_model` / `fabricate_update_model` (the same
+  fabricate path the typed-handle-method emit already uses for
+  cross-service refs), so a workflow can attach a cross-service signal
+  with `start: true` and get a `<signal>_with_start` free function
+  that calls into the bridge with the cross-service target's input /
+  registered name. Three new positive parse_validate tests:
+  cross-service signal-with-start emit, cross-service update-ref
+  handle method, cross-service query-ref handle method. The
+  SUPPORT-STATUS row for `signal[]/query[]/update[]` was rewritten
+  to reflect cross-service-supported state (the row had said "rejected
+  by validate.rs::check_ref" which was stale since the mid-session
+  cross-service ref work landed). No bridge signature change; no
+  fixture goldens touched.
 - 2026-05-13 (R5 — per-update `workflow_id_conflict_policy` honoured):
   the nested `WorkflowOptions.update[].workflow_id_conflict_policy`
   field on update refs moves from rejected to supported. The bridge's

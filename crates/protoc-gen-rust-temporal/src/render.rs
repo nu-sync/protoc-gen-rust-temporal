@@ -1371,7 +1371,19 @@ fn render_with_start_functions(out: &mut String, svc: &ServiceModel) {
             if !sref.start {
                 continue;
             }
-            let Some(sig) = svc.signals.iter().find(|s| s.rpc_method == sref.rpc_method) else {
+            // Same-service: look the SignalModel up directly.
+            // Cross-service: fabricate it from the resolved target so
+            // the with-start free function emits for cross-service
+            // signals too. Without this, `start: true` on a cross-
+            // service ref silently dropped.
+            let owned;
+            let sig = if let Some(s) = svc.signals.iter().find(|s| s.rpc_method == sref.rpc_method)
+            {
+                s
+            } else if let Some(target) = sref.cross_service.as_ref() {
+                owned = fabricate_signal_model(&sref.rpc_method, target);
+                &owned
+            } else {
                 continue;
             };
             render_signal_with_start_fn(out, svc, wf, sig);
@@ -1380,11 +1392,17 @@ fn render_with_start_functions(out: &mut String, svc: &ServiceModel) {
             if !uref.start {
                 continue;
             }
-            let Some(u) = svc
+            let owned;
+            let u = if let Some(u) = svc
                 .updates
                 .iter()
                 .find(|uu| uu.rpc_method == uref.rpc_method)
-            else {
+            {
+                u
+            } else if let Some(target) = uref.cross_service.as_ref() {
+                owned = fabricate_update_model(&uref.rpc_method, target);
+                &owned
+            } else {
                 continue;
             };
             render_update_with_start_fn(out, svc, wf, u, uref);

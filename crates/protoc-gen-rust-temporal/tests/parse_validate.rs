@@ -3620,6 +3620,140 @@ fn cross_service_ref_to_wrong_annotation_kind_fails_at_parse() {
 /// Handle method that uses the target's wire-format registered name
 /// and proto I/O types.
 #[test]
+fn cross_service_signal_ref_with_start_emits_with_start_fn() {
+    // R1 — when a cross-service `signal` ref carries `start: true`,
+    // the workflow gains a `<signal>_with_start` free function that
+    // atomically starts the workflow and signals the cross-service
+    // handler. Previously the with_start emit dropped cross-service
+    // refs silently.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs_ws.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "xs_ws.v1.Notifications.Cancel" start: true }]
+            };
+          }
+        }
+
+        service Notifications {
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let workflows_svc = services
+        .iter()
+        .find(|s| s.service == "Workflows")
+        .expect("Workflows service must be in the model");
+    let source = render::render(workflows_svc, &Default::default());
+    assert!(
+        source.contains("pub async fn cancel_with_start("),
+        "must emit `cancel_with_start` free fn for the cross-service signal ref: {source}"
+    );
+}
+
+#[test]
+fn cross_service_update_ref_emits_handle_method() {
+    // R1 — cross-service update refs produce a typed Handle method
+    // that the workflow's typed handle exposes. Mirrors the
+    // signal-side test that's been in place since the cross-service
+    // emit landed.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs_u.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "xs_u.v1.Bumps.Apply" }]
+            };
+          }
+        }
+
+        service Bumps {
+          rpc Apply(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let workflows_svc = services
+        .iter()
+        .find(|s| s.service == "Workflows")
+        .expect("Workflows service must be in the model");
+    let source = render::render(workflows_svc, &Default::default());
+    // The fabricated UpdateModel produces an `apply` handle method on
+    // the workflow's typed handle struct.
+    assert!(
+        source.contains("pub async fn apply(&self"),
+        "cross-service update ref must produce a typed handle method: {source}"
+    );
+}
+
+#[test]
+fn cross_service_query_ref_emits_handle_method() {
+    // R1 — cross-service query refs produce a typed Handle method
+    // that the workflow's typed handle exposes.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs_q.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              query: [{ ref: "xs_q.v1.Status.Get" }]
+            };
+          }
+        }
+
+        service Status {
+          rpc Get(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+        }
+
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let workflows_svc = services
+        .iter()
+        .find(|s| s.service == "Workflows")
+        .expect("Workflows service must be in the model");
+    let source = render::render(workflows_svc, &Default::default());
+    assert!(
+        source.contains("pub async fn get(&self"),
+        "cross-service query ref must produce a typed handle method: {source}"
+    );
+}
+
+#[test]
 fn cross_service_signal_ref_emits_handle_method() {
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
