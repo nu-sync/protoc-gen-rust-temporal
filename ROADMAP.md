@@ -138,6 +138,21 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6/R1 — reject conflicting per-ref CLI overrides across workflows):
+  the recent signal-ref/update-ref CLI override work used a
+  "first-ref-wins" policy in render because the CLI emit is
+  service-scoped (one `Signal<Name>` / `Update<Name>` variant per
+  handler, regardless of how many workflows ref it). That meant
+  workflow A declaring `signal: [{ ref: "Cancel" cli: { name:
+  "abort" } }]` and workflow B declaring `signal: [{ ref: "Cancel"
+  cli: { name: "halt" } }]` would render with "abort" winning and
+  "halt" silently dropped. Validation now catches the conflict at
+  codegen and surfaces a diagnostic naming the kind, ref, and both
+  workflows. Matching overrides on the same ref across workflows
+  still pass (no conflict). Two new positive parse_validate tests
+  pin both the conflict-rejection and matching-overrides-pass
+  paths. 145 parse_validate tests green. No bridge signature change;
+  no fixture goldens touched.
 - 2026-05-13 (R7 slice 2 — reject duplicate keys in literal map):
   the Bloblang search-attribute lexer previously accepted
   `root = { "Env": "prod", "Env": "staging" }` and emitted two

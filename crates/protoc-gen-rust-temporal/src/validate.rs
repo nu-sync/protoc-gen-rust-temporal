@@ -14,9 +14,110 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
     reject_rpc_collisions(model)?;
     reject_workflow_alias_collisions_across_workflows(model)?;
     reject_handler_registered_name_collisions(model)?;
+    reject_conflicting_ref_cli_overrides(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
+    Ok(())
+}
+
+/// Reject when multiple workflows declare contradictory
+/// `cli.{name,aliases,usage}` overrides for the same signal or
+/// update ref. The CLI emit is service-scoped — there's only one
+/// `Signal<Name>` / `Update<Name>` variant per handler regardless of
+/// how many workflows ref it — so render picks the first override
+/// it sees and silently drops the rest. Contradictory user intent
+/// would surface as "why did my CLI subcommand pick that name?"
+/// only at runtime; reject at codegen instead.
+fn reject_conflicting_ref_cli_overrides(model: &ServiceModel) -> Result<()> {
+    // For each signal rpc, collect every (workflow, override-tuple)
+    // pair that declares overrides. If any pair disagrees on any
+    // axis (name / aliases / usage), bail.
+    #[derive(PartialEq, Eq)]
+    struct Override<'a> {
+        name: Option<&'a str>,
+        aliases: &'a [String],
+        usage: Option<&'a str>,
+    }
+    fn check<'a, Ref>(
+        model: &ServiceModel,
+        kind: &str,
+        refs_by_workflow: &[(&'a str, &'a [Ref])],
+        rpc_method: fn(&Ref) -> &str,
+        as_override: fn(&Ref) -> Option<Override<'_>>,
+    ) -> Result<()> {
+        let mut by_target: HashMap<&str, Vec<(&str, Override<'_>)>> = HashMap::new();
+        for (wf_name, refs) in refs_by_workflow {
+            for r in refs.iter() {
+                let Some(ov) = as_override(r) else { continue };
+                by_target
+                    .entry(rpc_method(r))
+                    .or_default()
+                    .push((wf_name, ov));
+            }
+        }
+        for (target, owners) in &by_target {
+            if owners.len() < 2 {
+                continue;
+            }
+            let first = &owners[0].1;
+            for (wf_name, ov) in &owners[1..] {
+                if ov != first {
+                    bail!(
+                        "{service}: {kind} ref `{target}` carries contradictory cli overrides across workflows (`{a}` and `{b}`); service-scoped CLI emit picks the first override silently — reconcile the overrides or remove duplicates",
+                        service = model.service,
+                        a = owners[0].0,
+                        b = wf_name,
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    let signal_refs: Vec<(&str, &[crate::model::SignalRef])> = model
+        .workflows
+        .iter()
+        .map(|wf| (wf.rpc_method.as_str(), wf.attached_signals.as_slice()))
+        .collect();
+    check::<crate::model::SignalRef>(
+        model,
+        "signal",
+        &signal_refs,
+        |r| r.rpc_method.as_str(),
+        |r| {
+            if r.cli_name.is_none() && r.cli_aliases.is_empty() && r.cli_usage.is_none() {
+                return None;
+            }
+            Some(Override {
+                name: r.cli_name.as_deref(),
+                aliases: r.cli_aliases.as_slice(),
+                usage: r.cli_usage.as_deref(),
+            })
+        },
+    )?;
+
+    let update_refs: Vec<(&str, &[crate::model::UpdateRef])> = model
+        .workflows
+        .iter()
+        .map(|wf| (wf.rpc_method.as_str(), wf.attached_updates.as_slice()))
+        .collect();
+    check::<crate::model::UpdateRef>(
+        model,
+        "update",
+        &update_refs,
+        |r| r.rpc_method.as_str(),
+        |r| {
+            if r.cli_name.is_none() && r.cli_aliases.is_empty() && r.cli_usage.is_none() {
+                return None;
+            }
+            Some(Override {
+                name: r.cli_name.as_deref(),
+                aliases: r.cli_aliases.as_slice(),
+                usage: r.cli_usage.as_deref(),
+            })
+        },
+    )?;
     Ok(())
 }
 

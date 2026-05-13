@@ -1698,6 +1698,91 @@ fn workflow_attached_handler_name_consts_emit() {
 }
 
 #[test]
+fn conflicting_signal_ref_cli_overrides_across_workflows_fail_validation() {
+    // The CLI emit is service-scoped — only one `Signal<Name>`
+    // variant per signal — so contradictory per-ref overrides across
+    // workflows would silently pick the first and surface as a
+    // "why did the CLI use that name?" mystery. Reject at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sig_conflict.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" cli: { name: "abort" } }]
+            };
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" cli: { name: "halt" } }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("conflicting cli overrides must be rejected")
+        .to_string();
+    assert!(
+        err.contains("signal")
+            && err.contains("Cancel")
+            && err.contains("Alpha")
+            && err.contains("Beta"),
+        "diagnostic must name kind + ref + both workflows, got: {err}"
+    );
+}
+
+#[test]
+fn matching_signal_ref_cli_overrides_across_workflows_pass_validation() {
+    // If multiple workflows declare the *same* override values for
+    // the same ref, that's not a conflict — both can register the
+    // same intent. Validation must allow this.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sig_match.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" cli: { name: "abort" } }]
+            };
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" cli: { name: "abort" } }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect("matching cli overrides on the same ref must not be rejected");
+}
+
+#[test]
 fn duplicate_activity_registered_name_fails_validation() {
     // Two activities registering under the same Temporal name would
     // silently dedupe at the worker — refuse at codegen.
