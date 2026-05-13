@@ -196,6 +196,16 @@ pub mod wf_v1_order_service_temporal {
         inner: temporal_runtime::WorkflowHandle,
     }
 
+    impl ::std::fmt::Debug for RunHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("RunHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
+    }
+
     impl RunHandle {
         pub const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;

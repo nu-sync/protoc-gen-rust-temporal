@@ -2532,6 +2532,33 @@ fn start_options_exposes_with_field_builders() {
 }
 
 #[test]
+fn handle_struct_implements_debug() {
+    // R6 ergonomics — `<Wf>Handle` carries a manual `Debug` impl
+    // that prints `workflow_name`, `workflow_id`, `run_id`. Bridge
+    // `WorkflowHandle` doesn't derive Debug (its inner SDK client
+    // is opaque), so a derive is unavailable; the manual impl gives
+    // logging frameworks a structured form.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("impl ::std::fmt::Debug for RunJobHandle {"),
+        "missing Debug impl: {source}"
+    );
+    assert!(
+        source.contains(".field(\"workflow_name\", &Self::WORKFLOW_NAME)"),
+        "Debug impl must include workflow_name: {source}"
+    );
+    assert!(
+        source.contains(".field(\"workflow_id\", &self.inner.workflow_id())"),
+        "Debug impl must include workflow_id: {source}"
+    );
+    assert!(
+        source.contains(".field(\"run_id\", &self.inner.run_id())"),
+        "Debug impl must include run_id: {source}"
+    );
+}
+
+#[test]
 fn handle_struct_exposes_identity_consts() {
     // R4 — every `<Wf>Handle` struct now exposes inherent identity
     // consts (`WORKFLOW_NAME`, `INPUT_TYPE`, `OUTPUT_TYPE`,

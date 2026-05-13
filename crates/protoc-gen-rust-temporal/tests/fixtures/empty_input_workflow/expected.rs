@@ -137,6 +137,16 @@ pub mod empty_v1_nop_service_temporal {
         inner: temporal_runtime::WorkflowHandle,
     }
 
+    impl ::std::fmt::Debug for TickHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("TickHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
+    }
+
     impl TickHandle {
         pub const WORKFLOW_NAME: &'static str = self::TICK_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::TICK_INPUT_TYPE;

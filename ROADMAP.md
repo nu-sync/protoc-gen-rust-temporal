@@ -182,6 +182,18 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle` `Debug` impl):
+  every generated `<Wf>Handle` struct now carries a manual `Debug`
+  impl that prints a structured `RunJobHandle { workflow_name,
+  workflow_id, run_id }` form. The bridge's `WorkflowHandle` doesn't
+  derive `Debug` (its inner SDK client is opaque), so `derive(Debug)`
+  on the wrapper isn't an option — the manual impl gives logging
+  frameworks (`tracing::info!(?handle, ...)`) and `dbg!()` users a
+  useful structured form. Reuses the new `Self::WORKFLOW_NAME`
+  inherent const from the previous shipment for the workflow_name
+  field. One new positive parse_validate test pins the impl shape.
+  Several fixture goldens reblessed (every Handle gained the impl
+  block). 166 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R4 — `<Wf>Handle` identity consts):
   every generated workflow handle struct now exposes inherent
   identity consts re-exposing the per-rpc module-level metadata:

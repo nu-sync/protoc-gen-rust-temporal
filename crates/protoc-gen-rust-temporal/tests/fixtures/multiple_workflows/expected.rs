@@ -209,6 +209,16 @@ pub mod multi_v1_multi_service_temporal {
         inner: temporal_runtime::WorkflowHandle,
     }
 
+    impl ::std::fmt::Debug for AlphaHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("AlphaHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
+    }
+
     impl AlphaHandle {
         pub const WORKFLOW_NAME: &'static str = self::ALPHA_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::ALPHA_INPUT_TYPE;
@@ -303,6 +313,16 @@ pub mod multi_v1_multi_service_temporal {
 
     pub struct BetaHandle {
         inner: temporal_runtime::WorkflowHandle,
+    }
+
+    impl ::std::fmt::Debug for BetaHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("BetaHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
     }
 
     impl BetaHandle {

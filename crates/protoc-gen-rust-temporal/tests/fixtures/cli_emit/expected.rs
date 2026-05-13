@@ -206,6 +206,16 @@ pub mod cli_v1_report_service_temporal {
         inner: temporal_runtime::WorkflowHandle,
     }
 
+    impl ::std::fmt::Debug for GenerateHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("GenerateHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
+    }
+
     impl GenerateHandle {
         pub const WORKFLOW_NAME: &'static str = self::GENERATE_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::GENERATE_INPUT_TYPE;
@@ -294,6 +304,16 @@ pub mod cli_v1_report_service_temporal {
 
     pub struct AggregateHandle {
         inner: temporal_runtime::WorkflowHandle,
+    }
+
+    impl ::std::fmt::Debug for AggregateHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("AggregateHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
     }
 
     impl AggregateHandle {

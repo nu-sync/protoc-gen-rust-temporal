@@ -152,6 +152,16 @@ pub mod solo_v1_solo_service_temporal {
         inner: temporal_runtime::WorkflowHandle,
     }
 
+    impl ::std::fmt::Debug for DoWorkHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("DoWorkHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
+    }
+
     impl DoWorkHandle {
         pub const WORKFLOW_NAME: &'static str = self::DO_WORK_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::DO_WORK_INPUT_TYPE;
