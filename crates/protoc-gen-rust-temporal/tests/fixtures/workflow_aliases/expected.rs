@@ -66,6 +66,15 @@ pub mod aliases_v1_alias_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for AliasServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl AliasServiceClient {
         /// Start a new `aliases.v1.AliasService.Run` workflow.
         pub async fn run(
             &self,

@@ -58,6 +58,15 @@ pub mod empty_v1_nop_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for NopServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl NopServiceClient {
         /// Start a new `empty.v1.NopService.Tick` workflow.
         pub async fn tick(
             &self,

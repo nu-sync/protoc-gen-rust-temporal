@@ -99,6 +99,15 @@ pub mod wf_v1_order_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for OrderServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl OrderServiceClient {
         /// Start a new `wf.v1.OrderService.Run` workflow.
         pub async fn run(
             &self,

@@ -106,6 +106,15 @@ pub mod full_v1_full_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for FullServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl FullServiceClient {
         /// Start a new `full.v1.FullService.Run` workflow.
         pub async fn run(
             &self,

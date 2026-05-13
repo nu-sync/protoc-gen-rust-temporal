@@ -102,6 +102,15 @@ pub mod jobs_v1_job_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for JobServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl JobServiceClient {
         /// Start a new `jobs.v1.JobService.RunJob` workflow.
         pub async fn run_job(
             &self,

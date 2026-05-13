@@ -86,6 +86,15 @@ pub mod eoqu_v1_eoqu_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for EoquServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl EoquServiceClient {
         /// Start a new `eoqu.v1.EoquService.Run` workflow.
         pub async fn run(
             &self,

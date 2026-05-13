@@ -85,6 +85,15 @@ pub mod cli_v1_report_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for ReportServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl ReportServiceClient {
         /// Start a new `cli.v1.ReportService.Generate` workflow.
         pub async fn generate(
             &self,

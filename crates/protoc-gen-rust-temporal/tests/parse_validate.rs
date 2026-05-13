@@ -2876,6 +2876,28 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn client_implements_from_temporal_client_trait() {
+    // R6 ergonomics — sugar over `<Service>Client::new`:
+    // `From<TemporalClient> for <Service>Client` lets consumers
+    // spell `let svc: MyClient = bridge.into();`. Mirrors the
+    // `<Wf>Handle` From shipment so both wrappers expose the
+    // trait duality (`From<Bridge>` + `Into<Bridge>` via
+    // `into_inner`).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "impl ::std::convert::From<temporal_runtime::TemporalClient> for JobServiceClient {"
+        ),
+        "missing From<TemporalClient> impl: {source}"
+    );
+    assert!(
+        source.contains("Self::new(client)"),
+        "From impl body must delegate to Self::new: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_into_inner_consuming_accessor() {
     // R6 ergonomics — `<Service>Client::into_inner(self)` returns
     // the underlying `TemporalClient` by value. Lets callers

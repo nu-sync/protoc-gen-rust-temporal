@@ -60,4 +60,13 @@ pub mod act_v1_worker_only_service_temporal {
 
     }
 
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for WorkerOnlyServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl WorkerOnlyServiceClient {
+    }
+
 }

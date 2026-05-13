@@ -88,6 +88,15 @@ pub mod multi_v1_multi_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for MultiServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl MultiServiceClient {
         /// Start a new `multi.v1.MultiService.Alpha` workflow.
         pub async fn alpha(
             &self,

@@ -736,6 +736,28 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "            self.client");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    // Idiomatic `From<TemporalClient>` — sugar over `Self::new`
+    // letting consumers spell `let svc: MyClient = bridge.into();`
+    // when the destination type is inferred. Mirrors the
+    // `<Wf>Handle` shipment so both wrappers expose the trait
+    // duality (`From<Bridge>` + `Into<Bridge>` via `into_inner`).
+    let _ = writeln!(
+        out,
+        "    impl ::std::convert::From<temporal_runtime::TemporalClient> for {client_struct} {{"
+    );
+    let _ = writeln!(
+        out,
+        "        fn from(client: temporal_runtime::TemporalClient) -> Self {{"
+    );
+    let _ = writeln!(out, "            Self::new(client)");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    // Continue the inherent impl block where the rest of the
+    // client methods (per-workflow client surface) live.
+    let _ = writeln!(out, "    impl {client_struct} {{");
 
     for wf in &svc.workflows {
         render_client_workflow_methods(out, svc, wf);

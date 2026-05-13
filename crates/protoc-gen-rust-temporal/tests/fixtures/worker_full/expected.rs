@@ -98,6 +98,15 @@ pub mod workerfull_v1_orchestration_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for OrchestrationServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl OrchestrationServiceClient {
         /// Start a new `workerfull.v1.OrchestrationService.Run` workflow.
         pub async fn run(
             &self,

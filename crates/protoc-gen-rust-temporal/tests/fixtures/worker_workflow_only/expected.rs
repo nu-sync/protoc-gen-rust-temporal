@@ -65,6 +65,15 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for WorkerWorkflowServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl WorkerWorkflowServiceClient {
         /// Start a new `workerwf.v1.WorkerWorkflowService.Run` workflow.
         pub async fn run(
             &self,

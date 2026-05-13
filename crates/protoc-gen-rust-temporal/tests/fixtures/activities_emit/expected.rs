@@ -90,6 +90,15 @@ pub mod acts_v1_chunk_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for ChunkServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl ChunkServiceClient {
         /// Start a new `acts.v1.ChunkService.RunBatch` workflow.
         pub async fn run_batch(
             &self,

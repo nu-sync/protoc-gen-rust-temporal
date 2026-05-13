@@ -67,6 +67,15 @@ pub mod workeract_v1_activity_worker_service_temporal {
 
     }
 
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for ActivityWorkerServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl ActivityWorkerServiceClient {
+    }
+
 
     // ── Activities ────────────────────────────────────────────
     // Phase 2 (activities=true): typed trait + name consts. Wire to

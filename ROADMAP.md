@@ -283,6 +283,20 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `From<TemporalClient>` impl on `<Service>Client`):
+  parallel of the recent `<Wf>Handle` From shipment for the
+  service client. `impl From<TemporalClient> for <Service>Client`
+  delegates to `Self::new(client)`. Lets consumers spell:
+  ```
+  let svc: MyClient = bridge.into();
+  fn takes_svc(s: impl Into<MyClient>) { ... }
+  ```
+  Mirrors the Handle From shipment so both wrappers expose the
+  trait duality (`From<Bridge>` + `Into<Bridge>` via
+  `into_inner`). One new positive parse_validate test pins the
+  impl shape and the delegation. Several fixture goldens
+  reblessed (every Client gained the From impl block). 184
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `From<WorkflowHandle>` impl on `<Wf>Handle`):
   sugar over the recently-shipped `from_inner` constructor.
   `impl From<temporal_runtime::WorkflowHandle> for <Wf>Handle`

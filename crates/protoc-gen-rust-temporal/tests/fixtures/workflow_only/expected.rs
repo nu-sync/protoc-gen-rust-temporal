@@ -65,6 +65,15 @@ pub mod solo_v1_solo_service_temporal {
             self.client
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for SoloServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl SoloServiceClient {
         /// Start a new `solo.v1.SoloService.DoWork` workflow.
         pub async fn do_work(
             &self,
