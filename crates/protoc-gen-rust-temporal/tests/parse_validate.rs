@@ -1620,6 +1620,54 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn workflow_input_output_type_consts_emit() {
+    // Per-workflow `<RPC>_INPUT_TYPE` / `<RPC>_OUTPUT_TYPE` consts
+    // carry the fully-qualified proto type name so consumer tooling
+    // can route payloads without re-traversing the descriptor pool.
+    // Empty sides land as `"google.protobuf.Empty"`.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package iot.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          rpc EmptyIn(google.protobuf.Empty) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          rpc EmptyOut(In) returns (google.protobuf.Empty) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const RUN_INPUT_TYPE: &str = \"iot.v1.In\";"),
+        "RUN_INPUT_TYPE const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const RUN_OUTPUT_TYPE: &str = \"iot.v1.Out\";"),
+        "RUN_OUTPUT_TYPE const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const EMPTY_IN_INPUT_TYPE: &str = \"google.protobuf.Empty\";"),
+        "Empty-input type const must use canonical Empty FQN: {source}"
+    );
+    assert!(
+        source.contains("pub const EMPTY_OUT_OUTPUT_TYPE: &str = \"google.protobuf.Empty\";"),
+        "Empty-output type const must use canonical Empty FQN: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_service_level_name_aggregates() {
     // R4 — `<Service>Client` exposes `WORKFLOW_NAMES` / `SIGNAL_NAMES`
     // / `QUERY_NAMES` / `UPDATE_NAMES` / `ACTIVITY_NAMES` aggregate

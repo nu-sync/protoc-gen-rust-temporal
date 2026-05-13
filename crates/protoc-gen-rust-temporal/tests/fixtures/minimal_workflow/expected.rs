@@ -28,6 +28,8 @@ pub mod jobs_v1_job_service_temporal {
     }
 
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
+    pub const RUN_JOB_INPUT_TYPE: &str = "jobs.v1.JobInput";
+    pub const RUN_JOB_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
 
     fn run_job_id(input: &JobInput) -> String {

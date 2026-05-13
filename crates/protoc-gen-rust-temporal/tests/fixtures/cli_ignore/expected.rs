@@ -22,8 +22,12 @@ pub mod cli_v1_report_service_temporal {
     }
 
     pub const GENERATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Generate";
+    pub const GENERATE_INPUT_TYPE: &str = "cli.v1.GenerateInput";
+    pub const GENERATE_OUTPUT_TYPE: &str = "cli.v1.GenerateOutput";
     pub const GENERATE_TASK_QUEUE: &str = "reports";
     pub const INTERNAL_WORKFLOW_NAME: &str = "cli.v1.ReportService.Internal";
+    pub const INTERNAL_INPUT_TYPE: &str = "cli.v1.InternalInput";
+    pub const INTERNAL_OUTPUT_TYPE: &str = "cli.v1.InternalOutput";
     pub const INTERNAL_TASK_QUEUE: &str = "reports";
 
     fn generate_id(input: &GenerateInput) -> String {

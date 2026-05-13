@@ -28,6 +28,8 @@ pub mod wf_v1_order_service_temporal {
     }
 
     pub const RUN_WORKFLOW_NAME: &str = "wf.v1.OrderService.Run";
+    pub const RUN_INPUT_TYPE: &str = "wf.v1.OrderInput";
+    pub const RUN_OUTPUT_TYPE: &str = "wf.v1.OrderOutput";
     pub const RUN_TASK_QUEUE: &str = "orders";
 
     fn run_id(input: &OrderInput) -> String {

@@ -16,6 +16,8 @@ pub mod solo_v1_solo_service_temporal {
     }
 
     pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService.DoWork";
+    pub const DO_WORK_INPUT_TYPE: &str = "solo.v1.WorkInput";
+    pub const DO_WORK_OUTPUT_TYPE: &str = "solo.v1.WorkOutput";
     pub const DO_WORK_TASK_QUEUE: &str = "solo-tq";
 
     pub struct SoloServiceClient {

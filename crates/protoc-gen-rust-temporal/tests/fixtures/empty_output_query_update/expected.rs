@@ -22,6 +22,8 @@ pub mod eoqu_v1_eoqu_service_temporal {
     }
 
     pub const RUN_WORKFLOW_NAME: &str = "eoqu.v1.EoquService.Run";
+    pub const RUN_INPUT_TYPE: &str = "eoqu.v1.RunInput";
+    pub const RUN_OUTPUT_TYPE: &str = "eoqu.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "eoqu";
 
     pub struct EoquServiceClient {

@@ -16,6 +16,8 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     }
 
     pub const RUN_WORKFLOW_NAME: &str = "workerwf.v1.WorkerWorkflowService.Run";
+    pub const RUN_INPUT_TYPE: &str = "workerwf.v1.WorkInput";
+    pub const RUN_OUTPUT_TYPE: &str = "workerwf.v1.WorkOutput";
     pub const RUN_TASK_QUEUE: &str = "worker-workflows";
 
     pub struct WorkerWorkflowServiceClient {

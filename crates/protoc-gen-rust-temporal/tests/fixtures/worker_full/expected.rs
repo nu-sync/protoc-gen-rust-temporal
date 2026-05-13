@@ -34,6 +34,8 @@ pub mod workerfull_v1_orchestration_service_temporal {
     }
 
     pub const RUN_WORKFLOW_NAME: &str = "workerfull.v1.OrchestrationService.Run";
+    pub const RUN_INPUT_TYPE: &str = "workerfull.v1.RunInput";
+    pub const RUN_OUTPUT_TYPE: &str = "workerfull.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "worker-full";
 
     pub struct OrchestrationServiceClient {

@@ -22,8 +22,12 @@ pub mod cli_v1_report_service_temporal {
     }
 
     pub const GENERATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Generate";
+    pub const GENERATE_INPUT_TYPE: &str = "cli.v1.GenerateInput";
+    pub const GENERATE_OUTPUT_TYPE: &str = "cli.v1.GenerateOutput";
     pub const GENERATE_TASK_QUEUE: &str = "reports";
     pub const AGGREGATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Aggregate";
+    pub const AGGREGATE_INPUT_TYPE: &str = "cli.v1.AggregateInput";
+    pub const AGGREGATE_OUTPUT_TYPE: &str = "cli.v1.AggregateOutput";
     pub const AGGREGATE_TASK_QUEUE: &str = "reports";
 
     fn generate_id(input: &GenerateInput) -> String {

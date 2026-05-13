@@ -31,6 +31,8 @@ pub mod full_v1_full_service_temporal {
     }
 
     pub const RUN_WORKFLOW_NAME: &str = "full.v1.FullService.Run";
+    pub const RUN_INPUT_TYPE: &str = "full.v1.RunInput";
+    pub const RUN_OUTPUT_TYPE: &str = "full.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "full";
 
     fn run_id(input: &RunInput) -> String {

@@ -16,6 +16,8 @@ pub mod aliases_v1_alias_service_temporal {
     }
 
     pub const RUN_WORKFLOW_NAME: &str = "aliases.v1.AliasService.Run";
+    pub const RUN_INPUT_TYPE: &str = "aliases.v1.RunInput";
+    pub const RUN_OUTPUT_TYPE: &str = "aliases.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "aliases";
     pub const RUN_WORKFLOW_ALIASES: &[&str] = &["aliases.v1.AliasService.RunLegacy", "aliases.v1.AliasService.RunV0"];
 

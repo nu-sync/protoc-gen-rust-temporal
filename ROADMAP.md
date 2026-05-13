@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — per-workflow `<RPC>_INPUT_TYPE` / `_OUTPUT_TYPE` consts):
+  every workflow rpc now emits two `&str` consts carrying the fully-
+  qualified proto type names for its input and output messages. Empty
+  sides land as the canonical `"google.protobuf.Empty"` (preserved
+  verbatim from `ProtoType.full_name`). Lets consumer tooling
+  (codecs, payload routers, cross-language test harnesses) look up
+  the proto message name without re-traversing the descriptor pool.
+  One new positive parse_validate test pins the typed + both Empty
+  variants; 14 fixture goldens reblessed (every fixture with at
+  least one workflow gained the two-line const block). No bridge
+  signature change.
 - 2026-05-13 (R4 — service-level name aggregates on `<Service>Client`):
   the generated `<Service>Client` now exposes five aggregate
   `&'static [&'static str]` consts: `WORKFLOW_NAMES`, `SIGNAL_NAMES`,

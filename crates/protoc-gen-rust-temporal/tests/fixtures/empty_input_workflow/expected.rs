@@ -9,6 +9,8 @@ pub mod empty_v1_nop_service_temporal {
     use crate::empty::v1::*;
 
     pub const TICK_WORKFLOW_NAME: &str = "empty.v1.NopService.Tick";
+    pub const TICK_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const TICK_OUTPUT_TYPE: &str = "google.protobuf.Empty";
     pub const TICK_TASK_QUEUE: &str = "nop";
 
     pub struct NopServiceClient {

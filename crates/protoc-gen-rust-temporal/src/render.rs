@@ -164,6 +164,24 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
             "    pub const {const_name}: &str = \"{}\";",
             wf.registered_name
         );
+        // Per-workflow input/output proto type FQN consts. Lets
+        // tooling (codecs, payload routers, cross-language test
+        // harnesses) look up the proto message name without
+        // re-traversing the descriptor pool. Empty sides land as
+        // `"google.protobuf.Empty"` — preserved verbatim from
+        // `ProtoType.full_name`.
+        let input_type_const = format!("{}_INPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {input_type_const}: &str = \"{}\";",
+            wf.input_type.full_name
+        );
+        let output_type_const = format!("{}_OUTPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {output_type_const}: &str = \"{}\";",
+            wf.output_type.full_name
+        );
         if let Some(tq) = effective_task_queue(svc, wf) {
             let tq_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
             let _ = writeln!(out, "    pub const {tq_const}: &str = \"{tq}\";");

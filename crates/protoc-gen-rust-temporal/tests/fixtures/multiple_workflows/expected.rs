@@ -22,8 +22,12 @@ pub mod multi_v1_multi_service_temporal {
     }
 
     pub const ALPHA_WORKFLOW_NAME: &str = "multi.v1.MultiService.Alpha";
+    pub const ALPHA_INPUT_TYPE: &str = "multi.v1.AlphaInput";
+    pub const ALPHA_OUTPUT_TYPE: &str = "multi.v1.AlphaOutput";
     pub const ALPHA_TASK_QUEUE: &str = "multi";
     pub const BETA_WORKFLOW_NAME: &str = "multi.v1.MultiService.Beta";
+    pub const BETA_INPUT_TYPE: &str = "multi.v1.BetaInput";
+    pub const BETA_OUTPUT_TYPE: &str = "multi.v1.BetaOutput";
     pub const BETA_TASK_QUEUE: &str = "multi-beta";
 
     fn alpha_id(input: &AlphaInput) -> String {
