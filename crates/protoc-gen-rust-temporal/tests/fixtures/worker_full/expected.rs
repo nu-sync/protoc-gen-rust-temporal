@@ -222,6 +222,16 @@ pub mod workerfull_v1_orchestration_service_temporal {
     pub const STATUS_QUERY_NAME: &str = "workerfull.v1.OrchestrationService.Status";
     pub const CONFIRM_UPDATE_NAME: &str = "workerfull.v1.OrchestrationService.Confirm";
 
+    // ── Workflow handler I/O aliases ────────────────────────
+    // R2 (workflows=true): per-handler type aliases so workflow body
+    // signatures can spell `CancelSignalInput` instead of repeating
+    // the prost message name.
+
+    pub type CancelSignalInput = CancelInput;
+    pub type StatusQueryOutput = StatusOutput;
+    pub type ConfirmUpdateInput = ConfirmInput;
+    pub type ConfirmUpdateOutput = ConfirmOutput;
+
     // -- Workflow definitions --------------------------------
     // workflows=true: typed proto contracts + registration helpers.
     // The consumer owns the temporalio-sdk #[workflow] body and

@@ -254,6 +254,15 @@ pub mod jobs_v1_job_service_temporal {
     pub const CANCEL_JOB_SIGNAL_NAME: &str = "jobs.v1.JobService.CancelJob";
     pub const GET_STATUS_QUERY_NAME: &str = "jobs.v1.JobService.GetStatus";
 
+    // ── Workflow handler I/O aliases ────────────────────────
+    // R2 (workflows=true): per-handler type aliases so workflow body
+    // signatures can spell `CancelSignalInput` instead of repeating
+    // the prost message name.
+
+    pub type CancelJobSignalInput = CancelJobInput;
+    pub type GetStatusQueryInput = GetStatusInput;
+    pub type GetStatusQueryOutput = JobStatusOutput;
+
     // -- Workflow definitions --------------------------------
     // workflows=true: typed proto contracts + registration helpers.
     // The consumer owns the temporalio-sdk #[workflow] body and

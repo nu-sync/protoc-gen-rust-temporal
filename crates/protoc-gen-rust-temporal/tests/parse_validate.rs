@@ -1210,6 +1210,59 @@ fn worker_workflow_aliases_surfaces_on_definition_trait() {
 }
 
 #[test]
+fn workflows_emit_renders_handler_io_aliases() {
+    // R2 — per-handler I/O aliases let workflow bodies spell handler
+    // input/output types by role (`CancelSignalInput`, `StatusQueryOutput`,
+    // …) instead of repeating the prost message names. Skipped on the
+    // Empty side since aliasing `()` adds no value.
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    let source = render::render(&services[0], &opts);
+    // Cancel signal: non-Empty input → CancelSignalInput alias.
+    assert!(
+        source.contains("pub type CancelSignalInput = CancelInput;"),
+        "must emit signal-input alias: {source}"
+    );
+    // Status query: Empty input, non-Empty output → only output alias.
+    assert!(
+        !source.contains("pub type StatusQueryInput"),
+        "Empty-input query must not produce an input alias: {source}"
+    );
+    assert!(
+        source.contains("pub type StatusQueryOutput = StatusOutput;"),
+        "non-Empty-output query must produce an output alias: {source}"
+    );
+    // Confirm update: non-Empty input AND non-Empty output → both aliases.
+    assert!(
+        source.contains("pub type ConfirmUpdateInput = ConfirmInput;"),
+        "must emit update-input alias: {source}"
+    );
+    assert!(
+        source.contains("pub type ConfirmUpdateOutput = ConfirmOutput;"),
+        "must emit update-output alias: {source}"
+    );
+    // Header banner appears exactly once.
+    let header_hits = source.matches("Workflow handler I/O aliases").count();
+    assert_eq!(
+        header_hits, 1,
+        "alias section header must appear once: {source}"
+    );
+}
+
+#[test]
+fn workflow_handler_io_aliases_skipped_when_workflows_off() {
+    // The aliases live under the existing `render_workflow_handler_name_consts`
+    // emit which is gated by `workflows=true`. Confirm the default
+    // RenderOptions doesn't produce them.
+    let services = parse_and_validate("workflows_emit");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("CancelSignalInput"),
+        "aliases must not appear without workflows=true: {source}"
+    );
+}
+
+#[test]
 fn workflows_emit_renders_handler_name_consts() {
     let services = parse_and_validate("workflows_emit");
     let opts = load_fixture_options("workflows_emit");

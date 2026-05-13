@@ -2140,6 +2140,70 @@ fn render_workflow_handler_name_consts(out: &mut String, svc: &ServiceModel) {
             u.registered_name
         );
     }
+
+    // R2 — per-handler typed I/O aliases. Lets workflow bodies spell out
+    // handler types by role (`CancelSignalInput`, `StatusQueryOutput`,
+    // …) instead of repeating the prost message names. Skipped when the
+    // side is Empty — aliasing `()` adds no value and clutters the
+    // generated surface.
+    let mut emitted_alias_header = false;
+    let emit_alias_header = |out: &mut String, already: &mut bool| {
+        if *already {
+            return;
+        }
+        *already = true;
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "    // ── Workflow handler I/O aliases ────────────────────────"
+        );
+        let _ = writeln!(
+            out,
+            "    // R2 (workflows=true): per-handler type aliases so workflow body"
+        );
+        let _ = writeln!(
+            out,
+            "    // signatures can spell `CancelSignalInput` instead of repeating"
+        );
+        let _ = writeln!(out, "    // the prost message name.");
+        let _ = writeln!(out);
+    };
+    for sig in &svc.signals {
+        if sig.input_type.is_empty {
+            continue;
+        }
+        emit_alias_header(out, &mut emitted_alias_header);
+        let alias = format!("{}SignalInput", sig.rpc_method);
+        let _ = writeln!(
+            out,
+            "    pub type {alias} = {};",
+            sig.input_type.rust_name()
+        );
+    }
+    for q in &svc.queries {
+        if !q.input_type.is_empty {
+            emit_alias_header(out, &mut emitted_alias_header);
+            let alias = format!("{}QueryInput", q.rpc_method);
+            let _ = writeln!(out, "    pub type {alias} = {};", q.input_type.rust_name());
+        }
+        if !q.output_type.is_empty {
+            emit_alias_header(out, &mut emitted_alias_header);
+            let alias = format!("{}QueryOutput", q.rpc_method);
+            let _ = writeln!(out, "    pub type {alias} = {};", q.output_type.rust_name());
+        }
+    }
+    for u in &svc.updates {
+        if !u.input_type.is_empty {
+            emit_alias_header(out, &mut emitted_alias_header);
+            let alias = format!("{}UpdateInput", u.rpc_method);
+            let _ = writeln!(out, "    pub type {alias} = {};", u.input_type.rust_name());
+        }
+        if !u.output_type.is_empty {
+            emit_alias_header(out, &mut emitted_alias_header);
+            let alias = format!("{}UpdateOutput", u.rpc_method);
+            let _ = writeln!(out, "    pub type {alias} = {};", u.output_type.rust_name());
+        }
+    }
 }
 
 /// Phase 4.0: per-service `<service>_cli` module. Emits the clap-derive
