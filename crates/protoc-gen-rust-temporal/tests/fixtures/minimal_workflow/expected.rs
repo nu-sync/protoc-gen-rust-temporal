@@ -101,7 +101,8 @@ pub mod jobs_v1_job_service_temporal {
         }
 
         /// Run the `jobs.v1.JobService.Reconfigure` update against a workflow by id.
-        pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput> {
+        pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<ReconfigureOutput> {
+            let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
             temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&inner, "jobs.v1.JobService.Reconfigure", &input, wait_policy).await
         }
@@ -163,7 +164,8 @@ pub mod jobs_v1_job_service_temporal {
         }
 
         /// Run the `jobs.v1.JobService.Reconfigure` update.
-        pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput> {
+        pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<ReconfigureOutput> {
+            let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);
             temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&self.inner, "jobs.v1.JobService.Reconfigure", &input, wait_policy).await
         }
 

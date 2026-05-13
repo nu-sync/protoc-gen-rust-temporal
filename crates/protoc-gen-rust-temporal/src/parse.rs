@@ -21,12 +21,12 @@ use prost_reflect::{
 use crate::model::{
     ActivityModel, IdConflictPolicy, IdReusePolicy, IdTemplateSegment, ProtoType, QueryModel,
     QueryRef, RetryPolicySpec, ServiceModel, SignalModel, SignalRef, UpdateModel, UpdateRef,
-    WorkflowModel,
+    WaitPolicyKind, WorkflowModel,
 };
 use crate::temporal::api::enums::v1::WorkflowIdConflictPolicy as ProtoConflictPolicy;
 use crate::temporal::v1::{
     ActivityOptions, IdReusePolicy as ProtoPolicy, QueryOptions, ServiceOptions, SignalOptions,
-    UpdateOptions, WorkflowOptions,
+    UpdateOptions, WaitPolicy as ProtoWaitPolicy, WorkflowOptions,
 };
 use heck::ToSnakeCase;
 
@@ -441,6 +441,18 @@ fn update_from(
             })?,
         )
     };
+    // Resolve the proto-declared default wait policy. `wait_for_stage` is
+    // the live field; `wait_policy` (deprecated) is the legacy predecessor.
+    // Per cludden's Go plugin, prefer `wait_for_stage` when both are set,
+    // and treat the deprecated `wait_policy` as the fallback so ports from
+    // Go-side legacy protos still honour the declared default.
+    #[allow(deprecated)]
+    let raw_wait = if opts.wait_for_stage != 0 {
+        opts.wait_for_stage
+    } else {
+        opts.wait_policy
+    };
+    let default_wait_policy = wait_policy_from_proto(raw_wait);
     Ok(UpdateModel {
         rpc_method,
         registered_name,
@@ -448,7 +460,17 @@ fn update_from(
         output_type: ProtoType::new(method.output().full_name()),
         validate: opts.validate,
         id_expression,
+        default_wait_policy,
     })
+}
+
+fn wait_policy_from_proto(raw: i32) -> Option<WaitPolicyKind> {
+    match ProtoWaitPolicy::try_from(raw).ok()? {
+        ProtoWaitPolicy::Unspecified => None,
+        ProtoWaitPolicy::Admitted => Some(WaitPolicyKind::Admitted),
+        ProtoWaitPolicy::Accepted => Some(WaitPolicyKind::Accepted),
+        ProtoWaitPolicy::Completed => Some(WaitPolicyKind::Completed),
+    }
 }
 
 fn activity_from(
@@ -519,33 +541,16 @@ fn reject_unsupported_workflow_options(
     ))
 }
 
-/// `UpdateOptions.wait_for_stage` (default `WaitPolicy` for the update) is
-/// runtime-affecting but not threaded through the v1 emit. Error out so users
-/// don't ship updates that silently default to `Completed` waits.
-///
-/// `wait_policy` is the deprecated predecessor of `wait_for_stage`. cludden's
-/// Go plugin still honours it on legacy protos; ignoring it here would let a
-/// user port a Go service over and silently lose their default policy.
-///
-/// `UpdateOptions.id` (a workflow-id template targeting the *parent* workflow)
-/// is now parsed into [`UpdateModel::id_expression`] and emitted as a
-/// `<update>_by_template` client convenience.
-fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &str) -> Result<()> {
-    let mut unsupported: Vec<&'static str> = Vec::new();
-    if opts.wait_for_stage != 0 {
-        unsupported.push("wait_for_stage");
-    }
-    #[allow(deprecated)] // intentional: see doc comment.
-    if opts.wait_policy != 0 {
-        unsupported.push("wait_policy (deprecated)");
-    }
-    if unsupported.is_empty() {
-        return Ok(());
-    }
-    Err(anyhow!(
-        "{service}.{rpc}: (temporal.v1.update) sets runtime-affecting field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
-        unsupported.join(", "),
-    ))
+/// `UpdateOptions` has no still-rejected fields after R5. `id`,
+/// `wait_for_stage`, and the deprecated `wait_policy` are all parsed into
+/// the model. This function stays as the rejection sink for future fields
+/// the schema grows.
+fn reject_unsupported_update_options(
+    _opts: &UpdateOptions,
+    _service: &str,
+    _rpc: &str,
+) -> Result<()> {
+    Ok(())
 }
 
 /// Per-update fields nested inside `WorkflowOptions.update[]` that the v1

@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R5 — `UpdateOptions.wait_for_stage` + deprecated
+  `wait_policy`): both fields now fold into a generated default. Every
+  update method's `wait_policy` arg moves from `temporal_runtime::WaitPolicy`
+  to `Option<temporal_runtime::WaitPolicy>` — callers pass `None` to use
+  the proto-declared default. `wait_for_stage` takes precedence when both
+  are set; the deprecated `wait_policy` is the fallback so Go-side legacy
+  protos still honour their declared stage. Hard fallback when proto
+  declares neither: `Completed`. Touches every update emit site (4 Handle
+  methods, 4 client-by-id methods, `_with_start`, `_by_template`). New
+  positive tests cover the typical, deprecated, and no-default paths.
+  With this, `UpdateOptions` has no more rejected fields under R5.
 - 2026-05-13 (R5 — `UpdateOptions.id` template): `(temporal.v1.update).id`
   graduates from rejected to supported. Reuses the existing
   `parse_id_template` machinery (now factored into `emit_id_fn`) against
@@ -404,7 +415,7 @@ toward majority parity.
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |
-| Update ids/default wait stage | `UpdateOptions.id` shipped 2026-05-13 (`<update>_by_template`); `wait_for_stage` / deprecated `wait_policy` still rejected. | R5 |
+| Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |
 | XNS/Nexus/codec/docs/test clients | Not generated. | R8 |

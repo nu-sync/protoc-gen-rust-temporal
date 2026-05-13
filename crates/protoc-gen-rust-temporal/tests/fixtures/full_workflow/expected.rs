@@ -110,7 +110,8 @@ pub mod full_v1_full_service_temporal {
         }
 
         /// Run the `full.v1.FullService.Reconfigure` update against a workflow by id.
-        pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput> {
+        pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<ReconfigureOutput> {
+            let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
             temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&inner, "full.v1.FullService.Reconfigure", &input, wait_policy).await
         }
@@ -192,7 +193,8 @@ pub mod full_v1_full_service_temporal {
         }
 
         /// Run the `full.v1.FullService.Reconfigure` update.
-        pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput> {
+        pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<ReconfigureOutput> {
+            let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);
             temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&self.inner, "full.v1.FullService.Reconfigure", &input, wait_policy).await
         }
 
@@ -238,7 +240,7 @@ pub mod full_v1_full_service_temporal {
         update_input: ReconfigureInput,
         workflow_input: RunInput,
         opts: RunStartOptions,
-        wait_policy: temporal_runtime::WaitPolicy,
+        wait_policy: Option<temporal_runtime::WaitPolicy>,
     ) -> Result<(RunHandle, ReconfigureOutput)> {
         let workflow_id = opts.workflow_id.clone().unwrap_or_else(|| {
             run_id(&workflow_input)
@@ -251,6 +253,7 @@ pub mod full_v1_full_service_temporal {
         let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));
         let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
         let retry_policy = opts.retry_policy;
+        let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);
         let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<RunInput, ReconfigureInput, ReconfigureOutput>(
             client,
             RUN_WORKFLOW_NAME,

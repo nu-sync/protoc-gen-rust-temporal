@@ -887,7 +887,7 @@ fn minimal_workflow_render_smoke() {
         "pub async fn result(&self) -> Result<JobOutput>",
         "pub async fn cancel_job(&self, input: CancelJobInput) -> Result<()>",
         "pub async fn get_status(&self) -> Result<JobStatusOutput>",
-        "pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy)",
+        "pub async fn reconfigure(&self, input: ReconfigureInput, wait_policy: Option<temporal_runtime::WaitPolicy>)",
         "pub async fn cancel_job_with_start(",
         "fn run_job_id(input: &JobInput) -> String",
         "run_job_id(&input)",
@@ -981,7 +981,7 @@ fn client_exposes_update_by_id_methods() {
     let svc = &services[0];
     let source = render::render(svc, &Default::default());
     assert!(
-        source.contains("pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput>"),
+        source.contains("pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<ReconfigureOutput>"),
         "client must expose Reconfigure update-by-id with wait_policy: {source}"
     );
     assert!(
@@ -1391,7 +1391,7 @@ fn update_id_template_emits_workflow_id_derivation_and_by_template_method() {
     );
     assert!(
         source.contains(
-            "pub async fn patch_by_template(&self, input: PatchInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<PatchOutput>"
+            "pub async fn patch_by_template(&self, input: PatchInput, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<PatchOutput>"
         ),
         "client must expose `<update>_by_template` convenience: {source}"
     );
@@ -1422,14 +1422,14 @@ fn update_without_id_template_omits_by_template_method() {
 }
 
 #[test]
-fn update_with_deprecated_wait_policy_is_rejected() {
-    // The deprecated `wait_policy` field on UpdateOptions still appears on
-    // legacy protos ported from cludden's Go plugin. Silently ignoring it
-    // would let a user lose their default WaitPolicy on the Rust client.
+fn update_wait_for_stage_folds_into_default() {
+    // R5: `UpdateOptions.wait_for_stage` is now honoured. The update method's
+    // `wait_policy` arg is `Option<WaitPolicy>` and the proto default folds
+    // in at the call site when the caller passes `None`.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package guard.v1;
+        package wfs.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
@@ -1440,19 +1440,92 @@ fn update_with_deprecated_wait_policy_is_rejected() {
             };
           }
           rpc Patch(In) returns (Out) {
-            option (temporal.v1.update) = { wait_policy: WAIT_POLICY_ACCEPTED };
+            option (temporal.v1.update) = { wait_for_stage: WAIT_POLICY_ACCEPTED };
           }
         }
         message In {}
         message Out {}
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    let patch = svc
+        .updates
+        .iter()
+        .find(|u| u.rpc_method == "Patch")
+        .unwrap();
+    use protoc_gen_rust_temporal::model::WaitPolicyKind;
+    assert_eq!(patch.default_wait_policy, Some(WaitPolicyKind::Accepted));
+
+    let source = render::render(svc, &Default::default());
     assert!(
-        err.contains("wait_policy"),
-        "expected deprecated-wait_policy diagnostic, got: {err}"
+        source.contains("wait_policy: Option<temporal_runtime::WaitPolicy>"),
+        "wait_policy arg must now be Option<WaitPolicy>: {source}"
+    );
+    assert!(
+        source.contains(
+            "let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Accepted);"
+        ),
+        "proto default must fold in at the call site: {source}"
+    );
+}
+
+#[test]
+fn update_deprecated_wait_policy_folds_into_default() {
+    // The deprecated `wait_policy` field is still honoured for legacy
+    // Go-ported protos. When `wait_for_stage` is unset and `wait_policy`
+    // is set, we use `wait_policy`.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wp.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Patch" }]
+            };
+          }
+          rpc Patch(In) returns (Out) {
+            option (temporal.v1.update) = { wait_policy: WAIT_POLICY_ADMITTED };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    let patch = svc
+        .updates
+        .iter()
+        .find(|u| u.rpc_method == "Patch")
+        .unwrap();
+    use protoc_gen_rust_temporal::model::WaitPolicyKind;
+    assert_eq!(patch.default_wait_policy, Some(WaitPolicyKind::Admitted));
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains(
+            "let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Admitted);"
+        ),
+        "deprecated wait_policy must fold in identically to wait_for_stage: {source}"
+    );
+}
+
+#[test]
+fn update_without_wait_policy_default_falls_back_to_completed() {
+    // When the proto declares no default, callers can still pass None and
+    // the codegen falls back to `Completed` — matching the SDK's prior
+    // mandatory-arg behaviour.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);"
+        ),
+        "no proto default → fallback to Completed: {source}"
     );
 }
 
@@ -1619,24 +1692,6 @@ fn unsupported_field_support_status_table() {
               message In {} message Out {}
             "#,
             expect_field: "versioning_behavior",
-        },
-        Case {
-            label: "UpdateOptions.wait_for_stage",
-            snippet: r#"
-              service Svc {
-                rpc Run(In) returns (Out) {
-                  option (temporal.v1.workflow) = {
-                    task_queue: "tq"
-                    update: [{ ref: "Patch" }]
-                  };
-                }
-                rpc Patch(In) returns (Out) {
-                  option (temporal.v1.update) = { wait_for_stage: WAIT_POLICY_COMPLETED };
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_field: "wait_for_stage",
         },
         Case {
             label: "WorkflowOptions.Update[].xns",

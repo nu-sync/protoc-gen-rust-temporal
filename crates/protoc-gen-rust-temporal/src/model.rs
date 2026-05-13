@@ -151,6 +151,32 @@ pub struct UpdateModel {
     /// client-level `<update>_by_template` convenience method that uses
     /// the derived id to find the parent workflow.
     pub id_expression: Option<Vec<IdTemplateSegment>>,
+    /// Proto-declared default `WaitPolicy` for this update. When the
+    /// caller leaves the update method's `wait_policy` arg as `None`,
+    /// codegen folds this value in. `None` here means the proto didn't
+    /// declare one, so the call must pass `Some(...)`.
+    pub default_wait_policy: Option<WaitPolicyKind>,
+}
+
+/// Mirror of cludden's `WaitPolicy` enum (sans `Unspecified`, which we
+/// model as `Option::None` at call sites). The render layer maps each
+/// variant to the bridge facade's `temporal_runtime::WaitPolicy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WaitPolicyKind {
+    Admitted,
+    Accepted,
+    Completed,
+}
+
+impl WaitPolicyKind {
+    /// Variant identifier on `temporal_runtime::WaitPolicy`.
+    pub fn rust_variant(self) -> &'static str {
+        match self {
+            Self::Admitted => "Admitted",
+            Self::Accepted => "Accepted",
+            Self::Completed => "Completed",
+        }
+    }
 }
 
 #[derive(Debug)]

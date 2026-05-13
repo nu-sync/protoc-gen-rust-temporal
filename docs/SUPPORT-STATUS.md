@@ -120,8 +120,8 @@ rejected by `validate.rs::validate_signal_outputs`.
 | `name` | supported | |
 | `validate` | supported | Surfaces on `UpdateModel.validate`; no validator hook generated yet. |
 | `id` | supported | Workflow-id template targeting the parent workflow, resolved against the update input. Compiled to a private `<update>_workflow_id(input)` helper plus a `<update>_by_template(input, wait_policy)` client convenience that forwards to the update-by-id call. Only `{{ .Field }}` segments supported (R7 will add Bloblang). |
-| `wait_for_stage` | rejected | R5. |
-| `wait_policy` (deprecated) | rejected | R5. |
+| `wait_for_stage` | supported | The update method's `wait_policy` arg is `Option<temporal_runtime::WaitPolicy>`; when the caller passes `None`, codegen folds in the proto-declared default. Fallback when proto declares none: `Completed`. |
+| `wait_policy` (deprecated) | supported (fallback to `wait_for_stage`) | Cludden's Go plugin still honours the deprecated `wait_policy` on legacy protos; we do the same. `wait_for_stage` takes precedence when both are set. |
 | `cli` | intentionally ignored | R6. |
 | `xns` | intentionally ignored | R8. |
 | `patches` | intentionally ignored | R8. |

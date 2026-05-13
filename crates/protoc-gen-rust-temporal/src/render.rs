@@ -22,7 +22,8 @@ use std::fmt::Write;
 use heck::{ToShoutySnakeCase, ToSnakeCase};
 
 use crate::model::{
-    IdTemplateSegment, QueryModel, ServiceModel, SignalModel, UpdateModel, WorkflowModel,
+    IdTemplateSegment, QueryModel, ServiceModel, SignalModel, UpdateModel, WaitPolicyKind,
+    WorkflowModel,
 };
 
 /// Render the `<package>_<service>_temporal.rs` source for one service.
@@ -384,6 +385,21 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
 /// by-id update method. Only emitted when the proto declares the
 /// template. Empty-output variant returns `Result<()>`; non-Empty
 /// returns the typed output.
+/// R5: every update method takes `wait_policy: Option<temporal_runtime::WaitPolicy>`
+/// and resolves it at the call site against the proto-declared default
+/// (`UpdateOptions.wait_for_stage` / deprecated `wait_policy`) — falling
+/// back to `Completed` when the proto leaves it unset, matching the SDK's
+/// previous mandatory-arg behaviour at the legacy emit.
+fn wait_policy_resolution_line(u: &UpdateModel, ind: &str) -> String {
+    let default_variant = u
+        .default_wait_policy
+        .map(WaitPolicyKind::rust_variant)
+        .unwrap_or("Completed");
+    format!(
+        "{ind}let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::{default_variant});\n"
+    )
+}
+
 fn render_client_update_by_template_method(out: &mut String, u: &UpdateModel) {
     let method_snake = u.rpc_method.to_snake_case();
     let by_id = method_snake.clone();
@@ -404,7 +420,7 @@ fn render_client_update_by_template_method(out: &mut String, u: &UpdateModel) {
         // segments (parse-time validation). Emit a no-arg derivation call.
         let _ = writeln!(
             out,
-            "        pub async fn {by_template}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            "        pub async fn {by_template}(&self, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
         );
         let _ = writeln!(out, "            let workflow_id = {id_fn}();");
         let _ = writeln!(
@@ -415,20 +431,16 @@ fn render_client_update_by_template_method(out: &mut String, u: &UpdateModel) {
         let in_ty = u.input_type.rust_name();
         let _ = writeln!(
             out,
-            "        pub async fn {by_template}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            "        pub async fn {by_template}(&self, input: {in_ty}, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
         );
         let _ = writeln!(out, "            let workflow_id = {id_fn}(&input);");
-        if u.output_type.is_empty {
-            let _ = writeln!(
-                out,
-                "            self.{by_id}(workflow_id, input, wait_policy).await"
-            );
-        } else {
-            let _ = writeln!(
-                out,
-                "            self.{by_id}(workflow_id, input, wait_policy).await"
-            );
-        }
+        // The by-id update takes the same args for both Empty- and
+        // non-Empty-output variants — the return type differs in the
+        // signature, not the call.
+        let _ = writeln!(
+            out,
+            "            self.{by_id}(workflow_id, input, wait_policy).await"
+        );
     }
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
@@ -445,12 +457,14 @@ fn render_client_update_method(out: &mut String, u: &UpdateModel) {
         "        /// Run the `{}` update against a workflow by id.",
         u.registered_name
     );
+    let resolve = wait_policy_resolution_line(u, "            ");
     match (u.input_type.is_empty, u.output_type.is_empty) {
         (true, true) => {
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
@@ -465,8 +479,9 @@ fn render_client_update_method(out: &mut String, u: &UpdateModel) {
         (true, false) => {
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
@@ -482,8 +497,9 @@ fn render_client_update_method(out: &mut String, u: &UpdateModel) {
             let in_ty = u.input_type.rust_name();
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
@@ -499,8 +515,9 @@ fn render_client_update_method(out: &mut String, u: &UpdateModel) {
             let in_ty = u.input_type.rust_name();
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
@@ -1152,12 +1169,14 @@ fn render_update_method(out: &mut String, u: &UpdateModel) {
     let method_snake = u.rpc_method.to_snake_case();
     let out_ty = u.output_type.rust_name();
     let _ = writeln!(out, "        /// Run the `{}` update.", u.registered_name);
+    let resolve = wait_policy_resolution_line(u, "            ");
     match (u.input_type.is_empty, u.output_type.is_empty) {
         (true, true) => {
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            temporal_runtime::update_proto_empty_unit(&self.inner, \"{}\", wait_policy).await",
@@ -1168,8 +1187,9 @@ fn render_update_method(out: &mut String, u: &UpdateModel) {
         (true, false) => {
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            temporal_runtime::update_proto_empty::<{out_ty}>(&self.inner, \"{}\", wait_policy).await",
@@ -1181,8 +1201,9 @@ fn render_update_method(out: &mut String, u: &UpdateModel) {
             let in_ty = u.input_type.rust_name();
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            temporal_runtime::update_unit::<{in_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
@@ -1194,8 +1215,9 @@ fn render_update_method(out: &mut String, u: &UpdateModel) {
             let in_ty = u.input_type.rust_name();
             let _ = writeln!(
                 out,
-                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+                "        pub async fn {method_snake}(&self, input: {in_ty}, wait_policy: Option<temporal_runtime::WaitPolicy>) -> Result<{out_ty}> {{"
             );
+            out.push_str(&resolve);
             let _ = writeln!(
                 out,
                 "            temporal_runtime::update_proto::<{in_ty}, {out_ty}>(&self.inner, \"{}\", &input, wait_policy).await",
@@ -1350,7 +1372,10 @@ fn render_update_with_start_fn(
         );
     }
     let _ = writeln!(out, "        opts: {opts_struct},");
-    let _ = writeln!(out, "        wait_policy: temporal_runtime::WaitPolicy,");
+    let _ = writeln!(
+        out,
+        "        wait_policy: Option<temporal_runtime::WaitPolicy>,"
+    );
     if u.output_type.is_empty {
         let _ = writeln!(out, "    ) -> Result<{handle_struct}> {{");
     } else {
@@ -1394,6 +1419,10 @@ fn render_update_with_start_fn(
         );
     }
     render_default_resolutions(out, wf, "        ");
+    // Resolve `wait_policy` against the update's proto-declared default
+    // (`UpdateOptions.wait_for_stage` / deprecated `wait_policy`), falling
+    // back to `Completed` when none is declared.
+    out.push_str(&wait_policy_resolution_line(u, "        "));
     // Output type is Empty → route through the `_unit` sibling, which
     // validates the canonical Empty payload server-side instead of decoding
     // it into a `()` (the typed `update_with_start_workflow_proto` requires
