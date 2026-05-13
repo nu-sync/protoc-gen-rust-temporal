@@ -67,6 +67,12 @@ pub mod jobs_v1_job_service_temporal {
         }
     }
 
+    impl ::std::fmt::Display for JobServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)
+        }
+    }
+
     impl JobServiceClient {
         pub const PACKAGE: &'static str = "jobs.v1";
         pub const SERVICE_NAME: &'static str = "JobService";

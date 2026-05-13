@@ -672,6 +672,23 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
+    // Manual `Display` impl — concise `<package>.<service>` form
+    // matching the `FULLY_QUALIFIED_SERVICE_NAME` const. Lets log
+    // lines like `info!("starting {client}")` produce a single
+    // readable token.
+    let _ = writeln!(out, "    impl ::std::fmt::Display for {client_struct} {{");
+    let _ = writeln!(
+        out,
+        "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+    );
+    let _ = writeln!(
+        out,
+        "            f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+
     let _ = writeln!(out, "    impl {client_struct} {{");
     // Service-level aggregate name consts — let tooling enumerate
     // every workflow / signal / query / update / activity registered

@@ -2665,6 +2665,24 @@ fn start_options_exposes_with_field_builders() {
 }
 
 #[test]
+fn client_struct_implements_display() {
+    // R6 ergonomics — `<Service>Client` carries a manual `Display`
+    // impl producing the fully-qualified service name (same as the
+    // `FULLY_QUALIFIED_SERVICE_NAME` const). Lets `info!("starting
+    // {client}")` produce a concise readable token.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("impl ::std::fmt::Display for JobServiceClient {"),
+        "missing Display impl: {source}"
+    );
+    assert!(
+        source.contains("f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)"),
+        "Display body must write the FQN const directly: {source}"
+    );
+}
+
+#[test]
 fn client_struct_implements_debug() {
     // R6 ergonomics — `<Service>Client` carries a manual `Debug`
     // impl that prints `package`, `service`, `plugin_version`

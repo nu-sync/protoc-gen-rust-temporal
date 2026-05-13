@@ -222,6 +222,16 @@ Progress:
   Several fixture goldens reblessed (every fixture with a marker
   gained the derive attr line). 168 parse_validate tests green.
   No bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client` `Display` impl):
+  pairs with the recent client `Debug` impl. Every generated
+  `<Service>Client` now also implements `Display` writing
+  `Self::FULLY_QUALIFIED_SERVICE_NAME` directly (no formatting
+  overhead). Lets `info!("starting {client}")` print
+  `jobs.v1.JobService` as a concise log token. Reuses the existing
+  identity const — no new state, no allocations. One new positive
+  parse_validate test pins the impl. Several fixture goldens
+  reblessed (every Client gained the impl block). 176 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client` `Debug` impl):
   parallel of the `<Wf>Handle` Debug shipment for the service-level
   client. `<Service>Client` now carries a manual Debug impl that
