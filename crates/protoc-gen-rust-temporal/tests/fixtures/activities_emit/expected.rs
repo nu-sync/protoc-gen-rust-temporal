@@ -324,7 +324,7 @@ pub mod acts_v1_chunk_service_temporal {
     pub const PROCESS_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Process";
     pub const HEARTBEAT_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Heartbeat";
 
-    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct ProcessActivity;
     impl temporal_runtime::worker::ActivityDefinition for ProcessActivity {
         type Input = temporal_runtime::TypedProtoMessage<ChunkInput>;
@@ -350,7 +350,7 @@ pub mod acts_v1_chunk_service_temporal {
     ) -> ::std::result::Result<ChunkOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(ProcessActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
-    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct HeartbeatActivity;
     impl temporal_runtime::worker::ActivityDefinition for HeartbeatActivity {
         type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;

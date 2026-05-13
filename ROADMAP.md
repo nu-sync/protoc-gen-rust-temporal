@@ -208,6 +208,17 @@ Progress:
   (`activities_emit`) emit. Several fixture goldens reblessed
   (every marker gained the `NAME` const line). 169 parse_validate
   tests green. No bridge signature change.
+- 2026-05-13 (R6 — marker structs also derive `Hash`):
+  extends the marker-struct derive list from `Debug, Default,
+  Clone, Copy, PartialEq, Eq` to also include `Hash`. Free for
+  unit structs (all instances hash to the same value), and lets
+  marker types serve as `HashMap` / `HashSet` keys — useful in
+  worker registries that key dispatch tables by marker type
+  (`HashMap<TypeId, ...>` is the alternative but requires a
+  `'static`-bounded marker, which everyone has anyway). The
+  existing marker-derive test was updated to expect the
+  six-trait list. Several fixture goldens reblessed. No bridge
+  signature change.
 - 2026-05-13 (R6 — marker structs derive ergonomic traits):
   every generated marker struct (`<Activity>Activity`, `<Sig>Signal`,
   `<Wf>Workflow` for child-workflow refs) is now declared with

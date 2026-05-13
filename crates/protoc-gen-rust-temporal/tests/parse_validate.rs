@@ -1357,7 +1357,7 @@ fn marker_structs_derive_standard_traits() {
     let source = render::render(&services[0], &opts);
     // Should appear at every marker struct decl (activity + signal +
     // child-workflow). worker_full has all three kinds.
-    let derive_line = "#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]";
+    let derive_line = "#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]";
     assert!(
         source.matches(derive_line).count() >= 2,
         "expected marker derive on at least two struct kinds: {source}"

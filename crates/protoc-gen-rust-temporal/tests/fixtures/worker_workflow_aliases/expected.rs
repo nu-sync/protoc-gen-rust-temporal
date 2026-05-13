@@ -314,7 +314,7 @@ pub mod aliases_v1_alias_service_temporal {
         worker.register_workflow::<W>()
     }
 
-    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RunWorkflow;
     impl temporal_runtime::worker::WorkflowDefinition for RunWorkflow {
         type Input = temporal_runtime::TypedProtoMessage<RunInput>;

@@ -2725,7 +2725,7 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         // `Default` for `Default::default()` patterns.
         let _ = writeln!(
             out,
-            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]"
+            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]"
         );
         let _ = writeln!(out, "    pub struct {marker_struct};");
         let _ = writeln!(
@@ -2906,7 +2906,7 @@ fn render_external_signal_helpers(out: &mut String, svc: &ServiceModel) {
         let input_ty = sig.input_type.rust_name();
         let _ = writeln!(
             out,
-            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]"
+            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]"
         );
         let _ = writeln!(out, "    pub struct {signal_marker};");
         let _ = writeln!(
@@ -3072,7 +3072,7 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         let marker_struct = format!("{}Workflow", wf.rpc_method);
         let _ = writeln!(
             out,
-            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]"
+            "    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]"
         );
         let _ = writeln!(out, "    pub struct {marker_struct};");
         let _ = writeln!(
