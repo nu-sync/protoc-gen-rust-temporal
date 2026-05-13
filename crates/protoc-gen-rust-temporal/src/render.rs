@@ -1174,6 +1174,16 @@ fn search_attributes_literal(spec: Option<&crate::model::SearchAttributesSpec>) 
                     SearchAttributeLiteral::Bool(v) => {
                         format!("temporal_runtime::encode_search_attribute_bool({v})")
                     }
+                    SearchAttributeLiteral::Double(v) => {
+                        // `{:?}` keeps the decimal on whole-number f64s
+                        // (e.g. `1.0` stays `1.0`); the bridge encoder
+                        // returns Result and refuses NaN/infinity, but
+                        // parse-time validation already filters those out
+                        // so `.expect` here marks a compile-time invariant.
+                        format!(
+                            "temporal_runtime::encode_search_attribute_double({v:?}f64).expect(\"compile-time-finite f64 literal\")"
+                        )
+                    }
                     SearchAttributeLiteral::StringField(field) => format!(
                         "temporal_runtime::encode_search_attribute_string(input.{field}.as_str())"
                     ),

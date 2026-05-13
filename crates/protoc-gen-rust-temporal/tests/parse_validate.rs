@@ -3766,6 +3766,70 @@ fn search_attributes_static_literal_map_compiles_to_hashmap() {
 }
 
 #[test]
+fn search_attributes_double_literal_compiles_to_encoder_call() {
+    // R7 slice 2 + bridge double primitive — Bloblang `<key>: 1.5`
+    // entries parse to `SearchAttributeLiteral::Double(f64)` and emit
+    // `temporal_runtime::encode_search_attribute_double(N).expect(...)`
+    // at the start path. Whole-number doubles preserve the decimal in
+    // the emitted literal so the wire shape stays an unambiguous JSON
+    // number.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_double.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"Score\": 1.5, \"Whole\": 2.0, \"Sci\": 1e6 }"
+            };
+          }
+        }
+        message In {}  message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept double literals");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let SearchAttributesSpec::Static(entries) = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the slice-2 spec")
+    else {
+        panic!("expected Static spec");
+    };
+    assert!(
+        entries.iter().any(|(k, v)| k == "Score"
+            && matches!(v, SearchAttributeLiteral::Double(d) if (*d - 1.5).abs() < 1e-12)),
+        "Score must parse to Double(1.5): {entries:?}"
+    );
+    assert!(
+        entries.iter().any(|(k, v)| k == "Whole"
+            && matches!(v, SearchAttributeLiteral::Double(d) if (*d - 2.0).abs() < 1e-12)),
+        "Whole must parse to Double(2.0): {entries:?}"
+    );
+    assert!(
+        entries.iter().any(|(k, v)| k == "Sci"
+            && matches!(v, SearchAttributeLiteral::Double(d) if (*d - 1e6).abs() < 1e-6)),
+        "Sci must parse to Double(1e6): {entries:?}"
+    );
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "temporal_runtime::encode_search_attribute_double(1.5f64).expect(\"compile-time-finite f64 literal\")"
+        ),
+        "1.5 literal must emit the bridge encoder call: {source}"
+    );
+    assert!(
+        source.contains("encode_search_attribute_double(2.0f64)"),
+        "whole-number f64 must preserve the decimal in the emitted literal: {source}"
+    );
+}
+
+#[test]
 fn search_attributes_string_field_ref_resolves_against_input() {
     // R7 slice 3a — `this.<field>` references against `string`-typed
     // singular input fields land as `SearchAttributeLiteral::StringField`

@@ -398,7 +398,7 @@ impl IdReusePolicy {
 /// literal key/value entries; slice 3 (deferred) will add a
 /// `WithInput` variant for `this.<field>` references.
 /// See `docs/R7-BLOBLANG.md`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SearchAttributesSpec {
     /// Empty map — proto declared `root = {}`. Emits as a no-op on
     /// the start path.
@@ -410,17 +410,18 @@ pub enum SearchAttributesSpec {
 }
 
 /// One entry in a `Static` `SearchAttributesSpec`. Slices 2 + 3:
-/// - `String` / `Int` / `Bool` — slice-2 primitive literals.
+/// - `String` / `Int` / `Bool` / `Double` — slice-2 primitive literals.
 /// - `StringField` / `IntField` / `BoolField` — slice-3 `this.<field>`
 ///   references where `<field>` resolves to a singular `string`,
 ///   `int64`, or `bool` field on the workflow input message. The
 ///   string is the Rust snake_case field name (validated against the
 ///   descriptor at parse time).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SearchAttributeLiteral {
     String(String),
     Int(i64),
     Bool(bool),
+    Double(f64),
     StringField(String),
     IntField(String),
     BoolField(String),

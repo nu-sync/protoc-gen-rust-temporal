@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 slice 2 — `double` literals wired through plugin):
+  closes the gap deferred in the previous commit: the Bloblang
+  slice-2 lexer now recognises f64 literals (tokens with `.` or
+  `e`/`E`) and produces a new `SearchAttributeLiteral::Double(f64)`
+  variant. Render emits
+  `encode_search_attribute_double(<v>f64).expect("compile-time-finite
+  f64 literal")` (the bridge encoder returns Result; the `.expect()`
+  marks the parse-time finite guarantee). `{:?}` formatting preserves
+  the decimal on whole-number values so generated code stays a JSON
+  number on the wire. Non-finite literals fall through to the
+  standard unsupported-`search_attributes` diagnostic. `SearchAttributesSpec`
+  and `SearchAttributeLiteral` drop `Eq` (kept `PartialEq`) since
+  f64 can't satisfy `Eq`. One new parse_validate test pins the
+  positive emit (fraction + whole-number + scientific notation).
+  `docs/SUPPORT-STATUS.md` row updated; double moves out of the
+  rejected-scalars list. 131 parse_validate / 26 bridge tests green.
 - 2026-05-13 (bridge — `encode_search_attribute_double` + decoder):
   rounds out the search-attribute encoder set (string / int / bool /
   now double). NaN and infinities refused at the encoder boundary

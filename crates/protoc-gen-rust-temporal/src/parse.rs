@@ -1000,6 +1000,17 @@ fn parse_search_attribute_literal(
     if let Ok(n) = raw.parse::<i64>() {
         return Some(SearchAttributeLiteral::Int(n));
     }
+    // Try f64 — accept tokens with a `.` or exponent that didn't
+    // already match i64. NaN / infinity literals are refused at parse
+    // so the render-time `.expect("compile-time-finite f64 literal")`
+    // stays load-bearing (the bridge encoder bails on non-finite).
+    if raw.contains('.') || raw.contains('e') || raw.contains('E') {
+        if let Ok(v) = raw.parse::<f64>() {
+            if v.is_finite() {
+                return Some(SearchAttributeLiteral::Double(v));
+            }
+        }
+    }
     // R7 slice 3a: `this.<field>` references resolve against the
     // workflow's input message. Only singular `string` fields graduate
     // — int / bool / repeated land in slice 3b. Anything else falls
