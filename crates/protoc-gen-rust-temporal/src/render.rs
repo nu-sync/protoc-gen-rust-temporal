@@ -1718,6 +1718,82 @@ fn render_workflow_contracts(out: &mut String, svc: &ServiceModel) {
     for wf in &svc.workflows {
         render_workflow_definition(out, svc, wf);
     }
+
+    // R2 — per-signal markers + external-signal helpers. Each non-Empty
+    // signal that's attached to at least one non-Empty workflow on this
+    // service gets a `<RPC>Signal` marker + `SignalDefinition` impl, plus
+    // a `signal_<signal>_external` helper that opens an
+    // `ExternalWorkflowHandle` and sends the typed signal. Lets workflow
+    // code coordinate by id with sibling workflows without dropping into
+    // the SDK's raw external-handle API.
+    render_external_signal_helpers(out, svc);
+}
+
+fn render_external_signal_helpers(out: &mut String, svc: &ServiceModel) {
+    // Pick the first non-Empty workflow that attaches each signal as the
+    // SignalDefinition's `type Workflow`. The SDK doesn't actually
+    // validate the Workflow associated type at the external-signal
+    // dispatch site (the target workflow is identified by id), but the
+    // trait demands it.
+    for sig in &svc.signals {
+        if sig.input_type.is_empty {
+            continue;
+        }
+        let attaching = svc.workflows.iter().find(|wf| {
+            !wf.input_type.is_empty
+                && !wf.output_type.is_empty
+                && wf
+                    .attached_signals
+                    .iter()
+                    .any(|s| s.rpc_method == sig.rpc_method)
+        });
+        let Some(wf) = attaching else {
+            continue;
+        };
+        let signal_marker = format!("{}Signal", sig.rpc_method);
+        let workflow_marker = format!("{}Workflow", wf.rpc_method);
+        let signal_const = format!("{}_SIGNAL_NAME", sig.rpc_method.to_shouty_snake_case());
+        let input_ty = sig.input_type.rust_name();
+        let _ = writeln!(out, "    pub struct {signal_marker};");
+        let _ = writeln!(
+            out,
+            "    impl temporal_runtime::worker::SignalDefinition for {signal_marker} {{"
+        );
+        let _ = writeln!(out, "        type Workflow = {workflow_marker};");
+        let _ = writeln!(
+            out,
+            "        type Input = temporal_runtime::TypedProtoMessage<{input_ty}>;"
+        );
+        let _ = writeln!(
+            out,
+            "        fn name(&self) -> &str {{ self::{signal_const} }}"
+        );
+        let _ = writeln!(out, "    }}");
+
+        let helper_fn = format!("signal_{}_external", sig.rpc_method.to_snake_case());
+        let _ = writeln!(out, "    pub async fn {helper_fn}<W>(");
+        let _ = writeln!(
+            out,
+            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
+        );
+        let _ = writeln!(out, "        workflow_id: impl Into<String>,");
+        let _ = writeln!(out, "        run_id: Option<String>,");
+        let _ = writeln!(out, "        input: {input_ty},");
+        let _ = writeln!(
+            out,
+            "    ) -> temporal_runtime::worker::SignalExternalWfResult {{"
+        );
+        let _ = writeln!(
+            out,
+            "        let handle = ctx.external_workflow(workflow_id, run_id);"
+        );
+        let _ = writeln!(
+            out,
+            "        handle.signal({signal_marker}, temporal_runtime::TypedProtoMessage::from(input)).await"
+        );
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
 }
 
 fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {

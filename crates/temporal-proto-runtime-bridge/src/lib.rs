@@ -1194,16 +1194,18 @@ where
 /// plugin's emit is unaffected.
 #[cfg(feature = "worker")]
 pub mod worker {
-    pub use temporalio_common::{ActivityDefinition, WorkflowDefinition};
-    pub use temporalio_sdk::Worker;
-    pub use temporalio_sdk::WorkflowTermination;
+    pub use temporalio_common::{ActivityDefinition, SignalDefinition, WorkflowDefinition};
     pub use temporalio_sdk::activities::{
         ActivityContext, ActivityDefinitions, ActivityError, ActivityImplementer,
     };
     pub use temporalio_sdk::workflows::{WorkflowImplementation, WorkflowImplementer};
     pub use temporalio_sdk::{
         ActivityExecutionError, ActivityOptions, ChildWorkflowOptions, ChildWorkflowStartError,
-        ContinueAsNewOptions, LocalActivityOptions, StartedChildWorkflow, WorkflowContext,
+        ContinueAsNewOptions, ExternalWorkflowHandle, LocalActivityOptions, StartedChildWorkflow,
+        WorkflowContext,
+    };
+    pub use temporalio_sdk::{
+        SignalExternalOk, SignalExternalWfResult, Worker, WorkflowTermination,
     };
 }
 

@@ -657,6 +657,66 @@ fn workflows_emit_renders_child_workflow_marker_and_helper() {
 }
 
 #[test]
+fn workflows_emit_renders_external_signal_marker_and_helper() {
+    // R2 — every non-Empty signal attached to a non-Empty workflow gets
+    // a `<RPC>Signal` marker + `SignalDefinition` impl plus a
+    // `signal_<rpc>_external` helper that opens an ExternalWorkflowHandle
+    // and sends the typed signal from inside another workflow's context.
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    let source = render::render(&services[0], &opts);
+
+    // workflows_emit's Cancel signal has CancelInput → non-Empty.
+    assert!(
+        source.contains("pub struct CancelSignal;"),
+        "must emit signal marker struct: {source}"
+    );
+    assert!(
+        source.contains("impl temporal_runtime::worker::SignalDefinition for CancelSignal"),
+        "signal marker must impl SignalDefinition: {source}"
+    );
+    assert!(
+        source.contains("type Workflow = RunWorkflow;"),
+        "marker Workflow must point at the first non-Empty attaching workflow: {source}"
+    );
+    assert!(
+        source.contains("type Input = temporal_runtime::TypedProtoMessage<CancelInput>;"),
+        "marker Input must wrap CancelInput in TypedProtoMessage: {source}"
+    );
+    assert!(
+        source.contains("fn name(&self) -> &str { self::CANCEL_SIGNAL_NAME }"),
+        "marker name() must delegate to the existing const: {source}"
+    );
+
+    assert!(
+        source.contains("pub async fn signal_cancel_external<W>("),
+        "must emit external-signal helper: {source}"
+    );
+    assert!(
+        source.contains("workflow_id: impl Into<String>,"),
+        "helper must accept the target workflow id: {source}"
+    );
+    assert!(
+        source.contains("run_id: Option<String>,"),
+        "helper must accept an optional run id: {source}"
+    );
+    assert!(
+        source.contains("-> temporal_runtime::worker::SignalExternalWfResult"),
+        "helper must return SignalExternalWfResult: {source}"
+    );
+    assert!(
+        source.contains("let handle = ctx.external_workflow(workflow_id, run_id);"),
+        "helper must open the external handle: {source}"
+    );
+    assert!(
+        source.contains(
+            "handle.signal(CancelSignal, temporal_runtime::TypedProtoMessage::from(input)).await"
+        ),
+        "helper must dispatch the typed signal via the external handle: {source}"
+    );
+}
+
+#[test]
 fn workflows_emit_renders_continue_as_new_helper() {
     // R2 — continue-as-new helper. Wraps `ctx.continue_as_new(&input, opts)`
     // so workflow code can finish the current run and start a new one of

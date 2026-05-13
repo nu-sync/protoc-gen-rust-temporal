@@ -263,4 +263,20 @@ pub mod jobs_v1_job_service_temporal {
         ctx.continue_as_new(&wrapped, opts)
     }
 
+    pub struct CancelJobSignal;
+    impl temporal_runtime::worker::SignalDefinition for CancelJobSignal {
+        type Workflow = RunJobWorkflow;
+        type Input = temporal_runtime::TypedProtoMessage<CancelJobInput>;
+        fn name(&self) -> &str { self::CANCEL_JOB_SIGNAL_NAME }
+    }
+    pub async fn signal_cancel_job_external<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        workflow_id: impl Into<String>,
+        run_id: Option<String>,
+        input: CancelJobInput,
+    ) -> temporal_runtime::worker::SignalExternalWfResult {
+        let handle = ctx.external_workflow(workflow_id, run_id);
+        handle.signal(CancelJobSignal, temporal_runtime::TypedProtoMessage::from(input)).await
+    }
+
 }

@@ -138,6 +138,19 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R2 — external-signal markers + helpers): under
+  `workflows=true`, every non-Empty signal attached to at least one
+  non-Empty workflow now ships a `<RPC>Signal` marker +
+  `SignalDefinition` impl plus a
+  `signal_<rpc>_external<W>(ctx, workflow_id, run_id, input) ->
+  SignalExternalWfResult` helper. Lets workflow code coordinate with
+  sibling workflows by id without dropping into the SDK's raw
+  `ExternalWorkflowHandle` API. The marker's `Workflow` associated type
+  resolves to the first non-Empty attaching workflow on the service —
+  the SDK doesn't validate it at the external-signal dispatch site
+  (target is identified by id), but `SignalDefinition` requires it.
+  Bridge re-exports `SignalDefinition`, `ExternalWorkflowHandle`,
+  `SignalExternalOk`, and `SignalExternalWfResult`.
 - 2026-05-13 (R2 — continue-as-new helper): every non-Empty workflow
   under `workflows=true` now also ships a
   `continue_<workflow>_as_new<W>(ctx, input, opts)` helper, bound to
@@ -462,7 +475,7 @@ toward majority parity.
 | Method co-annotations | Refused at parse with a clear diagnostic (2026-05-13); generator still models one primary kind per rpc. Full support is the next R1 step. | R1 |
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
-| Worker handler surface | Definition trait + registration + child-workflow markers/start helpers + continue-as-new shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks, external-signal helpers still pending. | R2 |
+| Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks still pending. | R2 |
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` shipped 2026-05-13 (non-Empty in/out only); option builders + Empty-input/output helpers still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |

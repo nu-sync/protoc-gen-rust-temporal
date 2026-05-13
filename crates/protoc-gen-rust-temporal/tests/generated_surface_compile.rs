@@ -550,6 +550,27 @@ pub mod temporal_runtime {
             type Run: WorkflowDefinition;
         }
 
+        pub trait SignalDefinition {
+            type Workflow: WorkflowDefinition;
+            type Input;
+            fn name(&self) -> &str;
+        }
+
+        #[derive(Debug, Clone, Copy)]
+        pub struct SignalExternalOk;
+        pub type SignalExternalWfResult = ::std::result::Result<SignalExternalOk, &'static str>;
+
+        pub struct ExternalWorkflowHandle;
+        impl ExternalWorkflowHandle {
+            pub async fn signal<S: SignalDefinition>(
+                &self,
+                _signal: S,
+                _input: S::Input,
+            ) -> SignalExternalWfResult {
+                Ok(SignalExternalOk)
+            }
+        }
+
         #[derive(Debug, Default)]
         pub struct ChildWorkflowOptions;
 
@@ -616,6 +637,13 @@ pub mod temporal_runtime {
                 W: WorkflowImplementation,
             {
                 unreachable!("stub")
+            }
+            pub fn external_workflow(
+                &self,
+                _workflow_id: impl Into<String>,
+                _run_id: Option<String>,
+            ) -> ExternalWorkflowHandle {
+                ExternalWorkflowHandle
             }
         }
 
