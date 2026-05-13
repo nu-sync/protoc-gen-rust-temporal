@@ -2134,6 +2134,151 @@ fn render_workflow_handler_name_consts(out: &mut String, svc: &ServiceModel) {
 /// glue is deferred to Phase 4.1 once the JSON-input → proto-message
 /// deserialization story is decided (pbjson? a `--input` file flag with
 /// prost::Message::decode? Both?).
+/// R6 — `Cli::run_with(client, deserialize_input)` dispatch impl.
+///
+/// The deserializer is supplied by the consumer so the plugin stays
+/// agnostic to the JSON-vs-pbjson-vs-raw-bytes choice: it takes the file
+/// path on disk plus the proto message's fully-qualified name (so a
+/// single closure can switch on the type when the CLI carries multiple
+/// workflows), and returns a `Result<T, anyhow::Error>` for the typed
+/// input. The closure is wrapped in a per-workflow generic so each
+/// `Start<Wf>` arm asks for the right `T`.
+fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
+    use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
+
+    // The CLI module sits at file scope, sibling to the service module.
+    // From inside `<service>_cli`, `super::` reaches that file scope, so
+    // `super::<service_module>::*` is the path to the service module's
+    // public items (Client, StartOptions, const names).
+    let svc_mod = mod_name(svc);
+    let client_struct = format!("super::{svc_mod}::{}Client", svc.service);
+    let _ = writeln!(out, "    impl Cli {{");
+    let _ = writeln!(
+        out,
+        "        /// Dispatch the parsed command against `client`."
+    );
+    let _ = writeln!(out, "        ///");
+    let _ = writeln!(
+        out,
+        "        /// `read_input` decodes the `--input-file` JSON/bytes-on-disk into the typed proto"
+    );
+    let _ = writeln!(
+        out,
+        "        /// message. The plugin stays agnostic to the encoding (pbjson, serde, raw prost"
+    );
+    let _ = writeln!(
+        out,
+        "        /// bytes, …) — the consumer wires their preferred decode strategy. The closure"
+    );
+    let _ = writeln!(
+        out,
+        "        /// receives `(path, fully_qualified_message_type)` so it can switch on the type"
+    );
+    let _ = writeln!(
+        out,
+        "        /// when a service has heterogeneous workflow inputs."
+    );
+    let _ = writeln!(out, "        pub async fn run_with<F, Fut>(");
+    let _ = writeln!(out, "            self,");
+    let _ = writeln!(out, "            client: &{client_struct},");
+    let _ = writeln!(out, "            mut read_input: F,");
+    let _ = writeln!(
+        out,
+        "        ) -> ::std::result::Result<(), ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>>"
+    );
+    let _ = writeln!(out, "        where");
+    let _ = writeln!(
+        out,
+        "            F: FnMut(&::std::path::Path, &'static str) -> Fut,"
+    );
+    let _ = writeln!(
+        out,
+        "            Fut: ::std::future::Future<Output = ::std::result::Result<::std::boxed::Box<dyn ::std::any::Any + ::std::marker::Send>, ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>>>,"
+    );
+    let _ = writeln!(out, "        {{");
+    let _ = writeln!(out, "            match self.command {{");
+    for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
+        let pascal = wf.rpc_method.to_pascal_case();
+        let snake = wf.rpc_method.to_snake_case();
+        let opts_struct = format!("super::{svc_mod}::{}StartOptions", wf.rpc_method);
+        let const_name = format!(
+            "super::{}::{}_WORKFLOW_NAME",
+            svc_mod,
+            wf.rpc_method.to_shouty_snake_case()
+        );
+        let input_full = &wf.input_type.full_name;
+        // Start<Wf>
+        let _ = writeln!(out, "                Command::Start{pascal}(args) => {{");
+        if wf.input_type.is_empty {
+            // Empty input — bypass the deserializer entirely.
+            let _ = writeln!(
+                out,
+                "                    let _ = (args.input_file, &mut read_input);"
+            );
+            let _ = writeln!(
+                out,
+                "                    let opts = {opts_struct} {{ workflow_id: args.workflow_id, ..::std::default::Default::default() }};"
+            );
+            let _ = writeln!(
+                out,
+                "                    let handle = client.{snake}(opts).await?;"
+            );
+        } else {
+            let input_ty = wf.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "                    let dyn_input = read_input(&args.input_file, \"{input_full}\").await?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let input: {input_ty} = *dyn_input.downcast::<{input_ty}>()"
+            );
+            let _ = writeln!(
+                out,
+                "                        .map_err(|_| ::std::format!(\"read_input returned the wrong type for {input_full}\"))?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let opts = {opts_struct} {{ workflow_id: args.workflow_id, ..::std::default::Default::default() }};"
+            );
+            let _ = writeln!(
+                out,
+                "                    let handle = client.{snake}(input, opts).await?;"
+            );
+        }
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"started {{}}: workflow_id={{}}\", {const_name}, handle.workflow_id());"
+        );
+        let _ = writeln!(
+            out,
+            "                    if args.wait {{ let _ = handle.result().await?; }}"
+        );
+        let _ = writeln!(out, "                }}");
+        // Attach<Wf>
+        let _ = writeln!(out, "                Command::Attach{pascal}(args) => {{");
+        let _ = writeln!(
+            out,
+            "                    let handle = client.{snake}_handle(args.workflow_id.clone());"
+        );
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"attached: workflow_id={{}}\", args.workflow_id);"
+        );
+        let _ = writeln!(
+            out,
+            "                    if args.wait {{ let _ = handle.result().await?; }}"
+        );
+        let _ = writeln!(out, "                }}");
+    }
+    let _ = writeln!(out, "            }}");
+    let _ = writeln!(out, "            Ok(())");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    let _ = client_struct; // silence unused if no workflows (already gated upstream)
+}
+
 fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     use heck::{ToPascalCase, ToSnakeCase};
 
@@ -2188,6 +2333,8 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
+
+    render_cli_run_impl(out, svc);
 
     for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();

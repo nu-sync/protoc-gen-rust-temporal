@@ -1350,6 +1350,55 @@ fn workflow_cli_name_is_rejected() {
 }
 
 #[test]
+fn cli_emit_renders_run_with_dispatch() {
+    // R6 — `Cli::run_with(&Client, deserialize_fn)` impl. Generic over
+    // a `FnMut(&Path, &'static str) -> Future<Result<Box<dyn Any>>>` so
+    // the consumer plugs JSON / pbjson / raw-bytes decode without us
+    // committing to one.
+    let services = parse_and_validate("cli_emit");
+    let opts = load_fixture_options("cli_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub async fn run_with<F, Fut>("),
+        "must emit run_with dispatch fn: {source}"
+    );
+    assert!(
+        source.contains("F: FnMut(&::std::path::Path, &'static str) -> Fut,"),
+        "closure takes path + fully-qualified message type: {source}"
+    );
+    assert!(
+        source.contains("Fut: ::std::future::Future<Output = ::std::result::Result<::std::boxed::Box<dyn ::std::any::Any + ::std::marker::Send>, ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>>>,"),
+        "closure must return Box<dyn Any + Send> so heterogeneous inputs work: {source}"
+    );
+    assert!(
+        source.contains("Command::StartGenerate(args) =>"),
+        "must dispatch on each Start<Wf> variant: {source}"
+    );
+    assert!(
+        source.contains("Command::AttachGenerate(args) =>"),
+        "must dispatch on each Attach<Wf> variant: {source}"
+    );
+    assert!(
+        source.contains(
+            "let dyn_input = read_input(&args.input_file, \"cli.v1.GenerateInput\").await?;"
+        ),
+        "must invoke the closure with the input file path + FQ message type: {source}"
+    );
+    assert!(
+        source.contains("let input: GenerateInput = *dyn_input.downcast::<GenerateInput>()"),
+        "must downcast the boxed Any into the typed input: {source}"
+    );
+    assert!(
+        source.contains("let handle = client.generate(input, opts).await?;"),
+        "must forward to <Service>Client::<rpc>(input, opts): {source}"
+    );
+    assert!(
+        source.contains("if args.wait { let _ = handle.result().await?; }"),
+        "must wait on result when --wait was passed: {source}"
+    );
+}
+
+#[test]
 fn cli_emit_renders_clap_subcommands() {
     let services = parse_and_validate("cli_emit");
     let opts = load_fixture_options("cli_emit");

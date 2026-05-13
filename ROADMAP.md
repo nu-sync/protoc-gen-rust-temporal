@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `Cli::run_with` dispatch): under `cli=true`, every
+  generated `<service>_cli::Cli` now also ships
+  `pub async fn run_with<F, Fut>(self, client, mut read_input: F) ->
+  Result<(), Box<dyn Error + Send + Sync>>` where
+  `F: FnMut(&Path, &'static str) -> Future<Output = Result<Box<dyn Any + Send>, …>>`.
+  The closure is the consumer-supplied deserializer — it decides
+  JSON / pbjson / raw prost bytes / etc. and returns a type-erased
+  `Box<dyn Any>` so heterogeneous workflow inputs work from one
+  closure. Each `Start<Wf>` arm downcasts to the typed input and
+  forwards to `<Service>Client::<rpc>(input, opts)`; `Attach<Wf>`
+  arms use `<rpc>_handle(workflow_id)`. `--wait` is honoured.
+  Empty-input workflows bypass the closure entirely. With this,
+  `cli=true` is finally a functional CLI instead of a parser
+  scaffold. Closes R6.
 - 2026-05-13 (R5 — workflow `wait_for_cancellation`): graduates from
   rejected to supported. `(temporal.v1.workflow).wait_for_cancellation = true`
   folds into the per-workflow `<rpc>_default_child_options()` factory as
@@ -553,7 +567,7 @@ toward majority parity.
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy`, `parent_close_policy`, `wait_for_cancellation` shipped 2026-05-13; search attrs (need R7 Bloblang) and `versioning_behavior` (worker-side, no SDK 0.4 support) still pending. | R5 |
 | Activity runtime options | All six fields graduated to `<activity>_default_options()` 2026-05-13 (incl. `wait_for_cancellation` → `ActivityCancellationType::WaitCancellationCompleted`). | R5/R3 |
 | Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
-| CLI command execution | Parser scaffold only. | R6 |
+| CLI command execution | `Cli::run_with(&Client, deserialize_fn)` dispatch shipped 2026-05-13 (closure-based decoder keeps JSON-vs-pbjson choice with the consumer). | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |
 | Codec server / test clients | Not generated; blocked on upstream SDK 0.4 gaps. | R8 |
 | XNS / Nexus / generated docs / Go-specific naming knobs / Patch handling | Out of scope — see R8 "Explicitly out of scope". | — |

@@ -247,6 +247,57 @@ pub mod report_service_cli {
         AttachAggregate(AttachAggregateArgs),
     }
 
+    impl Cli {
+        /// Dispatch the parsed command against `client`.
+        ///
+        /// `read_input` decodes the `--input-file` JSON/bytes-on-disk into the typed proto
+        /// message. The plugin stays agnostic to the encoding (pbjson, serde, raw prost
+        /// bytes, …) — the consumer wires their preferred decode strategy. The closure
+        /// receives `(path, fully_qualified_message_type)` so it can switch on the type
+        /// when a service has heterogeneous workflow inputs.
+        pub async fn run_with<F, Fut>(
+            self,
+            client: &super::cli_v1_report_service_temporal::ReportServiceClient,
+            mut read_input: F,
+        ) -> ::std::result::Result<(), ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>>
+        where
+            F: FnMut(&::std::path::Path, &'static str) -> Fut,
+            Fut: ::std::future::Future<Output = ::std::result::Result<::std::boxed::Box<dyn ::std::any::Any + ::std::marker::Send>, ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>>>,
+        {
+            match self.command {
+                Command::StartGenerate(args) => {
+                    let dyn_input = read_input(&args.input_file, "cli.v1.GenerateInput").await?;
+                    let input: GenerateInput = *dyn_input.downcast::<GenerateInput>()
+                        .map_err(|_| ::std::format!("read_input returned the wrong type for cli.v1.GenerateInput"))?;
+                    let opts = super::cli_v1_report_service_temporal::GenerateStartOptions { workflow_id: args.workflow_id, ..::std::default::Default::default() };
+                    let handle = client.generate(input, opts).await?;
+                    ::std::println!("started {}: workflow_id={}", super::cli_v1_report_service_temporal::GENERATE_WORKFLOW_NAME, handle.workflow_id());
+                    if args.wait { let _ = handle.result().await?; }
+                }
+                Command::AttachGenerate(args) => {
+                    let handle = client.generate_handle(args.workflow_id.clone());
+                    ::std::println!("attached: workflow_id={}", args.workflow_id);
+                    if args.wait { let _ = handle.result().await?; }
+                }
+                Command::StartAggregate(args) => {
+                    let dyn_input = read_input(&args.input_file, "cli.v1.AggregateInput").await?;
+                    let input: AggregateInput = *dyn_input.downcast::<AggregateInput>()
+                        .map_err(|_| ::std::format!("read_input returned the wrong type for cli.v1.AggregateInput"))?;
+                    let opts = super::cli_v1_report_service_temporal::AggregateStartOptions { workflow_id: args.workflow_id, ..::std::default::Default::default() };
+                    let handle = client.aggregate(input, opts).await?;
+                    ::std::println!("started {}: workflow_id={}", super::cli_v1_report_service_temporal::AGGREGATE_WORKFLOW_NAME, handle.workflow_id());
+                    if args.wait { let _ = handle.result().await?; }
+                }
+                Command::AttachAggregate(args) => {
+                    let handle = client.aggregate_handle(args.workflow_id.clone());
+                    ::std::println!("attached: workflow_id={}", args.workflow_id);
+                    if args.wait { let _ = handle.result().await?; }
+                }
+            }
+            Ok(())
+        }
+    }
+
     #[derive(temporal_runtime::clap::Args)]
     pub struct StartGenerateArgs {
         /// Path to a JSON file containing the workflow input.
