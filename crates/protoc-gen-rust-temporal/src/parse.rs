@@ -1034,6 +1034,14 @@ fn parse_search_attribute_literal(
             prost_reflect::Kind::String => Some(SearchAttributeLiteral::StringField(rust_field)),
             prost_reflect::Kind::Int64 => Some(SearchAttributeLiteral::IntField(rust_field)),
             prost_reflect::Kind::Bool => Some(SearchAttributeLiteral::BoolField(rust_field)),
+            prost_reflect::Kind::Double => Some(SearchAttributeLiteral::DoubleField {
+                rust_field,
+                is_f32: false,
+            }),
+            prost_reflect::Kind::Float => Some(SearchAttributeLiteral::DoubleField {
+                rust_field,
+                is_f32: true,
+            }),
             _ => None,
         };
     }

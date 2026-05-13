@@ -425,6 +425,16 @@ pub enum SearchAttributeLiteral {
     StringField(String),
     IntField(String),
     BoolField(String),
+    /// `this.<field>` where `<field>` is a `double` (f64) or `float`
+    /// (f32) singular input field. Render emits a cast to `f64` for
+    /// `float` fields so the bridge encoder's `f64` signature works
+    /// uniformly.
+    DoubleField {
+        rust_field: String,
+        /// `true` if the input field is `float` (f32), needing `as f64`
+        /// at the call site. `false` for `double` (already f64).
+        is_f32: bool,
+    },
 }
 
 /// Compiled form of `(temporal.v1.workflow).retry_policy`. Holds the

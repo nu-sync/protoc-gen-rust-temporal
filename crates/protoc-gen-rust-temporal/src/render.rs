@@ -1193,6 +1193,23 @@ fn search_attributes_literal(spec: Option<&crate::model::SearchAttributesSpec>) 
                     SearchAttributeLiteral::BoolField(field) => format!(
                         "temporal_runtime::encode_search_attribute_bool(input.{field})"
                     ),
+                    SearchAttributeLiteral::DoubleField {
+                        rust_field,
+                        is_f32,
+                    } => {
+                        // f32 inputs widen to f64 at the call site so the
+                        // bridge encoder's f64 signature works uniformly.
+                        // Runtime NaN / infinity surfaces a panic at the
+                        // start path (bridge encoder bails on non-finite).
+                        let value_expr = if *is_f32 {
+                            format!("input.{rust_field} as f64")
+                        } else {
+                            format!("input.{rust_field}")
+                        };
+                        format!(
+                            "temporal_runtime::encode_search_attribute_double({value_expr}).expect(\"search_attribute double value must be finite at runtime\")"
+                        )
+                    }
                 };
                 s.push_str(&format!(
                     "sa.insert(\"{}\".to_string(), {encoder_call}); ",

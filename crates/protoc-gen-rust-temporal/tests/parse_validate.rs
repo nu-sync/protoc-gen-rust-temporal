@@ -3969,25 +3969,88 @@ fn search_attributes_int_and_bool_field_refs_resolve_against_input() {
 }
 
 #[test]
-fn search_attributes_field_ref_to_unsupported_type_is_rejected() {
-    // Float / bytes / message / enum field refs still fall through to
-    // the standard "does not yet honour" diagnostic — encoder coverage
-    // stops at string + int64 + bool.
+fn search_attributes_double_and_float_field_refs_resolve_against_input() {
+    // R7 slice 3 + bridge double primitive — `this.<field>` resolves
+    // against `double` and `float` singular input fields too. `double`
+    // fields use the input value directly; `float` widens via
+    // `as f64` so the bridge encoder's f64 signature works uniformly.
     let (pool, files, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package sa_field_float.v1;
+        package sa_field_double.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
               task_queue:        "tq"
-              search_attributes: "root = { \"K\": this.score }"
+              search_attributes: "root = { \"Score\": this.score, \"Ratio\": this.ratio }"
             };
           }
         }
-        message In  { double score = 1; }
+        message In  { double score = 1; float ratio = 2; }
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept double/float field refs");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let SearchAttributesSpec::Static(entries) = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the slice-3 spec")
+    else {
+        panic!("expected Static spec");
+    };
+    assert!(
+        entries
+            .iter()
+            .any(|(k, v)| k == "Score" && matches!(v, SearchAttributeLiteral::DoubleField { rust_field, is_f32 } if rust_field == "score" && !*is_f32)),
+        "Score must parse to DoubleField(score, is_f32=false): {entries:?}"
+    );
+    assert!(
+        entries
+            .iter()
+            .any(|(k, v)| k == "Ratio" && matches!(v, SearchAttributeLiteral::DoubleField { rust_field, is_f32 } if rust_field == "ratio" && *is_f32)),
+        "Ratio must parse to DoubleField(ratio, is_f32=true): {entries:?}"
+    );
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "temporal_runtime::encode_search_attribute_double(input.score).expect(\"search_attribute double value must be finite at runtime\")"
+        ),
+        "double field ref must read input.score directly: {source}"
+    );
+    assert!(
+        source.contains(
+            "temporal_runtime::encode_search_attribute_double(input.ratio as f64).expect(\"search_attribute double value must be finite at runtime\")"
+        ),
+        "float field ref must cast `as f64`: {source}"
+    );
+}
+
+#[test]
+fn search_attributes_field_ref_to_unsupported_type_is_rejected() {
+    // bytes / message / enum field refs still fall through to the
+    // standard "does not yet honour" diagnostic — encoder coverage
+    // now spans string / int64 / bool / double / float scalars, but
+    // not these.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_field_bytes.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": this.blob }"
+            };
+          }
+        }
+        message In  { bytes blob = 1; }
         message Out {}
         "#,
     );

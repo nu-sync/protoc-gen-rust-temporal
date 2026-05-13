@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 slice 3 — `this.<field>` for `double` and `float` inputs):
+  field-ref support extends from `string` / `int64` / `bool` to also
+  cover singular `double` (f64) and `float` (f32) fields. New
+  `SearchAttributeLiteral::DoubleField { rust_field, is_f32 }` carries
+  whether the source is f32 so render emits an `as f64` widening cast
+  for `float` (the bridge encoder is f64-only). Render's `.expect(…)`
+  message updated to reflect the runtime check (input values can
+  carry NaN/infinity at runtime even though parse-time literals are
+  filtered finite). The existing
+  `search_attributes_field_ref_to_unsupported_type_is_rejected` test
+  flipped its example from `double` to `bytes` (which remains
+  unsupported); a new positive test pins both `double` and `float`
+  refs including the `as f64` widening. SUPPORT-STATUS row updated.
+  132 parse_validate / 26 bridge tests green.
 - 2026-05-13 (R7 slice 2 — `double` literals wired through plugin):
   closes the gap deferred in the previous commit: the Bloblang
   slice-2 lexer now recognises f64 literals (tokens with `.` or
