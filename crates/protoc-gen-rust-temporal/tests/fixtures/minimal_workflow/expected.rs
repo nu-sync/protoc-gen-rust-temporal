@@ -112,6 +112,13 @@ pub mod jobs_v1_job_service_temporal {
             self.inner.workflow_id()
         }
 
+        /// The execution's run id, if known. `None` for handles created
+        /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);
+        /// `Some(...)` for handles returned by the start path.
+        pub fn run_id(&self) -> Option<&str> {
+            self.inner.run_id()
+        }
+
         /// Wait for the workflow to complete and return its output.
         pub async fn result(&self) -> Result<JobOutput> {
             temporal_runtime::wait_result_proto::<JobOutput>(&self.inner).await

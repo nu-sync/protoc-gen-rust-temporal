@@ -149,6 +149,13 @@ pub mod cli_v1_report_service_temporal {
             self.inner.workflow_id()
         }
 
+        /// The execution's run id, if known. `None` for handles created
+        /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);
+        /// `Some(...)` for handles returned by the start path.
+        pub fn run_id(&self) -> Option<&str> {
+            self.inner.run_id()
+        }
+
         /// Wait for the workflow to complete and return its output.
         pub async fn result(&self) -> Result<GenerateOutput> {
             temporal_runtime::wait_result_proto::<GenerateOutput>(&self.inner).await
@@ -186,6 +193,13 @@ pub mod cli_v1_report_service_temporal {
     impl AggregateHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
+        }
+
+        /// The execution's run id, if known. `None` for handles created
+        /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);
+        /// `Some(...)` for handles returned by the start path.
+        pub fn run_id(&self) -> Option<&str> {
+            self.inner.run_id()
         }
 
         /// Wait for the workflow to complete and return its output.

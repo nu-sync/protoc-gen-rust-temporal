@@ -972,6 +972,23 @@ fn signal_returning_non_empty_fails_validation() {
 }
 
 #[test]
+fn every_workflow_handle_exposes_run_id_accessor() {
+    // R4: `<Workflow>Handle::run_id(&self) -> Option<&str>` forwards to the
+    // facade's `WorkflowHandle::run_id`. `None` for `attach_handle`-produced
+    // handles; `Some(...)` after the start path populates it.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn run_id(&self) -> Option<&str>"),
+        "handle must carry run_id() accessor: {source}"
+    );
+    assert!(
+        source.contains("self.inner.run_id()"),
+        "run_id() must delegate to the facade WorkflowHandle: {source}"
+    );
+}
+
+#[test]
 fn every_workflow_handle_exposes_cancel_and_terminate() {
     // R4: cancel & terminate are operations on the execution itself, not
     // proto-driven, so every generated `<Workflow>Handle` carries them

@@ -266,6 +266,9 @@ pub mod temporal_runtime {
         pub fn workflow_id(&self) -> &str {
             "stub-workflow-id"
         }
+        pub fn run_id(&self) -> Option<&str> {
+            None
+        }
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

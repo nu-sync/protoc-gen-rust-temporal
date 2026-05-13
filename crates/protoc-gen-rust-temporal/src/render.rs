@@ -612,6 +612,22 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.workflow_id()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "        /// The execution's run id, if known. `None` for handles created"
+    );
+    let _ = writeln!(
+        out,
+        "        /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);"
+    );
+    let _ = writeln!(
+        out,
+        "        /// `Some(...)` for handles returned by the start path."
+    );
+    let _ = writeln!(out, "        pub fn run_id(&self) -> Option<&str> {{");
+    let _ = writeln!(out, "            self.inner.run_id()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
 
     // result()
     let _ = writeln!(

@@ -44,7 +44,7 @@ code references them by their unqualified name through
 | Type | Role |
 |---|---|
 | `TemporalClient` | Opaque handle on the Temporal client connection. Constructed by the consumer; the plugin only forwards `&TemporalClient` to runtime functions. |
-| `WorkflowHandle` | Opaque handle on a running / attachable workflow execution. Must expose `workflow_id(&self) -> &str`. |
+| `WorkflowHandle` | Opaque handle on a running / attachable workflow execution. Must expose `workflow_id(&self) -> &str` and `run_id(&self) -> Option<&str>` (the latter returns `None` for handles produced by `attach_handle`, since the consumer didn't supply a run id). |
 | `WorkflowIdReusePolicy` | Enum with variants `AllowDuplicate`, `AllowDuplicateFailedOnly`, `RejectDuplicate`, `TerminateIfRunning`. Matches cludden's `IDReusePolicy`. |
 | `WorkflowIdConflictPolicy` | Enum with variants `Fail`, `UseExisting`, `TerminateExisting`. Used by the start path when a request collides with a **running** workflow id. Added 0.1.2. |
 | `RetryPolicy` | Struct mirroring cludden's `RetryPolicy` (`initial_interval`, `backoff_coefficient`, `max_interval`, `max_attempts`, `non_retryable_error_types`). `backoff_coefficient` is set via `set_backoff_coefficient`/`with_backoff_coefficient` because the underlying f64 is stored as bits for `Eq`. Added 0.1.2. |
