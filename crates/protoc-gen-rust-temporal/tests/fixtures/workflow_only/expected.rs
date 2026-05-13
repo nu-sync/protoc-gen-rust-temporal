@@ -217,6 +217,17 @@ pub mod solo_v1_solo_service_temporal {
             self.retry_policy = other.retry_policy.or(self.retry_policy);
             self
         }
+        pub fn is_empty(&self) -> bool {
+            self.workflow_id.is_none()
+                && self.task_queue.is_none()
+                && self.id_reuse_policy.is_none()
+                && self.id_conflict_policy.is_none()
+                && self.execution_timeout.is_none()
+                && self.run_timeout.is_none()
+                && self.task_timeout.is_none()
+                && self.enable_eager_workflow_start.is_none()
+                && self.retry_policy.is_none()
+        }
     }
 
     #[derive(Clone)]

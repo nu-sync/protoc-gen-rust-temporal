@@ -1703,6 +1703,24 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "            self");
     let _ = writeln!(out, "        }}");
+    // `is_empty` — true when no field is set. Lets callers detect
+    // the "use proto-declared defaults for everything" state for
+    // diagnostic logging or test assertions, without manually
+    // listing every field.
+    let _ = writeln!(out, "        pub fn is_empty(&self) -> bool {{");
+    let _ = writeln!(out, "            self.workflow_id.is_none()");
+    let _ = writeln!(out, "                && self.task_queue.is_none()");
+    let _ = writeln!(out, "                && self.id_reuse_policy.is_none()");
+    let _ = writeln!(out, "                && self.id_conflict_policy.is_none()");
+    let _ = writeln!(out, "                && self.execution_timeout.is_none()");
+    let _ = writeln!(out, "                && self.run_timeout.is_none()");
+    let _ = writeln!(out, "                && self.task_timeout.is_none()");
+    let _ = writeln!(
+        out,
+        "                && self.enable_eager_workflow_start.is_none()"
+    );
+    let _ = writeln!(out, "                && self.retry_policy.is_none()");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 }

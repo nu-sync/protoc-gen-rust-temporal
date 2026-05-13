@@ -2608,6 +2608,37 @@ fn workflow_alias_duplicate_within_list_fails_at_parse() {
 }
 
 #[test]
+fn start_options_exposes_is_empty_predicate() {
+    // R6 ergonomics — `<Wf>StartOptions::is_empty(&self) -> bool`
+    // returns true when no field is set. Lets callers detect the
+    // "use proto-declared defaults for everything" state without
+    // manually pattern-matching every Option field.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn is_empty(&self) -> bool {"),
+        "missing is_empty predicate: {source}"
+    );
+    // Body must check all nine fields.
+    for field in [
+        "self.workflow_id.is_none()",
+        "self.task_queue.is_none()",
+        "self.id_reuse_policy.is_none()",
+        "self.id_conflict_policy.is_none()",
+        "self.execution_timeout.is_none()",
+        "self.run_timeout.is_none()",
+        "self.task_timeout.is_none()",
+        "self.enable_eager_workflow_start.is_none()",
+        "self.retry_policy.is_none()",
+    ] {
+        assert!(
+            source.contains(field),
+            "is_empty body missing `{field}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn start_options_exposes_merge_method() {
     // R6 ergonomics — `<Wf>StartOptions::merge(other)` layers two
     // option structs together with `other`'s `Some`-fields winning.

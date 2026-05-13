@@ -743,6 +743,19 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::is_empty()` predicate):
+  every generated `<Wf>StartOptions` struct now exposes
+  `is_empty(&self) -> bool` returning true when no field is set.
+  Lets callers detect the "use proto-declared defaults for
+  everything" state without manually pattern-matching all nine
+  Option fields. Useful for: diagnostic logging that warns when
+  config didn't propagate; test assertions on a default-built
+  options struct; CLI tooling that branches on whether the user
+  supplied any overrides. One new positive parse_validate test
+  pins the fn signature and asserts each of the nine field
+  checks appears in the body. Several fixture goldens reblessed
+  (every Wf gained the predicate). 199 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::merge(other)`):
   every generated `<Wf>StartOptions` struct now exposes
   `merge(self, other: Self) -> Self` that layers two options
