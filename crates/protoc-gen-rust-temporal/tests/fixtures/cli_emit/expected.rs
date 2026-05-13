@@ -271,6 +271,15 @@ pub mod cli_v1_report_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for GenerateHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl GenerateHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }
@@ -401,6 +410,15 @@ pub mod cli_v1_report_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for AggregateHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl AggregateHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

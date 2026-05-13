@@ -283,6 +283,17 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `From<WorkflowHandle>` impl on `<Wf>Handle`):
+  sugar over the recently-shipped `from_inner` constructor.
+  `impl From<temporal_runtime::WorkflowHandle> for <Wf>Handle`
+  delegates to `Self::from_inner(inner)`. Lets consumers spell
+  `let h: MyHandle = bridge_handle.into();` when the destination
+  type is inferred. The inherent `from_inner` stays as the
+  explicit named constructor for sites that need clarity. One
+  new positive parse_validate test pins the impl shape including
+  the delegation. Several fixture goldens reblessed (every
+  Handle gained the From impl block). 183 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::from_inner()` constructor):
   inverse of the previous `into_inner` shipment. Every `<Wf>Handle`
   now exposes `from_inner(WorkflowHandle) -> Self` letting test

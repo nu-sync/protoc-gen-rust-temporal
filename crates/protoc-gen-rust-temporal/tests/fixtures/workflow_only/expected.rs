@@ -214,6 +214,15 @@ pub mod solo_v1_solo_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for DoWorkHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl DoWorkHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

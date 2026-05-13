@@ -233,6 +233,15 @@ pub mod acts_v1_chunk_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunBatchHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl RunBatchHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

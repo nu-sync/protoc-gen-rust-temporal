@@ -2746,6 +2746,27 @@ fn client_struct_implements_debug() {
 }
 
 #[test]
+fn handle_implements_from_workflow_handle_trait() {
+    // R6 ergonomics — sugar over the explicit `from_inner`
+    // constructor: `From<WorkflowHandle> for <Wf>Handle` lets
+    // consumers spell `let h: MyHandle = bridge_h.into();` when
+    // the destination type is inferred. The inherent `from_inner`
+    // stays as the explicit named constructor.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunJobHandle {"
+        ),
+        "missing From<WorkflowHandle> impl: {source}"
+    );
+    assert!(
+        source.contains("Self::from_inner(inner)"),
+        "From impl body must delegate to from_inner: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_from_inner_constructor() {
     // R6 ergonomics — `<Wf>Handle::from_inner(WorkflowHandle)` is
     // the inverse of `into_inner`. Lets test harnesses construct

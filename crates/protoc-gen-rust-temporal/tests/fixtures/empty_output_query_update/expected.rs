@@ -262,6 +262,15 @@ pub mod eoqu_v1_eoqu_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl RunHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

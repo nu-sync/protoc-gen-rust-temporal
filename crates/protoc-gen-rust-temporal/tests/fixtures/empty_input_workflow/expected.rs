@@ -199,6 +199,15 @@ pub mod empty_v1_nop_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for TickHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl TickHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

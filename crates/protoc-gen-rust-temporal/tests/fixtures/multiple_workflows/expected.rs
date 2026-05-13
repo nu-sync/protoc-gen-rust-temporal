@@ -274,6 +274,15 @@ pub mod multi_v1_multi_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for AlphaHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl AlphaHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }
@@ -410,6 +419,15 @@ pub mod multi_v1_multi_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for BetaHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl BetaHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

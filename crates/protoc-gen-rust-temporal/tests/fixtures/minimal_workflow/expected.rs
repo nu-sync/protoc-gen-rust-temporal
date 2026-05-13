@@ -264,6 +264,15 @@ pub mod jobs_v1_job_service_temporal {
             Self { inner }
         }
 
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunJobHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl RunJobHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

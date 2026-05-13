@@ -1698,6 +1698,29 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            Self {{ inner }}");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    // Idiomatic `From<WorkflowHandle>` — sugar over `from_inner`
+    // letting consumers spell `let h: MyHandle = bridge_h.into();`
+    // when the destination type is inferred. The inherent
+    // `from_inner` stays as the explicit named constructor.
+    let _ = writeln!(
+        out,
+        "    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for {handle_struct} {{"
+    );
+    let _ = writeln!(
+        out,
+        "        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {{"
+    );
+    let _ = writeln!(out, "            Self::from_inner(inner)");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    // Continue the inherent impl block where the rest of the
+    // handle methods live. Reopen by re-emitting the impl header
+    // and dropping the previous closing brace — render below stays
+    // unchanged.
+    let _ = writeln!(out, "    impl {handle_struct} {{");
     let _ = writeln!(out, "        pub fn workflow_id(&self) -> &str {{");
     let _ = writeln!(out, "            self.inner.workflow_id()");
     let _ = writeln!(out, "        }}");
