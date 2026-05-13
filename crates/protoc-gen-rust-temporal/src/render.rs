@@ -1686,6 +1686,18 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
         );
     }
     let _ = writeln!(out);
+    // `from_inner` — inverse of `into_inner`. Lets test harnesses
+    // construct a typed handle from a hand-built bridge handle
+    // (e.g. fake handles for unit tests) without going through the
+    // typed start path. Pairs with `into_inner` so the wrapper
+    // round-trips unchanged.
+    let _ = writeln!(
+        out,
+        "        pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {{"
+    );
+    let _ = writeln!(out, "            Self {{ inner }}");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     let _ = writeln!(out, "        pub fn workflow_id(&self) -> &str {{");
     let _ = writeln!(out, "            self.inner.workflow_id()");
     let _ = writeln!(out, "        }}");

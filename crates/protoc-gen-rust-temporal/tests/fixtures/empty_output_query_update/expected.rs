@@ -258,6 +258,10 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
 
+        pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self { inner }
+        }
+
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
         }

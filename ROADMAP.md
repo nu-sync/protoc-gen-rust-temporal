@@ -283,6 +283,20 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::from_inner()` constructor):
+  inverse of the previous `into_inner` shipment. Every `<Wf>Handle`
+  now exposes `from_inner(WorkflowHandle) -> Self` letting test
+  harnesses construct a typed handle from a hand-built bridge
+  handle without going through the typed start path. Useful for
+  unit tests that fake the workflow execution and want to drive
+  the typed surface (e.g. exercise `cancel_workflow`,
+  `terminate_workflow`, signal/query/update by-id paths) with
+  fixture data. Pairs with `into_inner` so the wrapper round-trips
+  unchanged: `Handle::from_inner(h.into_inner()) == h`. One new
+  positive parse_validate test pins the fn signature + body.
+  Several fixture goldens reblessed (every Handle gained the
+  constructor). 182 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::into_inner()` consuming accessor):
   parallel of the previous `<Service>Client::into_inner` shipment
   for typed workflow handles. Every `<Wf>Handle` now exposes

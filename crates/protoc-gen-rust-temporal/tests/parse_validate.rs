@@ -2746,6 +2746,26 @@ fn client_struct_implements_debug() {
 }
 
 #[test]
+fn handle_exposes_from_inner_constructor() {
+    // R6 ergonomics — `<Wf>Handle::from_inner(WorkflowHandle)` is
+    // the inverse of `into_inner`. Lets test harnesses construct
+    // a typed handle from a hand-built bridge handle (e.g. fake
+    // handles for unit tests) without going through the typed
+    // start path. With both directions in place the wrapper
+    // round-trips: `Handle::from_inner(h.into_inner())` == h.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {"),
+        "missing from_inner constructor: {source}"
+    );
+    assert!(
+        source.contains("Self { inner }"),
+        "from_inner body must wrap the bridge handle in the typed wrapper: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_into_inner_consuming_accessor() {
     // R6 ergonomics — `<Wf>Handle::into_inner(self)` returns the
     // underlying `WorkflowHandle` by value, letting downstream
