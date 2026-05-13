@@ -432,12 +432,22 @@ fn update_from(
     } else {
         opts.name
     };
+    let id_expression = if opts.id.is_empty() {
+        None
+    } else {
+        Some(
+            parse_id_template(&opts.id, &method.input()).with_context(|| {
+                format!("parse (temporal.v1.update).id template on {service}.{rpc_method}")
+            })?,
+        )
+    };
     Ok(UpdateModel {
         rpc_method,
         registered_name,
         input_type: ProtoType::new(method.input().full_name()),
         output_type: ProtoType::new(method.output().full_name()),
         validate: opts.validate,
+        id_expression,
     })
 }
 
@@ -509,19 +519,19 @@ fn reject_unsupported_workflow_options(
     ))
 }
 
-/// `UpdateOptions.id` (a workflow-id template targeting the *parent* workflow)
-/// and `wait_for_stage` (default `WaitPolicy` for the update) are runtime-
-/// affecting but not threaded through the v1 emit. Error out so users don't
-/// ship updates that silently default to `Completed` waits or random ids.
+/// `UpdateOptions.wait_for_stage` (default `WaitPolicy` for the update) is
+/// runtime-affecting but not threaded through the v1 emit. Error out so users
+/// don't ship updates that silently default to `Completed` waits.
 ///
 /// `wait_policy` is the deprecated predecessor of `wait_for_stage`. cludden's
 /// Go plugin still honours it on legacy protos; ignoring it here would let a
 /// user port a Go service over and silently lose their default policy.
+///
+/// `UpdateOptions.id` (a workflow-id template targeting the *parent* workflow)
+/// is now parsed into [`UpdateModel::id_expression`] and emitted as a
+/// `<update>_by_template` client convenience.
 fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &str) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
-    if !opts.id.is_empty() {
-        unsupported.push("id");
-    }
     if opts.wait_for_stage != 0 {
         unsupported.push("wait_for_stage");
     }

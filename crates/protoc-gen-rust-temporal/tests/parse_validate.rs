@@ -1330,12 +1330,16 @@ fn workflow_with_multiple_unsupported_fields_lists_all() {
 }
 
 #[test]
-fn update_with_id_template_is_rejected() {
+fn update_id_template_emits_workflow_id_derivation_and_by_template_method() {
+    // R5: `UpdateOptions.id` is a workflow-id template resolved against
+    // the update's input. Compile time we materialise it into a private
+    // `<update>_workflow_id(input) -> String` fn (mirroring the existing
+    // workflow-id derivation) plus a `<update>_by_template` client method
+    // that calls the derivation and forwards to the update-by-id helper.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package guard.v1;
-        import "google/protobuf/empty.proto";
+        package upd_id.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
@@ -1345,20 +1349,75 @@ fn update_with_id_template_is_rejected() {
               update: [{ ref: "Patch" }]
             };
           }
-          rpc Patch(In) returns (Out) {
+          rpc Patch(PatchInput) returns (PatchOutput) {
             option (temporal.v1.update) = { id: "patch-{{ .Field }}" };
           }
         }
-        message In { string field = 1; }
+        message In {}
         message Out {}
+        message PatchInput  { string field = 1; }
+        message PatchOutput { bool ok = 1; }
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    let update_model = svc
+        .updates
+        .iter()
+        .find(|u| u.rpc_method == "Patch")
+        .expect("Patch update");
+    let segments = update_model
+        .id_expression
+        .as_ref()
+        .expect("model carries the update-id template");
+    use protoc_gen_rust_temporal::model::IdTemplateSegment;
+    assert_eq!(
+        segments,
+        &[
+            IdTemplateSegment::Literal("patch-".to_string()),
+            IdTemplateSegment::Field("field".to_string()),
+        ],
+        "template must compile to a literal segment then a field reference"
+    );
+
+    let source = render::render(svc, &Default::default());
     assert!(
-        err.contains("temporal.v1.update") && err.contains("id"),
-        "expected update-id diagnostic, got: {err}"
+        source.contains("fn patch_workflow_id(input: &PatchInput) -> String"),
+        "derivation fn must take the update input by ref: {source}"
+    );
+    assert!(
+        source.contains("format!(\"patch-{}\", input.field)"),
+        "derivation fn must format the template against the input field: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub async fn patch_by_template(&self, input: PatchInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<PatchOutput>"
+        ),
+        "client must expose `<update>_by_template` convenience: {source}"
+    );
+    assert!(
+        source.contains("let workflow_id = patch_workflow_id(&input);"),
+        "by_template method must derive the id via the codegen helper: {source}"
+    );
+    assert!(
+        source.contains("self.patch(workflow_id, input, wait_policy).await"),
+        "by_template must forward to the by-id update method: {source}"
+    );
+}
+
+#[test]
+fn update_without_id_template_omits_by_template_method() {
+    // The `<update>_by_template` convenience only appears when the proto
+    // declares the template — keeps the client surface honest.
+    let services = parse_and_validate("full_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("reconfigure_by_template"),
+        "full_workflow's Reconfigure update doesn't declare a template, so by_template must not be emitted: {source}"
+    );
+    assert!(
+        !source.contains("fn reconfigure_workflow_id"),
+        "the derivation fn should also be absent without a template: {source}"
     );
 }
 

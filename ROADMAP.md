@@ -138,6 +138,16 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R5 — `UpdateOptions.id` template): `(temporal.v1.update).id`
+  graduates from rejected to supported. Reuses the existing
+  `parse_id_template` machinery (now factored into `emit_id_fn`) against
+  the update's *input* descriptor — each field reference resolves to a
+  field on the update message, not the workflow. Render emits a private
+  `<update>_workflow_id(input) -> String` derivation fn plus a
+  `<service>Client::<update>_by_template(input, wait_policy)` convenience
+  that derives the parent workflow id and forwards to the by-id update
+  method. Only emitted when the proto declares the template; existing
+  goldens for templateless updates unchanged.
 - 2026-05-13 (R4 — client update-by-id, completes the by-id trifecta):
   `<Service>Client` now exposes `<update>(workflow_id [, input], wait_policy)`
   for every attached update rpc, full Empty matrix routed to
@@ -394,7 +404,7 @@ toward majority parity.
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |
-| Update ids/default wait stage | Not fully emitted. | R5 |
+| Update ids/default wait stage | `UpdateOptions.id` shipped 2026-05-13 (`<update>_by_template`); `wait_for_stage` / deprecated `wait_policy` still rejected. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |
 | XNS/Nexus/codec/docs/test clients | Not generated. | R8 |

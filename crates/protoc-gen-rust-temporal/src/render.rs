@@ -193,44 +193,58 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
 /// runtime template engine to maintain and the field lookups are
 /// statically type-checked.
 fn render_id_fns(out: &mut String, svc: &ServiceModel) {
-    let mut emitted_any = false;
     for wf in &svc.workflows {
         let Some(segments) = wf.id_expression.as_ref() else {
             continue;
         };
-        emitted_any = true;
         let fn_name = format!("{}_id", wf.rpc_method.to_snake_case());
-        let (fmt, args) = compile_id_template(segments);
-
-        if wf.input_type.is_empty {
-            // Validation in parse.rs guarantees a Field segment cannot
-            // refer to a field on Empty, so `args` is empty here. The fn
-            // takes no input.
-            let _ = writeln!(out, "    fn {fn_name}() -> String {{");
-            if fmt.is_empty() {
-                let _ = writeln!(out, "        String::new()");
-            } else {
-                let _ = writeln!(out, "        \"{fmt}\".to_string()");
-            }
-            let _ = writeln!(out, "    }}");
-            let _ = writeln!(out);
+        emit_id_fn(out, &fn_name, segments, &wf.input_type);
+    }
+    // R5: `UpdateOptions.id` is a workflow-id template resolved against
+    // the *update* input, used by the `<update>_by_template` client
+    // convenience. Same compilation strategy as workflow id templates,
+    // just bound to the update's input descriptor.
+    for u in &svc.updates {
+        let Some(segments) = u.id_expression.as_ref() else {
             continue;
-        }
+        };
+        let fn_name = format!("{}_workflow_id", u.rpc_method.to_snake_case());
+        emit_id_fn(out, &fn_name, segments, &u.input_type);
+    }
+}
 
-        let input_ty = wf.input_type.rust_name();
-        let _ = writeln!(out, "    fn {fn_name}(input: &{input_ty}) -> String {{");
-        if args.is_empty() {
-            let _ = writeln!(out, "        let _ = input;");
-            let _ = writeln!(out, "        \"{fmt}\".to_string()");
+/// Shared emit body for workflow-id and update-target-id derivation
+/// helpers. `input_ty` controls the signature; if it's Empty the fn
+/// takes no args (validation guarantees template segments can't
+/// reference fields on Empty).
+fn emit_id_fn(
+    out: &mut String,
+    fn_name: &str,
+    segments: &[IdTemplateSegment],
+    input_ty: &crate::model::ProtoType,
+) {
+    let (fmt, args) = compile_id_template(segments);
+    if input_ty.is_empty {
+        let _ = writeln!(out, "    fn {fn_name}() -> String {{");
+        if fmt.is_empty() {
+            let _ = writeln!(out, "        String::new()");
         } else {
-            let _ = writeln!(out, "        format!(\"{fmt}\", {})", args.join(", "));
+            let _ = writeln!(out, "        \"{fmt}\".to_string()");
         }
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
+        return;
     }
-    if emitted_any {
-        // No trailing blank — `render_client_struct` adds its own.
+    let ty = input_ty.rust_name();
+    let _ = writeln!(out, "    fn {fn_name}(input: &{ty}) -> String {{");
+    if args.is_empty() {
+        let _ = writeln!(out, "        let _ = input;");
+        let _ = writeln!(out, "        \"{fmt}\".to_string()");
+    } else {
+        let _ = writeln!(out, "        format!(\"{fmt}\", {})", args.join(", "));
     }
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
 }
 
 /// Pick the call site that produces a workflow id when the caller did
@@ -352,9 +366,71 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
             continue;
         }
         render_client_update_method(out, u);
+        // R5: `<update>_by_template` derives the parent workflow id from
+        // `UpdateOptions.id` against the update input, then forwards to
+        // the by-id variant above. Only emitted when the proto declares
+        // the template — keeps the surface honest.
+        if u.id_expression.is_some() {
+            render_client_update_by_template_method(out, u);
+        }
     }
 
     let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// `<update>_by_template`: derives the parent workflow id from
+/// `UpdateOptions.id` against the update input, then forwards to the
+/// by-id update method. Only emitted when the proto declares the
+/// template. Empty-output variant returns `Result<()>`; non-Empty
+/// returns the typed output.
+fn render_client_update_by_template_method(out: &mut String, u: &UpdateModel) {
+    let method_snake = u.rpc_method.to_snake_case();
+    let by_id = method_snake.clone();
+    let by_template = format!("{method_snake}_by_template");
+    let out_ty = u.output_type.rust_name();
+    let _ = writeln!(
+        out,
+        "        /// Run the `{}` update, deriving the parent workflow id from",
+        u.registered_name
+    );
+    let _ = writeln!(
+        out,
+        "        /// `(temporal.v1.update).id` against the update input."
+    );
+    let id_fn = format!("{method_snake}_workflow_id");
+    if u.input_type.is_empty {
+        // Empty-input update with a template — template must have no Field
+        // segments (parse-time validation). Emit a no-arg derivation call.
+        let _ = writeln!(
+            out,
+            "        pub async fn {by_template}(&self, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+        );
+        let _ = writeln!(out, "            let workflow_id = {id_fn}();");
+        let _ = writeln!(
+            out,
+            "            self.{by_id}(workflow_id, wait_policy).await"
+        );
+    } else {
+        let in_ty = u.input_type.rust_name();
+        let _ = writeln!(
+            out,
+            "        pub async fn {by_template}(&self, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+        );
+        let _ = writeln!(out, "            let workflow_id = {id_fn}(&input);");
+        if u.output_type.is_empty {
+            let _ = writeln!(
+                out,
+                "            self.{by_id}(workflow_id, input, wait_policy).await"
+            );
+        } else {
+            let _ = writeln!(
+                out,
+                "            self.{by_id}(workflow_id, input, wait_policy).await"
+            );
+        }
+    }
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
 }
 

@@ -119,7 +119,7 @@ rejected by `validate.rs::validate_signal_outputs`.
 |---|---|---|
 | `name` | supported | |
 | `validate` | supported | Surfaces on `UpdateModel.validate`; no validator hook generated yet. |
-| `id` | rejected | R5 (workflow-id template targeting the parent). |
+| `id` | supported | Workflow-id template targeting the parent workflow, resolved against the update input. Compiled to a private `<update>_workflow_id(input)` helper plus a `<update>_by_template(input, wait_policy)` client convenience that forwards to the update-by-id call. Only `{{ .Field }}` segments supported (R7 will add Bloblang). |
 | `wait_for_stage` | rejected | R5. |
 | `wait_policy` (deprecated) | rejected | R5. |
 | `cli` | intentionally ignored | R6. |

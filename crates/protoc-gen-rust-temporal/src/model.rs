@@ -143,6 +143,14 @@ pub struct UpdateModel {
     pub output_type: ProtoType,
     /// Whether `UpdateOptions.validate` was set on this rpc.
     pub validate: bool,
+    /// Parsed `UpdateOptions.id` template — a workflow-id template that
+    /// targets the *parent* workflow. Compiled at parse time against the
+    /// update's *input* descriptor (not the workflow's), so each segment
+    /// names a Rust field on the update input. Render emits a private
+    /// `<update>_workflow_id(input: &<Input>) -> String` helper plus a
+    /// client-level `<update>_by_template` convenience method that uses
+    /// the derived id to find the parent workflow.
+    pub id_expression: Option<Vec<IdTemplateSegment>>,
 }
 
 #[derive(Debug)]
