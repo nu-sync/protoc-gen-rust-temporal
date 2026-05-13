@@ -16,9 +16,65 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
     reject_handler_registered_name_collisions(model)?;
     reject_conflicting_ref_cli_overrides(model)?;
     reject_workflow_cli_name_collisions(model)?;
+    reject_unprintable_registered_names(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
+    Ok(())
+}
+
+/// Reject any `name:` override that contains whitespace or control
+/// characters. Temporal's workflow / signal / query / update / activity
+/// names land directly on the wire; whitespace would round-trip
+/// successfully but make debugging awful (logs show "MyWorkflow "
+/// with an invisible trailing space). Newlines and tabs in a name
+/// are almost always a paste accident. Empty names from an explicit
+/// `name: ""` override are rejected too — proto3 omits the field
+/// when empty, so a literal empty override is an authoring mistake.
+fn reject_unprintable_registered_names(model: &ServiceModel) -> Result<()> {
+    fn check(model_service: &str, kind: &str, rpc: &str, name: &str) -> Result<()> {
+        if name.is_empty() {
+            bail!(
+                "{model_service}.{rpc}: {kind} registered name is empty — set `name:` to a non-empty value or omit the field to use the default",
+            );
+        }
+        for c in name.chars() {
+            if c.is_whitespace() || c.is_control() {
+                bail!(
+                    "{model_service}.{rpc}: {kind} registered name {name:?} contains whitespace / control character `{c:?}` — Temporal names must be printable ASCII without spaces",
+                );
+            }
+        }
+        Ok(())
+    }
+    for wf in &model.workflows {
+        check(
+            &model.service,
+            "workflow",
+            &wf.rpc_method,
+            &wf.registered_name,
+        )?;
+        for alias in &wf.aliases {
+            check(&model.service, "workflow alias", &wf.rpc_method, alias)?;
+        }
+    }
+    for s in &model.signals {
+        check(&model.service, "signal", &s.rpc_method, &s.registered_name)?;
+    }
+    for q in &model.queries {
+        check(&model.service, "query", &q.rpc_method, &q.registered_name)?;
+    }
+    for u in &model.updates {
+        check(&model.service, "update", &u.rpc_method, &u.registered_name)?;
+    }
+    for a in &model.activities {
+        check(
+            &model.service,
+            "activity",
+            &a.rpc_method,
+            &a.registered_name,
+        )?;
+    }
     Ok(())
 }
 

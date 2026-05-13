@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — reject unprintable / empty registered names):
+  every workflow / signal / query / update / activity `registered_name`
+  (and workflow aliases) now goes through a printable-name check at
+  validate. Rejects: empty strings (a literal `name: ""` override is
+  always an authoring mistake — proto3 omits the field when empty);
+  any character matching `is_whitespace()` or `is_control()` (logs
+  with invisible trailing spaces or pasted newlines surface
+  immediately as mystery prod bugs). Diagnostics name the kind +
+  offending value + the specific bad character. Two new positive
+  parse_validate tests pin the whitespace and newline rejection
+  shapes. 151 parse_validate tests green. No bridge signature
+  change; no fixture goldens touched.
 - 2026-05-13 (R6 — `<Wf>StartOptions::with_<field>` builder setters):
   every generated `<Wf>StartOptions` struct now exposes
   builder-style setters per field (`with_workflow_id`,

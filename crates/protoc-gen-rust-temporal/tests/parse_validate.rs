@@ -1906,6 +1906,73 @@ fn matching_signal_ref_cli_overrides_across_workflows_pass_validation() {
 }
 
 #[test]
+fn workflow_registered_name_with_whitespace_fails_validation() {
+    // A `name:` override containing whitespace would round-trip but
+    // make production logs ambiguous — reject at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package ws_name.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              name:       "My Workflow"
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("whitespace in registered name must be rejected")
+        .to_string();
+    assert!(
+        err.contains("whitespace") && err.contains("My Workflow"),
+        "diagnostic must name whitespace + offending value, got: {err}"
+    );
+}
+
+#[test]
+fn signal_registered_name_with_newline_fails_validation() {
+    // Same check applies to signal names.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package nl_sig.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = { name: "bad\nname" };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("newline in signal registered name must be rejected")
+        .to_string();
+    assert!(
+        err.contains("signal") && err.contains("control"),
+        "diagnostic must name kind + control-character flavour, got: {err}"
+    );
+}
+
+#[test]
 fn duplicate_activity_registered_name_fails_validation() {
     // Two activities registering under the same Temporal name would
     // silently dedupe at the worker — refuse at codegen.
