@@ -244,4 +244,18 @@ pub mod workerfull_v1_orchestration_service_temporal {
         worker.register_workflow::<W>()
     }
 
+    pub struct RunWorkflow;
+    impl temporal_runtime::worker::WorkflowDefinition for RunWorkflow {
+        type Input = temporal_runtime::TypedProtoMessage<RunInput>;
+        type Output = temporal_runtime::TypedProtoMessage<RunOutput>;
+        fn name(&self) -> &str { self::RUN_WORKFLOW_NAME }
+    }
+    pub async fn start_run_child<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: RunInput,
+        opts: temporal_runtime::worker::ChildWorkflowOptions,
+    ) -> ::std::result::Result<temporal_runtime::worker::StartedChildWorkflow<RunWorkflow>, temporal_runtime::worker::ChildWorkflowStartError> {
+        ctx.child_workflow(RunWorkflow, input, opts).await
+    }
+
 }

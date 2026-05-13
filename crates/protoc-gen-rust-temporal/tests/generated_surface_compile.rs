@@ -540,6 +540,21 @@ pub mod temporal_runtime {
                 Self: Sized;
         }
 
+        pub trait WorkflowDefinition {
+            type Input;
+            type Output;
+            fn name(&self) -> &str;
+        }
+
+        #[derive(Debug, Default)]
+        pub struct ChildWorkflowOptions;
+
+        #[derive(Debug)]
+        pub struct ChildWorkflowStartError;
+
+        #[derive(Debug)]
+        pub struct StartedChildWorkflow<WD: WorkflowDefinition>(::std::marker::PhantomData<WD>);
+
         #[derive(Debug, Default)]
         pub struct ActivityOptions;
 
@@ -573,6 +588,14 @@ pub mod temporal_runtime {
                 AD::Output: Default,
             {
                 Ok(AD::Output::default())
+            }
+            pub async fn child_workflow<WD: WorkflowDefinition>(
+                &self,
+                _wf: WD,
+                _input: impl Into<WD::Input>,
+                _opts: ChildWorkflowOptions,
+            ) -> ::std::result::Result<StartedChildWorkflow<WD>, ChildWorkflowStartError> {
+                Ok(StartedChildWorkflow(::std::marker::PhantomData))
             }
         }
 

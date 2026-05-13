@@ -140,4 +140,18 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         worker.register_workflow::<W>()
     }
 
+    pub struct RunWorkflow;
+    impl temporal_runtime::worker::WorkflowDefinition for RunWorkflow {
+        type Input = temporal_runtime::TypedProtoMessage<WorkInput>;
+        type Output = temporal_runtime::TypedProtoMessage<WorkOutput>;
+        fn name(&self) -> &str { self::RUN_WORKFLOW_NAME }
+    }
+    pub async fn start_run_child<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: WorkInput,
+        opts: temporal_runtime::worker::ChildWorkflowOptions,
+    ) -> ::std::result::Result<temporal_runtime::worker::StartedChildWorkflow<RunWorkflow>, temporal_runtime::worker::ChildWorkflowStartError> {
+        ctx.child_workflow(RunWorkflow, input, opts).await
+    }
+
 }

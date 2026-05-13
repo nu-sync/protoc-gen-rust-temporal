@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R2 — child-workflow markers + start helpers): under
+  `workflows=true`, every workflow with non-Empty input AND output now
+  ships a per-rpc `<RPC>Workflow` marker struct + `WorkflowDefinition`
+  impl plus a workflow-side `start_<workflow>_child(ctx, input, opts) ->
+  Result<StartedChildWorkflow<<RPC>Workflow>, ChildWorkflowStartError>`
+  helper. Lets workflow code spawn typed child workflows without hand-
+  writing the WorkflowDefinition impl. Bridge re-exports
+  `WorkflowDefinition`, `ChildWorkflowOptions`, `StartedChildWorkflow`,
+  and `ChildWorkflowStartError`. Empty-input/output workflows fall
+  through the same orphan-rule gate as the activity markers (lifting
+  this is a follow-up once `()` impls land). Two new tests pin the
+  marker, helper, and Empty-skip paths.
 - 2026-05-13 (R3 — local-activity variant): every non-Empty activity
   now also ships `execute_<activity>_local(ctx, input, opts) ->
   Result<<Output>, ActivityExecutionError>` alongside the regular
@@ -441,7 +453,7 @@ toward majority parity.
 | Method co-annotations | Refused at parse with a clear diagnostic (2026-05-13); generator still models one primary kind per rpc. Full support is the next R1 step. | R1 |
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
-| Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
+| Worker handler surface | Definition trait + registration helper + child-workflow markers/start helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks, continue-as-new, external-signal helpers still pending. | R2 |
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` shipped 2026-05-13 (non-Empty in/out only); option builders + Empty-input/output helpers still pending. | R3 |
 | Client cancel/terminate/top-level operations | `cancel_workflow`, `terminate_workflow`, `run_id()`, signal/query/update-by-id all shipped 2026-05-13. | R4 |
 | Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |

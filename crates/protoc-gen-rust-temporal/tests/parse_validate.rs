@@ -601,6 +601,85 @@ fn worker_full_render_golden() {
 }
 
 #[test]
+fn workflows_emit_renders_child_workflow_marker_and_helper() {
+    // R2 — under `workflows=true`, every workflow with non-Empty input AND
+    // output ships a `<RPC>Workflow` marker struct + WorkflowDefinition
+    // impl plus a `start_<workflow>_child` workflow-side helper. The
+    // helper lets workflow code spawn a typed child workflow without
+    // hand-writing the WorkflowDefinition impl. Empty-side activities/
+    // workflows fall through the same orphan-rule gating documented on
+    // the activity emit.
+    //
+    // workflows_emit's Run rpc is non-Empty input (OrderInput) and
+    // non-Empty output (OrderOutput), so the marker + helper must appear.
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    assert!(opts.workflows);
+    let source = render::render(&services[0], &opts);
+
+    assert!(
+        source.contains("pub struct RunWorkflow;"),
+        "must emit child-workflow marker struct: {source}"
+    );
+    assert!(
+        source.contains("impl temporal_runtime::worker::WorkflowDefinition for RunWorkflow"),
+        "marker must impl WorkflowDefinition: {source}"
+    );
+    assert!(
+        source.contains("type Input = temporal_runtime::TypedProtoMessage<OrderInput>;"),
+        "Input must be wrapped in TypedProtoMessage (orphan rule): {source}"
+    );
+    assert!(
+        source.contains("type Output = temporal_runtime::TypedProtoMessage<OrderOutput>;"),
+        "Output must be wrapped in TypedProtoMessage: {source}"
+    );
+    assert!(
+        source.contains("fn name(&self) -> &str { self::RUN_WORKFLOW_NAME }"),
+        "marker name() must delegate to the existing const: {source}"
+    );
+
+    assert!(
+        source.contains("pub async fn start_run_child<W>("),
+        "must emit start_run_child workflow-side helper: {source}"
+    );
+    assert!(
+        source.contains("opts: temporal_runtime::worker::ChildWorkflowOptions,"),
+        "helper must take ChildWorkflowOptions: {source}"
+    );
+    assert!(
+        source.contains("-> ::std::result::Result<temporal_runtime::worker::StartedChildWorkflow<RunWorkflow>, temporal_runtime::worker::ChildWorkflowStartError>"),
+        "helper must surface the typed StartedChildWorkflow handle: {source}"
+    );
+    assert!(
+        source.contains("ctx.child_workflow(RunWorkflow, input, opts).await"),
+        "helper must delegate to ctx.child_workflow: {source}"
+    );
+}
+
+#[test]
+fn child_workflow_marker_suppressed_for_empty_io() {
+    // Empty-input workflows fall through the orphan-rule gate. They keep
+    // the Definition trait but skip the marker + helper.
+    let services = parse_and_validate("empty_input_workflow");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        workflows: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    // Whatever the empty_input workflow rpc is named, the marker name
+    // includes "Workflow" — check that no `pub struct *Workflow;` line
+    // with a WorkflowDefinition impl appears.
+    assert!(
+        !source.contains("impl temporal_runtime::worker::WorkflowDefinition for"),
+        "Empty-input workflow must not produce a WorkflowDefinition impl: {source}"
+    );
+    assert!(
+        !source.contains("ctx.child_workflow("),
+        "Empty-input workflow must not produce a child_workflow helper: {source}"
+    );
+}
+
+#[test]
 fn workflow_aliases_render_golden() {
     assert_golden("workflow_aliases");
 }

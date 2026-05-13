@@ -1781,6 +1781,54 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
     let _ = writeln!(out, "        worker.register_workflow::<W>()");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
+
+    // R2 — child-workflow marker + workflow-side start helper. Skipped
+    // when either input or output is Empty because `()` doesn't satisfy
+    // the SDK's `WorkflowDefinition::Input`/`Output` bounds (same orphan-
+    // rule limitation as the activity markers under `activities=true`).
+    if !wf.input_type.is_empty && !wf.output_type.is_empty {
+        let marker_struct = format!("{}Workflow", wf.rpc_method);
+        let _ = writeln!(out, "    pub struct {marker_struct};");
+        let _ = writeln!(
+            out,
+            "    impl temporal_runtime::worker::WorkflowDefinition for {marker_struct} {{"
+        );
+        let _ = writeln!(
+            out,
+            "        type Input = temporal_runtime::TypedProtoMessage<{input_ty}>;"
+        );
+        let _ = writeln!(
+            out,
+            "        type Output = temporal_runtime::TypedProtoMessage<{output_ty}>;"
+        );
+        let _ = writeln!(
+            out,
+            "        fn name(&self) -> &str {{ self::{workflow_const} }}"
+        );
+        let _ = writeln!(out, "    }}");
+
+        let child_fn = format!("start_{}_child", wf.rpc_method.to_snake_case());
+        let _ = writeln!(out, "    pub async fn {child_fn}<W>(");
+        let _ = writeln!(
+            out,
+            "        ctx: &temporal_runtime::worker::WorkflowContext<W>,"
+        );
+        let _ = writeln!(out, "        input: {input_ty},");
+        let _ = writeln!(
+            out,
+            "        opts: temporal_runtime::worker::ChildWorkflowOptions,"
+        );
+        let _ = writeln!(
+            out,
+            "    ) -> ::std::result::Result<temporal_runtime::worker::StartedChildWorkflow<{marker_struct}>, temporal_runtime::worker::ChildWorkflowStartError> {{"
+        );
+        let _ = writeln!(
+            out,
+            "        ctx.child_workflow({marker_struct}, input, opts).await"
+        );
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
 }
 
 /// Per-rpc signal/query/update name consts. Emitted under the existing

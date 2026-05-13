@@ -237,4 +237,18 @@ pub mod jobs_v1_job_service_temporal {
         worker.register_workflow::<W>()
     }
 
+    pub struct RunJobWorkflow;
+    impl temporal_runtime::worker::WorkflowDefinition for RunJobWorkflow {
+        type Input = temporal_runtime::TypedProtoMessage<JobInput>;
+        type Output = temporal_runtime::TypedProtoMessage<JobOutput>;
+        fn name(&self) -> &str { self::RUN_JOB_WORKFLOW_NAME }
+    }
+    pub async fn start_run_job_child<W>(
+        ctx: &temporal_runtime::worker::WorkflowContext<W>,
+        input: JobInput,
+        opts: temporal_runtime::worker::ChildWorkflowOptions,
+    ) -> ::std::result::Result<temporal_runtime::worker::StartedChildWorkflow<RunJobWorkflow>, temporal_runtime::worker::ChildWorkflowStartError> {
+        ctx.child_workflow(RunJobWorkflow, input, opts).await
+    }
+
 }
