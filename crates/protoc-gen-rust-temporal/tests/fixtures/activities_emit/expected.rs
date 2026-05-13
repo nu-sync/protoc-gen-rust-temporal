@@ -38,6 +38,9 @@ pub mod acts_v1_chunk_service_temporal {
     fn run_batch_id(input: &BatchInput) -> String {
         let id = format!("batch-{}", input.name);
         assert!(!id.is_empty(), "workflow id template `batch-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        if let Some(bad) = id.chars().find(|c| c.is_control()) {
+            panic!("workflow id template `batch-{{}}` resolved to a value containing control character {:?} at runtime — check the referenced input fields for embedded newlines / tabs", bad);
+        }
         id
     }
 

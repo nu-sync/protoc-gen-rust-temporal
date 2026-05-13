@@ -481,6 +481,19 @@ fn emit_id_fn(
             out,
             "        assert!(!id.is_empty(), \"workflow id template `{escaped_fmt}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value\");"
         );
+        // Control characters (newline, tab, etc.) in a workflow id
+        // round-trip on the wire but make logs / dashboards unable to
+        // disambiguate one id from another visually. Reject early
+        // with a precise diagnostic naming the offending character.
+        let _ = writeln!(
+            out,
+            "        if let Some(bad) = id.chars().find(|c| c.is_control()) {{"
+        );
+        let _ = writeln!(
+            out,
+            "            panic!(\"workflow id template `{escaped_fmt}` resolved to a value containing control character {{:?}} at runtime — check the referenced input fields for embedded newlines / tabs\", bad);"
+        );
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "        id");
     }
     let _ = writeln!(out, "    }}");

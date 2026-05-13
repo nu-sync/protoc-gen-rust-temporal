@@ -45,6 +45,9 @@ pub mod wf_v1_order_service_temporal {
     fn run_id(input: &OrderInput) -> String {
         let id = format!("order-{}", input.id);
         assert!(!id.is_empty(), "workflow id template `order-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        if let Some(bad) = id.chars().find(|c| c.is_control()) {
+            panic!("workflow id template `order-{{}}` resolved to a value containing control character {:?} at runtime — check the referenced input fields for embedded newlines / tabs", bad);
+        }
         id
     }
 

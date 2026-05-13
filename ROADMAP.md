@@ -280,6 +280,18 @@ Progress:
   bridge call, and the `Self::new` wrap. Several fixture goldens
   reblessed (every Client gained the new method). 164 parse_validate
   tests green. No bridge signature change.
+- 2026-05-13 (R1 — workflow id template runtime control-char guard):
+  pairs with the previously-shipped emptiness guard. The generated
+  `<wf>_id(input)` helper now also rejects substituted ids
+  containing any `is_control()` character (newlines, tabs, etc).
+  Temporal accepts these on the wire but logs and dashboards
+  display them ambiguously — the panic surfaces locally with the
+  offending character debug-quoted so the bad input field is
+  obvious. Only emitted on the field-substitution branch; the
+  literal-only branches have statically known ids that we already
+  rejected at parse if invalid. One new positive parse_validate
+  test pins the guard emit. Several fixture goldens reblessed.
+  171 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R1 — workflow id template runtime emptiness guard):
   the generated `<wf>_id(input)` helper now asserts non-empty after
   the template substitution. Field refs that resolve to empty

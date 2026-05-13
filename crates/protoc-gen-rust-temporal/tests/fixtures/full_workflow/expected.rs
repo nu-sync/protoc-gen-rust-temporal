@@ -51,6 +51,9 @@ pub mod full_v1_full_service_temporal {
     fn run_id(input: &RunInput) -> String {
         let id = format!("run-{}", input.name);
         assert!(!id.is_empty(), "workflow id template `run-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        if let Some(bad) = id.chars().find(|c| c.is_control()) {
+            panic!("workflow id template `run-{{}}` resolved to a value containing control character {:?} at runtime — check the referenced input fields for embedded newlines / tabs", bad);
+        }
         id
     }
 

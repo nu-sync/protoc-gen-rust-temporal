@@ -1227,6 +1227,25 @@ fn workflow_definition_trait_exposes_id_template_when_declared() {
 }
 
 #[test]
+fn workflow_id_template_emits_control_char_guard() {
+    // R1 — the substituted workflow id is also checked for control
+    // characters at runtime (newline, tab, etc.). Such characters
+    // round-trip on the wire but make production logs and
+    // dashboards unable to disambiguate one workflow id from
+    // another, so panic locally with a precise diagnostic.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("id.chars().find(|c| c.is_control())"),
+        "id fn must emit control-char guard: {source}"
+    );
+    assert!(
+        source.contains("containing control character"),
+        "guard message must mention the failure mode: {source}"
+    );
+}
+
+#[test]
 fn workflow_id_template_emits_runtime_emptiness_guard() {
     // R1 — workflow id template with field substitution emits a
     // runtime `assert!` guarding against an empty result, so an
