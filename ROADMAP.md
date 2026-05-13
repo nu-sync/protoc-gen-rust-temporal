@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 — slice-2 bridge primitives): the bridge now exposes
+  `encode_search_attribute_string(&str)`,
+  `encode_search_attribute_int(i64)`, and
+  `encode_search_attribute_bool(bool)` helpers. They build the
+  `json/plain`-encoded `Payload` triples Temporal expects for static
+  search attributes. The plugin doesn't call them yet (slice 1 only
+  models the empty map); slice 2 emit will route literal map entries
+  through these. Pure addition — no signature changes, no goldens
+  reblessed. Four new bridge unit tests pin the encoding shapes.
 - 2026-05-13 (R7 — slice 1 lands): the canonical empty-map Bloblang
   expression (`root = {}`, whitespace-tolerant) is accepted at parse
   and stored on the model as `SearchAttributesSpec::Empty`. Runtime

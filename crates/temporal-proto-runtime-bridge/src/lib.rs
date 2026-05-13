@@ -341,6 +341,61 @@ fn encode_empty_payload() -> Payload {
     }
 }
 
+/// R7 slice-2 building block — encode a string value into a Temporal
+/// search-attribute `Payload`. Temporal stores search attributes
+/// JSON-encoded with `encoding = "json/plain"`; for keyword/text
+/// attributes the value lands as a single JSON string.
+///
+/// The plugin doesn't call this today (slice 1 only models the empty
+/// map case). R7 slice 2 will route generated `search_attributes`
+/// literal entries through this helper when the proto declares a
+/// static map like `root = { "Environment": "production" }`.
+pub fn encode_search_attribute_string(value: &str) -> Payload {
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+    // Minimal JSON-escape: backslash + double-quote. Search attribute
+    // values in cludden's examples are simple identifiers; the broader
+    // JSON-escape set lands when slice 2 implementation needs it.
+    let escaped: String = value
+        .chars()
+        .flat_map(|c| match c {
+            '\\' => "\\\\".chars().collect::<Vec<_>>(),
+            '"' => "\\\"".chars().collect::<Vec<_>>(),
+            c => vec![c],
+        })
+        .collect();
+    let data = format!("\"{escaped}\"").into_bytes();
+    Payload {
+        metadata,
+        data,
+        external_payloads: vec![],
+    }
+}
+
+/// R7 slice-2 building block — encode a 64-bit signed integer search
+/// attribute. Same `json/plain` encoding as
+/// [`encode_search_attribute_string`]; values land as a JSON number.
+pub fn encode_search_attribute_int(value: i64) -> Payload {
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+    Payload {
+        metadata,
+        data: value.to_string().into_bytes(),
+        external_payloads: vec![],
+    }
+}
+
+/// R7 slice-2 building block — encode a boolean search attribute.
+pub fn encode_search_attribute_bool(value: bool) -> Payload {
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("encoding".to_string(), b"json/plain".to_vec());
+    Payload {
+        metadata,
+        data: (if value { "true" } else { "false" }).as_bytes().to_vec(),
+        external_payloads: vec![],
+    }
+}
+
 // ── Client construction ────────────────────────────────────────────────
 
 /// Connect to a Temporal frontend and produce a [`TemporalClient`].
@@ -1301,6 +1356,40 @@ mod tests {
     // implementation passed `RawValue::new(vec![])` and silently dropped
     // the metadata, which broke mixed-language interop with cludden's Go
     // workers (they always emit the Empty triple).
+    #[test]
+    fn search_attribute_string_encodes_to_json_string() {
+        let p = encode_search_attribute_string("production");
+        assert_eq!(
+            p.metadata.get("encoding").map(Vec::as_slice),
+            Some(b"json/plain".as_slice()),
+        );
+        assert_eq!(p.data, br#""production""#.to_vec());
+    }
+
+    #[test]
+    fn search_attribute_string_escapes_quotes_and_backslashes() {
+        let p = encode_search_attribute_string(r#"with"quote\and\backslash"#);
+        // The escaped JSON form: backslashes and quotes get escaped.
+        assert_eq!(
+            std::str::from_utf8(&p.data).unwrap(),
+            r#""with\"quote\\and\\backslash""#
+        );
+    }
+
+    #[test]
+    fn search_attribute_int_encodes_as_json_number() {
+        let p = encode_search_attribute_int(42);
+        assert_eq!(p.data, b"42".to_vec());
+        let neg = encode_search_attribute_int(-7);
+        assert_eq!(neg.data, b"-7".to_vec());
+    }
+
+    #[test]
+    fn search_attribute_bool_encodes_as_json_bool() {
+        assert_eq!(encode_search_attribute_bool(true).data, b"true".to_vec());
+        assert_eq!(encode_search_attribute_bool(false).data, b"false".to_vec());
+    }
+
     #[test]
     fn empty_payload_carries_the_full_triple() {
         let payload = encode_empty_payload();
