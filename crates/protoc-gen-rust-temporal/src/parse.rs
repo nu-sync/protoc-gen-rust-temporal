@@ -120,23 +120,24 @@ fn parse_service(
     let mut activities = Vec::new();
 
     for method in service.methods() {
-        match method_kind(&method, ext)? {
-            MethodKind::Workflow(opts) => {
-                workflows.push(workflow_from(&method, *opts, &package, &service_name)?);
+        for kind in method_kinds(&method, ext)? {
+            match kind {
+                MethodKind::Workflow(opts) => {
+                    workflows.push(workflow_from(&method, *opts, &package, &service_name)?);
+                }
+                MethodKind::Signal(opts) => {
+                    signals.push(signal_from(&method, opts, &package, &service_name));
+                }
+                MethodKind::Query(opts) => {
+                    queries.push(query_from(&method, opts, &package, &service_name));
+                }
+                MethodKind::Update(opts) => {
+                    updates.push(update_from(&method, opts, &package, &service_name)?);
+                }
+                MethodKind::Activity(opts) => {
+                    activities.push(activity_from(&method, *opts, &package, &service_name)?);
+                }
             }
-            MethodKind::Signal(opts) => {
-                signals.push(signal_from(&method, opts, &package, &service_name));
-            }
-            MethodKind::Query(opts) => {
-                queries.push(query_from(&method, opts, &package, &service_name));
-            }
-            MethodKind::Update(opts) => {
-                updates.push(update_from(&method, opts, &package, &service_name)?);
-            }
-            MethodKind::Activity(opts) => {
-                activities.push(activity_from(&method, *opts, &package, &service_name)?);
-            }
-            MethodKind::None => continue,
         }
     }
 
@@ -206,19 +207,20 @@ enum MethodKind {
     Signal(SignalOptions),
     Query(QueryOptions),
     Update(UpdateOptions),
-    None,
 }
 
-fn method_kind(method: &MethodDescriptor, ext: &ExtensionSet) -> Result<MethodKind> {
+/// R1 — co-annotation support. Different `temporal.v1.*` extensions live
+/// at different extension field numbers, so a single MethodOptions can
+/// carry more than one simultaneously. Cludden's Go plugin supports
+/// useful combinations (workflow+activity, signal+activity,
+/// update+activity); we mirror that surface by parsing every present
+/// extension into its own `MethodKind`. Combinations involving
+/// `workflow + signal`, `workflow + query`, etc. are still refused
+/// because the emit shape doesn't model them (a single rpc as both a
+/// top-level workflow client method *and* a workflow-attached
+/// signal/query handler would collide on the generated symbol).
+fn method_kinds(method: &MethodDescriptor, ext: &ExtensionSet) -> Result<Vec<MethodKind>> {
     let opts: DynamicMessage = method.options();
-
-    // Different `temporal.v1.*` extensions live at different extension field
-    // numbers, so a single MethodOptions *can* carry more than one of them
-    // simultaneously — that's the Go plugin's co-annotation surface (e.g.
-    // workflow + activity, signal + activity). The Rust emit does not yet
-    // model co-annotations (see ROADMAP.md R1). Refuse the proto rather than
-    // silently honour one annotation and drop the others, which would compile
-    // clean and ship a service that's missing half its Temporal contract.
     let mut declared: Vec<&'static str> = Vec::new();
     if opts.has_extension(&ext.workflow) {
         declared.push("workflow");
@@ -235,31 +237,50 @@ fn method_kind(method: &MethodDescriptor, ext: &ExtensionSet) -> Result<MethodKi
     if opts.has_extension(&ext.update) {
         declared.push("update");
     }
-    if declared.len() > 1 {
+
+    // Refuse combinations the emit can't model. `activity` pairs cleanly
+    // with `workflow` / `signal` / `update` because activity emit lives
+    // in a separate trait surface that doesn't share symbols with the
+    // client / handler emit. Everything else collapses to a no-go.
+    let has_activity = declared.contains(&"activity");
+    let primary_count = declared.iter().filter(|d| **d != "activity").count();
+    if primary_count > 1 {
         return Err(anyhow!(
-            "{}.{}: rpc carries multiple Temporal annotations ({}) — co-annotations are not yet supported by the v1 Rust plugin (see ROADMAP.md R1). Split the rpc or pin to a generator release that supports the combination.",
+            "{}.{}: rpc carries multiple non-activity Temporal annotations ({}) — only `activity` may co-occur with another kind; the other primary kinds share generated symbols and would collide.",
             method.parent_service().name(),
             method.name(),
             declared.join(" + "),
         ));
     }
+    let _ = has_activity; // currently only inspected via primary_count
 
+    let mut out = Vec::new();
     if opts.has_extension(&ext.workflow) {
-        return decode_kind::<WorkflowOptions>(&opts.get_extension(&ext.workflow));
+        out.push(decode_kind::<WorkflowOptions>(
+            &opts.get_extension(&ext.workflow),
+        )?);
     }
     if opts.has_extension(&ext.activity) {
-        return decode_kind::<ActivityOptions>(&opts.get_extension(&ext.activity));
+        out.push(decode_kind::<ActivityOptions>(
+            &opts.get_extension(&ext.activity),
+        )?);
     }
     if opts.has_extension(&ext.signal) {
-        return decode_kind::<SignalOptions>(&opts.get_extension(&ext.signal));
+        out.push(decode_kind::<SignalOptions>(
+            &opts.get_extension(&ext.signal),
+        )?);
     }
     if opts.has_extension(&ext.query) {
-        return decode_kind::<QueryOptions>(&opts.get_extension(&ext.query));
+        out.push(decode_kind::<QueryOptions>(
+            &opts.get_extension(&ext.query),
+        )?);
     }
     if opts.has_extension(&ext.update) {
-        return decode_kind::<UpdateOptions>(&opts.get_extension(&ext.update));
+        out.push(decode_kind::<UpdateOptions>(
+            &opts.get_extension(&ext.update),
+        )?);
     }
-    Ok(MethodKind::None)
+    Ok(out)
 }
 
 trait IntoMethodKind {

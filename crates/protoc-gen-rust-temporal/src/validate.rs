@@ -18,65 +18,60 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
     Ok(())
 }
 
-/// A single rpc method may carry at most one `temporal.v1.*` annotation;
-/// declaring two on the same rpc collapses to a single entry in `parse.rs`
-/// (first match wins), but two different annotation buckets pointing at the
-/// same method *name* — which can happen when an activity is named the same
-/// as a sibling workflow — would break the generated handle. Reject up front.
+/// Reject method-name collisions across **distinct rpcs**. Two different
+/// proto rpcs that happen to share a snake-case name would collide on
+/// generated symbols. Co-annotations on a **single** rpc (parse.rs allows
+/// `activity` + one of workflow/signal/update) intentionally let the same
+/// method name appear in multiple buckets; that's safe because the activity
+/// emit lives in a separate trait surface that doesn't collide with the
+/// client / handler emit.
 fn reject_rpc_collisions(model: &ServiceModel) -> Result<()> {
-    let mut seen: HashMap<&str, &'static str> = HashMap::new();
+    // Track which (name, kind) tuples we've seen. Within the *same* rpc,
+    // co-annotations are allowed — the activity bucket is the only one
+    // that may co-occur, and it can co-occur with any one other kind.
+    // So the only collision we still reject is two non-activity entries
+    // for the same name (e.g. a workflow rpc named `Cancel` plus a signal
+    // rpc *also* named `Cancel` — two separate proto methods sharing a name).
+    let mut by_name: HashMap<&str, Vec<&'static str>> = HashMap::new();
+    for w in &model.workflows {
+        by_name
+            .entry(w.rpc_method.as_str())
+            .or_default()
+            .push("workflow");
+    }
+    for s in &model.signals {
+        by_name
+            .entry(s.rpc_method.as_str())
+            .or_default()
+            .push("signal");
+    }
+    for q in &model.queries {
+        by_name
+            .entry(q.rpc_method.as_str())
+            .or_default()
+            .push("query");
+    }
+    for u in &model.updates {
+        by_name
+            .entry(u.rpc_method.as_str())
+            .or_default()
+            .push("update");
+    }
+    for a in &model.activities {
+        by_name
+            .entry(a.rpc_method.as_str())
+            .or_default()
+            .push("activity");
+    }
 
-    let kinds: [(&'static str, Vec<&str>); 5] = [
-        (
-            "workflow",
-            model
-                .workflows
-                .iter()
-                .map(|w| w.rpc_method.as_str())
-                .collect(),
-        ),
-        (
-            "signal",
-            model
-                .signals
-                .iter()
-                .map(|s| s.rpc_method.as_str())
-                .collect(),
-        ),
-        (
-            "query",
-            model
-                .queries
-                .iter()
-                .map(|q| q.rpc_method.as_str())
-                .collect(),
-        ),
-        (
-            "update",
-            model
-                .updates
-                .iter()
-                .map(|u| u.rpc_method.as_str())
-                .collect(),
-        ),
-        (
-            "activity",
-            model
-                .activities
-                .iter()
-                .map(|a| a.rpc_method.as_str())
-                .collect(),
-        ),
-    ];
-
-    for (kind, names) in &kinds {
-        for name in names {
-            if let Some(prev) = seen.insert(name, kind) {
-                bail!(
-                    "{}.{name}: rpc carries conflicting Temporal annotations ({prev} and {kind}) — pick one",
-                    model.service,
-                );
-            }
+    for (name, kinds) in &by_name {
+        let non_activity = kinds.iter().filter(|k| **k != "activity").count();
+        if non_activity > 1 {
+            bail!(
+                "{}.{name}: distinct rpcs share a method name across non-activity buckets ({}) — generated symbols would collide; rename one of them",
+                model.service,
+                kinds.join(" + "),
+            );
         }
     }
     Ok(())

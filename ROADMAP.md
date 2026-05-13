@@ -138,6 +138,20 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — co-annotation support): the rejection diagnostic
+  relaxes into actual support for the combinations cludden's Go plugin
+  permits. `parse.rs::method_kinds` (formerly `method_kind`) now returns
+  *all* `temporal.v1.*` extensions declared on a single rpc, and
+  `parse_service` pushes the method into every relevant model bucket.
+  Activity emit lives in a separate trait surface that doesn't share
+  symbols with the client / handler emit, so `activity` may co-occur
+  with `workflow`, `signal`, or `update`. Combinations involving two
+  *primary* kinds (workflow + signal, etc.) remain refused — they would
+  collide on generated symbols. `validate.rs::reject_rpc_collisions`
+  reworked to allow the same method name in multiple buckets when at
+  most one is non-activity. Three new tests cover workflow+activity,
+  signal+activity, and the still-rejected two-primary path. Old
+  three-case rejection test deleted.
 - 2026-05-13 (R3 — Empty-side activity markers + helpers): Empty-input
   and Empty-output activities now also ship per-rpc markers + execute
   helpers. New `temporal_runtime::ProtoEmpty` (a real prost message
@@ -569,7 +583,7 @@ toward majority parity.
 
 | Area | Current behavior | Roadmap |
 |---|---|---|
-| Method co-annotations | Refused at parse with a clear diagnostic (2026-05-13); generator still models one primary kind per rpc. Full support is the next R1 step. | R1 |
+| Method co-annotations | Shipped 2026-05-13: `activity` co-occurs with `workflow` / `signal` / `update`; both buckets populate. Two-primary combinations (workflow+signal etc.) still refused because their generated symbols would collide. | R1 |
 | Cross-service refs | Same-service only; fully-qualified refs surface an explicit "cross-service refs are not yet supported" diagnostic at validate (2026-05-13). | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers shipped 2026-05-13; signal-receive/select helpers, query/update handler hooks still pending. | R2 |

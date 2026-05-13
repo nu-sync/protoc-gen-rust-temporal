@@ -2710,87 +2710,108 @@ fn cross_service_ref_is_rejected_with_clear_diagnostic() {
     );
 }
 
-/// Co-annotations on a single rpc — Go's plugin supports several combinations
-/// (workflow+activity, signal+activity, update+activity); the Rust emit does
-/// not, and R1 in ROADMAP.md tracks adding support. Until then the parser
-/// must refuse them so users cannot accidentally ship a service with half
-/// its Temporal contract silently dropped.
+/// R1 — co-annotation support. Cludden's Go plugin allows a single rpc to
+/// carry `(temporal.v1.activity)` alongside one of the primary kinds
+/// (workflow / signal / update). The Rust plugin now does the same: the
+/// activity bucket lives in a separate trait surface that doesn't collide
+/// with the client / handler emit, so combinations are safe.
+///
+/// Combinations involving two primary kinds (workflow + signal,
+/// workflow + query, etc.) remain refused because they would share
+/// generated symbols.
 #[test]
-fn co_annotations_are_rejected_with_clear_diagnostic() {
-    struct Case {
-        label: &'static str,
-        snippet: &'static str,
-        expect_combo: &'static str,
-    }
+fn co_annotation_workflow_plus_activity_produces_both_entries() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package co_anno.v1;
+        import "temporal/v1/temporal.proto";
 
-    // Each case attaches two `temporal.v1.*` extensions to the same rpc. The
-    // returned diagnostic must name both kinds so users see which combination
-    // tripped the limitation.
-    let cases: &[Case] = &[
-        Case {
-            label: "workflow + activity",
-            snippet: r#"
-              service Svc {
-                rpc Run(In) returns (Out) {
-                  option (temporal.v1.workflow) = { task_queue: "tq" };
-                  option (temporal.v1.activity) = {};
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_combo: "workflow + activity",
-        },
-        Case {
-            label: "signal + activity",
-            snippet: r#"
-              import "google/protobuf/empty.proto";
-              service Svc {
-                rpc Notify(In) returns (google.protobuf.Empty) {
-                  option (temporal.v1.signal) = {};
-                  option (temporal.v1.activity) = {};
-                }
-              }
-              message In {}
-            "#,
-            expect_combo: "activity + signal",
-        },
-        Case {
-            label: "update + activity",
-            snippet: r#"
-              service Svc {
-                rpc Patch(In) returns (Out) {
-                  option (temporal.v1.update) = {};
-                  option (temporal.v1.activity) = {};
-                }
-              }
-              message In {} message Out {}
-            "#,
-            expect_combo: "activity + update",
-        },
-    ];
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+            option (temporal.v1.activity) = {};
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    assert_eq!(svc.workflows.len(), 1, "Run should land in workflows");
+    assert_eq!(
+        svc.activities.len(),
+        1,
+        "Run should also land in activities"
+    );
+    assert_eq!(svc.workflows[0].rpc_method, "Run");
+    assert_eq!(svc.activities[0].rpc_method, "Run");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    validate::validate(svc, &opts).expect("validate must accept activity + one primary kind");
+}
 
-    for case in cases {
-        let source = format!(
-            "syntax = \"proto3\";\npackage co_anno.v1;\nimport \"temporal/v1/temporal.proto\";\n{}",
-            case.snippet,
-        );
-        let (pool, files_to_generate, _tmp) = compile_fixture_inline(&source);
-        let err = match parse::parse(&pool, &files_to_generate) {
-            Ok(_) => panic!("{}: expected parse to fail, but it succeeded", case.label),
-            Err(e) => e.to_string(),
-        };
-        assert!(
-            err.contains(case.expect_combo),
-            "{}: diagnostic must name the combination `{}`, got: {err}",
-            case.label,
-            case.expect_combo,
-        );
-        assert!(
-            err.contains("co-annotations are not yet supported"),
-            "{}: diagnostic must mark co-annotations as not-yet-supported (so users see the roadmap path), got: {err}",
-            case.label,
-        );
-    }
+#[test]
+fn co_annotation_signal_plus_activity_produces_both_entries() {
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package co_anno.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Notify" }]
+            };
+          }
+          rpc Notify(In) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+            option (temporal.v1.activity) = {};
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    assert_eq!(svc.signals.len(), 1);
+    assert_eq!(svc.activities.len(), 1);
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    validate::validate(svc, &opts).expect("validate must accept signal + activity");
+}
+
+#[test]
+fn co_annotation_two_primary_kinds_still_rejected() {
+    // workflow + signal on a single rpc would have it appear as both a
+    // top-level client method *and* a sibling-attached signal handler —
+    // generated symbols would collide. Stay rejected.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package co_anno.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Notify(In) returns (google.protobuf.Empty) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("multiple non-activity Temporal annotations")
+            && err.contains("workflow")
+            && err.contains("signal"),
+        "two-primary-kinds combo must still be refused: {err}"
+    );
 }
 
 #[test]
