@@ -1059,6 +1059,7 @@ pub mod worker {
     pub use temporalio_sdk::activities::{
         ActivityContext, ActivityDefinitions, ActivityError, ActivityImplementer,
     };
+    pub use temporalio_sdk::workflows::WorkflowImplementer;
 }
 
 /// Top-level re-export so plugin-emitted code can resolve

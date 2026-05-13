@@ -101,7 +101,7 @@ pub mod acts_v1_chunk_service_temporal {
 
     // ── Activities ────────────────────────────────────────────
     // Phase 2 (activities=true): typed trait + name consts. Wire to
-    // your worker via temporalio-sdk's #[activity_definitions] macro;
+    // your worker via temporalio-sdk's #[activities] macro;
     // see temporal-proto-runtime-bridge README for the adapter pattern.
 
     pub const PROCESS_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Process";
@@ -110,5 +110,12 @@ pub mod acts_v1_chunk_service_temporal {
     pub trait ChunkServiceActivities: Send + Sync + 'static {
         fn process(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;
         fn heartbeat(&self, ctx: temporal_runtime::ActivityContext, input: ()) -> impl ::std::future::Future<Output = Result<HeartbeatOutput>> + Send;
+    }
+
+    pub fn register_chunk_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
+    where
+        I: ChunkServiceActivities + temporal_runtime::worker::ActivityImplementer,
+    {
+        worker.register_activities(impl_)
     }
 }

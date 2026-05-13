@@ -16,6 +16,26 @@ use std::time::Duration;
 use anyhow::Result;
 pub use temporal_proto_runtime::{TemporalProtoMessage, TypedProtoMessage};
 
+pub struct ActivityContext;
+
+pub mod worker {
+    pub struct Worker;
+
+    pub trait ActivityImplementer {}
+
+    pub trait WorkflowImplementer {}
+
+    impl Worker {
+        pub fn register_activities<I: ActivityImplementer>(&mut self, _impl: I) -> &mut Self {
+            self
+        }
+
+        pub fn register_workflow<W: WorkflowImplementer>(&mut self) -> &mut Self {
+            self
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct TemporalClient {
     // e.g. inner: temporalio_client::Client,

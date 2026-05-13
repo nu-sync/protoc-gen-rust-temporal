@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package workerwf.v1;
+
+import "temporal/v1/temporal.proto";
+
+service WorkerWorkflowService {
+  option (temporal.v1.service) = {
+    task_queue: "worker-workflows"
+  };
+
+  rpc Run(WorkInput) returns (WorkOutput) {
+    option (temporal.v1.workflow) = {};
+  }
+}
+
+message WorkInput {
+  string id = 1;
+}
+
+message WorkOutput {
+  bool ok = 1;
+}

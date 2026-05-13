@@ -14,7 +14,10 @@ Sibling project: [`nu-sync/protoc-gen-ts-temporal`](../protoc-gen-ts-temporal). 
 ## Non-goals
 
 - Authoring a new annotation schema. Field numbers, message shapes, semantics: all cludden.
-- Emitting worker-side code (workflow definitions, activity implementations). v1 emits a **client only**. Worker code is hand-written using the `temporalio-sdk` crate.
+- Emitting worker bodies or activity implementations. Worker code remains
+  hand-written against `temporalio-sdk`; the plugin can optionally emit
+  worker-side contracts and thin registration helpers that route through
+  `crate::temporal_runtime`.
 - Bundling a Temporal SDK. We depend on `temporalio-client` + `prost` at runtime.
 - Supporting JSON payloads. Generated clients speak `binary/protobuf` and reject anything else (see Wire Format).
 - **Bloblang `id` templates.** cludden's Go plugin compiles `WorkflowOptions.id` as [Bloblang](https://docs.redpanda.com/redpanda-connect/guides/bloblang/about/) (e.g. `${! name.or("anonymous") }`) and evaluates the expression *at workflow-start time* against the input message. The Rust plugin only accepts the [Go template](https://pkg.go.dev/text/template) subset cludden's own annotation comments use — `{{ .FieldName }}` references on the input proto — and materialises them into a private `<rpc>_id(input: &Input) -> String` function at codegen time. Non-Bloblang `{{ .X }}` templates round-trip identically between Go and Rust; Bloblang-only expressions are rejected by `parse_id_template` with a clear "only field references are supported" error so users see the limitation at protoc time rather than getting silently-wrong workflow ids at runtime. If full Bloblang parity becomes necessary post-1.0, the path is to pull `bloblang-rs` (or compile to a Rust closure during codegen) rather than ship a runtime evaluator.
@@ -49,11 +52,11 @@ Annotations we consume:
 
 | Annotation | What v1 of this plugin does with it |
 |---|---|
-| `temporal.v1.workflow` on a method | Emit a typed `<workflow>(input, opts) -> <Workflow>Handle` method on the service client. |
+| `temporal.v1.workflow` on a method | Emit a typed `<workflow>(input, opts) -> <Workflow>Handle` method on the service client. With `workflows=true`, also emit `<Workflow>Definition` and `register_<workflow>_workflow(...)` glue. |
 | `temporal.v1.query` on a method | Emit `handle.<query>() -> Output` returning the typed response. |
 | `temporal.v1.signal` on a method | Emit `handle.<signal>(input) -> ()`. Validate signal returns `google.protobuf.Empty`. |
 | `temporal.v1.update` on a method | Emit `handle.<update>(input, wait_policy) -> Output`. |
-| `temporal.v1.activity` on a method | **Validate only.** No code emitted. Worker-side activity handlers are hand-written against prost types. |
+| `temporal.v1.activity` on a method | By default, validate only. With `activities=true`, emit `<Service>Activities`, activity name consts, and `register_<service>_activities(...)` glue. |
 | `temporal.v1.service` on the service | Use as default `task_queue` if a workflow doesn't override it. |
 | `WorkflowOptions.{Query,Signal,Update}.ref` | Wire each ref through to the generated handle as a method. Unknown refs are a validation error. |
 | `WorkflowOptions.aliases[]` | Recorded as constants; not exposed on the client API directly. |
@@ -260,11 +263,43 @@ Each phase ends with green CI and a tagged release.
 **Phase 6 — Update + signal-with-start emit polish**
 - Beyond the PoC's surface area. Update support requires `WaitPolicy` plumbing. Signal-with-start and update-with-start require emitting free functions alongside the client struct.
 
+**Phase 7 — Worker emit** (scoped 2026-05-13)
+- Opt-in flags: `activities=true` and `workflows=true`.
+- Activity emit: per-service `<Service>Activities` trait, per-activity
+  `<METHOD>_ACTIVITY_NAME` constants, and
+  `register_<service>_activities<I>(&mut temporal_runtime::worker::Worker, I)`
+  where `I` implements both the generated trait and the SDK
+  `ActivityImplementer`.
+- Workflow emit: per-workflow `<Workflow>Definition` trait with associated
+  `Input` / `Output` types and default associated consts for workflow name,
+  task queue, and attached signal/query/update names, plus
+  `register_<workflow>_workflow<W>(&mut temporal_runtime::worker::Worker)`
+  where `W` implements both the generated definition trait and the SDK
+  `WorkflowImplementer`.
+- Consumer-owned code remains responsible for `temporalio-sdk` macros:
+  `#[activities]` adapters for activities and `#[workflow]` /
+  `#[workflow_methods]` for workflows. Generated code does not emit workflow
+  structs, workflow method bodies, activity bodies, worker construction,
+  interceptors, worker versioning, or `WorkerOptions`.
+- Every worker-facing generated reference goes through
+  `crate::temporal_runtime`; the default bridge exposes the needed symbols
+  behind its `worker` feature.
+
+**Phase 8 — Test client** (gated by SDK support)
+- Probe result: `docs/sdk-shape-worker.md` found no
+  `TestWorkflowEnvironment` equivalent in pinned `temporalio-sdk = "=0.4.0"`.
+- No `test_client` emit ships for this SDK pin. Building a time-skipping test
+  harness from `temporalio-sdk-core::ephemeral_server` and raw
+  `temporalio-client` TestService RPCs is a separate project-level decision,
+  not part of Phase 7.
+
 ## Open questions
 
 1. **Does cludden's Go runtime wire-format match ours?** Resolved in Phase 3; not blocking earlier phases.
 2. **MSRV target?** PoC builds on stable; pin a concrete minimum (likely 1.78 or 1.80) once the new repo is bootstrapped.
 3. **`temporal-proto-runtime` helper crate: ship it or inline?** Pro for shipping: removes ~50 LOC of boilerplate from every consumer. Con: one more crate to version. Decide in Phase 2.
-4. **Should activity-tagged methods emit *anything*?** Current answer: validate-only. Reconsider if there's demand for a typed activity-name constants module.
+4. **Should activity-tagged methods emit *anything*?** Resolved in Phase 7:
+   validate-only by default; `activities=true` emits the typed trait, name
+   constants, and thin registration helper.
 5. **Workflow start options shape.** PoC uses a generated `<Workflow>StartOptions` struct (workflow_id, task_queue override, etc.). Reasonable defaults vs. fully-required fields — settle in Phase 2.
 6. **License.** Cludden's repo is MIT. Match (MIT) or Apache-2.0 for the plugin?

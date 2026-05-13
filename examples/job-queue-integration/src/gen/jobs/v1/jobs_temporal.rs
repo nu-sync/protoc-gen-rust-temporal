@@ -151,4 +151,52 @@ pub mod jobs_v1_job_service_temporal {
         Ok(RunJobHandle { inner })
     }
 
+
+    // ── Activities ────────────────────────────────────────────
+    // Phase 2 (activities=true): typed trait + name consts. Wire to
+    // your worker via temporalio-sdk's #[activities] macro;
+    // see temporal-proto-runtime-bridge README for the adapter pattern.
+
+    pub const PROCESS_CHUNK_ACTIVITY_NAME: &str = "jobs.v1.JobService.ProcessChunk";
+
+    pub trait JobServiceActivities: Send + Sync + 'static {
+        fn process_chunk(&self, ctx: temporal_runtime::ActivityContext, input: ChunkInput) -> impl ::std::future::Future<Output = Result<ChunkOutput>> + Send;
+    }
+
+    pub fn register_job_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
+    where
+        I: JobServiceActivities + temporal_runtime::worker::ActivityImplementer,
+    {
+        worker.register_activities(impl_)
+    }
+
+    // ── Workflow handler names ──────────────────────────────
+    // Phase 3.0 (workflows=true): per-rpc registration name consts.
+    // Reference these from your hand-rolled #[workflow] setup so
+    // signal/query/update names stay in sync with the proto.
+
+    pub const CANCEL_JOB_SIGNAL_NAME: &str = "jobs.v1.JobService.CancelJob";
+    pub const GET_STATUS_QUERY_NAME: &str = "jobs.v1.JobService.GetStatus";
+
+    // -- Workflow definitions --------------------------------
+    // workflows=true: typed proto contracts + registration helpers.
+    // The consumer owns the temporalio-sdk #[workflow] body and
+    // implements the matching <Workflow>Definition trait on it.
+
+    pub trait RunJobDefinition: 'static {
+        type Input;
+        type Output;
+        const WORKFLOW_NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;
+        const TASK_QUEUE: &'static str = self::RUN_JOB_TASK_QUEUE;
+        const CANCEL_JOB_SIGNAL_NAME: &'static str = self::CANCEL_JOB_SIGNAL_NAME;
+        const GET_STATUS_QUERY_NAME: &'static str = self::GET_STATUS_QUERY_NAME;
+    }
+
+    pub fn register_run_job_workflow<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker
+    where
+        W: temporal_runtime::worker::WorkflowImplementer + RunJobDefinition<Input = JobInput, Output = JobOutput>,
+    {
+        worker.register_workflow::<W>()
+    }
+
 }

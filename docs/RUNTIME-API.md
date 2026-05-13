@@ -28,7 +28,7 @@ This document is **pinned to a plugin version**. Each row notes the
 plugin version in which the call site was introduced; nothing here is
 removed without a major bump (post-1.0) or a deprecation cycle (pre-1.0).
 
-Current pin: **protoc-gen-rust-temporal 0.1.0**.
+Current pin: **protoc-gen-rust-temporal 0.1.1**.
 
 ## Types
 
@@ -139,41 +139,50 @@ service with activity-annotated methods:
 |---|---|
 | `<METHOD>_ACTIVITY_NAME` | `pub const &'static str` per annotated activity. Value matches what the activity is registered under server-side (defaults to the rpc method name). |
 | `<Service>Activities` | `pub trait <Service>Activities: Send + Sync + 'static` with one method per activity. Signature: `fn <method>(&self, ctx: temporal_runtime::ActivityContext, input: <Input>) -> impl Future<Output = Result<<Output>>> + Send`. |
+| `register_<service>_activities<I>` | `pub fn(&mut temporal_runtime::worker::Worker, I) -> &mut temporal_runtime::worker::Worker` where `I: <Service>Activities + temporal_runtime::worker::ActivityImplementer`. Delegates to `worker.register_activities(impl_)`. |
 
 The trait method takes `&self`. The consumer's adapter (which wires the trait
-to a `temporalio-sdk` Worker via `#[activity_definitions]`) does the
-`Arc<Self>` dance — see the `temporal-proto-runtime-bridge` README for the
-pattern.
+to a `temporalio-sdk` Worker via `#[activities]`) does the SDK marker
+generation. The generated register helper intentionally requires both the
+generated trait and the SDK macro-produced `ActivityImplementer`, so the
+compiler checks the proto-shaped trait and the SDK registration shape at the
+same call site. See the `temporal-proto-runtime-bridge` README for the
+adapter pattern.
 
 Required runtime symbols (only when `activities=true` is set):
 
 | Symbol | Provided by | Notes |
 |---|---|---|
 | `temporal_runtime::ActivityContext` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::activities::ActivityContext`. |
+| `temporal_runtime::worker::Worker` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::Worker`. |
+| `temporal_runtime::worker::ActivityImplementer` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::activities::ActivityImplementer`. |
 
-The plugin does NOT emit a `register_<service>_activities(...)` function in
-Phase 2 — the consumer-side adapter pattern handles registration. This is the
-trait-only emit per the [Phase 2 spike findings](../docs/superpowers/specs/2026-05-12-phase-2-spike-findings.md).
-
-## Phase 3.0 — Workflow handler name consts (opt-in via `workflows=true`)
+## Phase 3.0 — Workflow contracts (opt-in via `workflows=true`)
 
 When invoked with `--rust-temporal_opt=workflows=true`, the plugin emits, per
-service with at least one signal / query / update rpc:
+service with at least one workflow rpc:
 
 | Symbol | Shape |
 |---|---|
 | `<METHOD>_SIGNAL_NAME` | `pub const &'static str` per signal-annotated rpc. Value is the cross-language registration name (defaults to the rpc method name). |
 | `<METHOD>_QUERY_NAME` | Same shape, for query-annotated rpcs. |
 | `<METHOD>_UPDATE_NAME` | Same shape, for update-annotated rpcs. |
+| `<Workflow>Definition` | `pub trait` with associated `Input` / `Output` types and default associated consts for `WORKFLOW_NAME`, `TASK_QUEUE`, and attached signal/query/update names. Consumers implement this trait on their SDK `#[workflow]` struct. |
+| `register_<workflow>_workflow<W>` | `pub fn(&mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker` where `W: temporal_runtime::worker::WorkflowImplementer + <Workflow>Definition<Input = <Input>, Output = <Output>>`. Delegates to `worker.register_workflow::<W>()`. |
 
-No workflow trait is emitted in Phase 3.0 — that's the Option C cut from
-the [Phase 3 spike findings](../docs/superpowers/specs/2026-05-12-phase-3-spike-findings.md).
-Consumers wire their hand-rolled `#[workflow]` setup to reference these consts
-instead of string literals, keeping registration names in sync with the proto
-without an adapter prototype yet.
+The consumer still owns the `temporalio-sdk` `#[workflow]` /
+`#[workflow_methods]` body. The generated trait does not define `run`,
+signal, query, or update methods because the SDK's macro-generated
+`WorkflowImplementation` shape is static and type-specific. The trait is a
+proto contract for names and input/output types, and the register helper ties
+that contract to the SDK's `WorkflowImplementer` at compile time.
 
-Trait emit lands in Phase 3.1 once the consume-self adapter shape is
-verified end-to-end against `temporalio-sdk`'s `#[workflow]` macro.
+Required runtime symbols (only when `workflows=true` is set):
+
+| Symbol | Provided by | Notes |
+|---|---|---|
+| `temporal_runtime::worker::Worker` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::Worker`. |
+| `temporal_runtime::worker::WorkflowImplementer` | bridge crate `worker` feature | Re-exported from `temporalio_sdk::workflows::WorkflowImplementer`. |
 
 ## Phase 4.0 — CLI scaffold (opt-in via `cli=true`)
 
@@ -198,6 +207,14 @@ Consumers parse the CLI, match on `Command`, and call into the generated
 `<Service>Client` themselves. Phase 4.1 will add `Cli::run(self, &client)`
 once the JSON-input → prost-message deserialize path is decided (the open
 question is `pbjson` vs plain `prost::Message::decode` from a binary file).
+
+## Phase 8 — Test client
+
+No `test_client` emit is produced for `temporalio-sdk` 0.4.0. The SDK probe in
+`docs/sdk-shape-worker.md` found no `TestWorkflowEnvironment` equivalent to
+wrap. The closest upstream pieces are low-level `temporalio-sdk-core`
+`ephemeral_server` support and raw `temporalio-client` TestService RPCs, which
+would require this project to own a separate test harness.
 
 ## Future direction (post-1.0)
 

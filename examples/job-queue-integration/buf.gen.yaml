@@ -15,8 +15,14 @@ plugins:
   # plugin so consumers don't need a local install:
   - remote: buf.build/nu-sync/rust-temporal
     out: src/gen
+    opt:
+      - activities=true
+      - workflows=true
 
   # Fallback: locally-installed binary. Uncomment and comment out the
   # remote line while iterating on the plugin source.
   # - local: protoc-gen-rust-temporal
   #   out: src/gen
+  #   opt:
+  #     - activities=true
+  #     - workflows=true

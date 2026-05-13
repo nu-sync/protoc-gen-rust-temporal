@@ -33,10 +33,10 @@ the canonical override reference.
 
 ## Worker side (Phase 2+, opt-in)
 
-The plugin's worker emit (activities, workflows) gives you a typed trait per
-service. Wiring that trait to a Temporal `Worker` is currently a
-~15-LOC consumer-owned adapter against `temporalio-sdk`'s
-`#[activity_definitions]` macro. Enable the bridge crate's `worker`
+The plugin's worker emit (activities, workflows) gives you typed contracts and
+thin `register_*` helpers. Activity bodies and workflow bodies remain
+consumer-owned because `temporalio-sdk` registers macro-generated concrete
+types, not arbitrary name/function pairs. Enable the bridge crate's `worker`
 feature to get the SDK types re-exported alongside the client surface:
 
 ```toml
@@ -71,7 +71,7 @@ impl crate::generated::ChunkServiceActivities for MyImpl {
 
 // 2. Adapt via the SDK macro. This generates ActivityDefinition +
 //    ExecutableActivity impls per method, tied to `MyImpl`.
-#[temporalio_macros::activity_definitions]
+#[temporalio_macros::activities]
 impl MyImpl {
     #[activity(name = crate::generated::PROCESS_ACTIVITY_NAME)]
     async fn process_adapter(
@@ -83,9 +83,9 @@ impl MyImpl {
     }
 }
 
-// 3. Register on the worker.
-fn register(worker: &mut Worker, impl_: Arc<MyImpl>) {
-    worker.register_activities(impl_);
+// 3. Register on the worker through the generated helper.
+fn register(worker: &mut Worker, impl_: MyImpl) {
+    crate::generated::register_chunk_service_activities(worker, impl_);
 }
 ```
 

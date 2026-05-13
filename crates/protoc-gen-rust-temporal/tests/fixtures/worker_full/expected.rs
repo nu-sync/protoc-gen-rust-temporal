@@ -2,43 +2,39 @@
 // source: input.proto
 
 #[allow(clippy::all, unused_imports, dead_code)]
-pub mod wf_v1_order_service_temporal {
+pub mod workerfull_v1_orchestration_service_temporal {
     use anyhow::Result;
     use std::time::Duration;
     use crate::temporal_runtime;
-    use crate::wf::v1::*;
+    use crate::workerfull::v1::*;
 
     impl temporal_runtime::TemporalProtoMessage for CancelInput {
-        const MESSAGE_TYPE: &'static str = "wf.v1.CancelInput";
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.CancelInput";
     }
     impl temporal_runtime::TemporalProtoMessage for ConfirmInput {
-        const MESSAGE_TYPE: &'static str = "wf.v1.ConfirmInput";
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.ConfirmInput";
     }
     impl temporal_runtime::TemporalProtoMessage for ConfirmOutput {
-        const MESSAGE_TYPE: &'static str = "wf.v1.ConfirmOutput";
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.ConfirmOutput";
     }
-    impl temporal_runtime::TemporalProtoMessage for OrderInput {
-        const MESSAGE_TYPE: &'static str = "wf.v1.OrderInput";
+    impl temporal_runtime::TemporalProtoMessage for RunInput {
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.RunInput";
     }
-    impl temporal_runtime::TemporalProtoMessage for OrderOutput {
-        const MESSAGE_TYPE: &'static str = "wf.v1.OrderOutput";
+    impl temporal_runtime::TemporalProtoMessage for RunOutput {
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.RunOutput";
     }
     impl temporal_runtime::TemporalProtoMessage for StatusOutput {
-        const MESSAGE_TYPE: &'static str = "wf.v1.StatusOutput";
+        const MESSAGE_TYPE: &'static str = "workerfull.v1.StatusOutput";
     }
 
-    pub const RUN_WORKFLOW_NAME: &str = "wf.v1.OrderService.Run";
-    pub const RUN_TASK_QUEUE: &str = "orders";
+    pub const RUN_WORKFLOW_NAME: &str = "workerfull.v1.OrchestrationService.Run";
+    pub const RUN_TASK_QUEUE: &str = "worker-full";
 
-    fn run_id(input: &OrderInput) -> String {
-        format!("order-{}", input.id)
-    }
-
-    pub struct OrderServiceClient {
+    pub struct OrchestrationServiceClient {
         client: temporal_runtime::TemporalClient,
     }
 
-    impl OrderServiceClient {
+    impl OrchestrationServiceClient {
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }
@@ -47,16 +43,16 @@ pub mod wf_v1_order_service_temporal {
             &self.client
         }
 
-        /// Start a new `wf.v1.OrderService.Run` workflow.
+        /// Start a new `workerfull.v1.OrchestrationService.Run` workflow.
         pub async fn run(
             &self,
-            input: OrderInput,
+            input: RunInput,
             opts: RunStartOptions,
         ) -> Result<RunHandle> {
             let workflow_id = opts.workflow_id.unwrap_or_else(|| {
-                run_id(&input)
+                temporal_runtime::random_workflow_id()
             });
-            let task_queue = opts.task_queue.unwrap_or_else(|| "orders".to_string());
+            let task_queue = opts.task_queue.unwrap_or_else(|| "worker-full".to_string());
             let id_reuse_policy = opts.id_reuse_policy;
             let execution_timeout = opts.execution_timeout;
             let run_timeout = opts.run_timeout;
@@ -75,7 +71,7 @@ pub mod wf_v1_order_service_temporal {
             Ok(RunHandle { inner })
         }
 
-        /// Attach to a running `wf.v1.OrderService.Run` workflow by id.
+        /// Attach to a running `workerfull.v1.OrchestrationService.Run` workflow by id.
         pub fn run_handle(&self, workflow_id: impl Into<String>) -> RunHandle {
             RunHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
@@ -104,36 +100,54 @@ pub mod wf_v1_order_service_temporal {
         }
 
         /// Wait for the workflow to complete and return its output.
-        pub async fn result(&self) -> Result<OrderOutput> {
-            temporal_runtime::wait_result_proto::<OrderOutput>(&self.inner).await
+        pub async fn result(&self) -> Result<RunOutput> {
+            temporal_runtime::wait_result_proto::<RunOutput>(&self.inner).await
         }
 
-        /// Send the `wf.v1.OrderService.Cancel` signal.
+        /// Send the `workerfull.v1.OrchestrationService.Cancel` signal.
         pub async fn cancel(&self, input: CancelInput) -> Result<()> {
-            temporal_runtime::signal_proto(&self.inner, "wf.v1.OrderService.Cancel", &input).await
+            temporal_runtime::signal_proto(&self.inner, "workerfull.v1.OrchestrationService.Cancel", &input).await
         }
 
-        /// Run the `wf.v1.OrderService.Status` query.
+        /// Run the `workerfull.v1.OrchestrationService.Status` query.
         pub async fn status(&self) -> Result<StatusOutput> {
-            temporal_runtime::query_proto_empty::<StatusOutput>(&self.inner, "wf.v1.OrderService.Status").await
+            temporal_runtime::query_proto_empty::<StatusOutput>(&self.inner, "workerfull.v1.OrchestrationService.Status").await
         }
 
-        /// Run the `wf.v1.OrderService.Confirm` update.
+        /// Run the `workerfull.v1.OrchestrationService.Confirm` update.
         pub async fn confirm(&self, input: ConfirmInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ConfirmOutput> {
-            temporal_runtime::update_proto::<ConfirmInput, ConfirmOutput>(&self.inner, "wf.v1.OrderService.Confirm", &input, wait_policy).await
+            temporal_runtime::update_proto::<ConfirmInput, ConfirmOutput>(&self.inner, "workerfull.v1.OrchestrationService.Confirm", &input, wait_policy).await
         }
 
     }
 
+
+    // ── Activities ────────────────────────────────────────────
+    // Phase 2 (activities=true): typed trait + name consts. Wire to
+    // your worker via temporalio-sdk's #[activities] macro;
+    // see temporal-proto-runtime-bridge README for the adapter pattern.
+
+    pub const LOAD_ACTIVITY_NAME: &str = "workerfull.v1.OrchestrationService.Load";
+
+    pub trait OrchestrationServiceActivities: Send + Sync + 'static {
+        fn load(&self, ctx: temporal_runtime::ActivityContext, input: LoadInput) -> impl ::std::future::Future<Output = Result<LoadOutput>> + Send;
+    }
+
+    pub fn register_orchestration_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
+    where
+        I: OrchestrationServiceActivities + temporal_runtime::worker::ActivityImplementer,
+    {
+        worker.register_activities(impl_)
+    }
 
     // ── Workflow handler names ──────────────────────────────
     // Phase 3.0 (workflows=true): per-rpc registration name consts.
     // Reference these from your hand-rolled #[workflow] setup so
     // signal/query/update names stay in sync with the proto.
 
-    pub const CANCEL_SIGNAL_NAME: &str = "wf.v1.OrderService.Cancel";
-    pub const STATUS_QUERY_NAME: &str = "wf.v1.OrderService.Status";
-    pub const CONFIRM_UPDATE_NAME: &str = "wf.v1.OrderService.Confirm";
+    pub const CANCEL_SIGNAL_NAME: &str = "workerfull.v1.OrchestrationService.Cancel";
+    pub const STATUS_QUERY_NAME: &str = "workerfull.v1.OrchestrationService.Status";
+    pub const CONFIRM_UPDATE_NAME: &str = "workerfull.v1.OrchestrationService.Confirm";
 
     // -- Workflow definitions --------------------------------
     // workflows=true: typed proto contracts + registration helpers.
@@ -152,7 +166,7 @@ pub mod wf_v1_order_service_temporal {
 
     pub fn register_run_workflow<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker
     where
-        W: temporal_runtime::worker::WorkflowImplementer + RunDefinition<Input = OrderInput, Output = OrderOutput>,
+        W: temporal_runtime::worker::WorkflowImplementer + RunDefinition<Input = RunInput, Output = RunOutput>,
     {
         worker.register_workflow::<W>()
     }

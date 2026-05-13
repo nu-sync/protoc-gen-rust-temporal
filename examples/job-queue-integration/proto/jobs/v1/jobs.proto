@@ -29,6 +29,10 @@ service JobService {
   rpc GetStatus(google.protobuf.Empty) returns (JobStatusOutput) {
     option (temporal.v1.query) = {};
   }
+
+  rpc ProcessChunk(ChunkInput) returns (ChunkOutput) {
+    option (temporal.v1.activity) = {};
+  }
 }
 
 message JobInput {
@@ -48,4 +52,12 @@ message CancelJobInput {
 message JobStatusOutput {
   string state = 1;
   int32 progress_pct = 2;
+}
+
+message ChunkInput {
+  bytes payload = 1;
+}
+
+message ChunkOutput {
+  string checksum = 1;
 }

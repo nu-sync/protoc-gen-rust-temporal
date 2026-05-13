@@ -63,15 +63,12 @@ pub fn render(svc: &ServiceModel, options: &crate::options::RenderOptions) -> St
         render_activities_trait(&mut out, svc);
     }
 
-    // Phase 3.0 (Option C): per-rpc signal/query/update name consts. Only
-    // emitted when `workflows=true` AND the service has at least one
-    // signal/query/update rpc. Lets consumer-side `#[workflow]` setups
-    // reference generated names instead of string literals; trait emit
-    // deferred to Phase 3.1.
-    if options.workflows
-        && (!svc.signals.is_empty() || !svc.queries.is_empty() || !svc.updates.is_empty())
-    {
-        render_workflow_handler_name_consts(&mut out, svc);
+    // Worker workflow contracts. Only emitted when `workflows=true` AND the
+    // service has at least one workflow rpc. The consumer still writes the
+    // SDK macro-bearing workflow body; this emit owns the proto-derived names,
+    // task queues, typed contract, and registration helper.
+    if options.workflows && !svc.workflows.is_empty() {
+        render_workflow_contracts(&mut out, svc);
     }
 
     let _ = writeln!(out, "}}");
@@ -982,7 +979,7 @@ fn proto_module_path(package: &str) -> String {
 ///
 /// Trait method signature uses `impl Future<Output = Result<O>> + Send` rather
 /// than `async fn` so the `Send` bound is explicit (the consumer's adapter to
-/// `temporalio-sdk`'s `#[activity_definitions]` macro needs a Send future to
+/// `temporalio-sdk`'s `#[activities]` macro needs a Send future to
 /// satisfy `tokio::task::spawn`-style boundaries).
 fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     use heck::{ToShoutySnakeCase, ToSnakeCase};
@@ -1000,7 +997,7 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     );
     let _ = writeln!(
         out,
-        "    // your worker via temporalio-sdk's #[activity_definitions] macro;"
+        "    // your worker via temporalio-sdk's #[activities] macro;"
     );
     let _ = writeln!(
         out,
@@ -1038,13 +1035,115 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         );
     }
     let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    let fn_name = format!("register_{}_activities", svc.service.to_snake_case());
+    let _ = writeln!(
+        out,
+        "    pub fn {fn_name}<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker"
+    );
+    let _ = writeln!(out, "    where");
+    let _ = writeln!(
+        out,
+        "        I: {trait_name} + temporal_runtime::worker::ActivityImplementer,"
+    );
+    let _ = writeln!(out, "    {{");
+    let _ = writeln!(out, "        worker.register_activities(impl_)");
+    let _ = writeln!(out, "    }}");
 }
 
-/// Phase 3.0 (Option C from the spike findings): per-rpc signal/query/update
-/// name consts. Emitted under the existing service module so a consumer's
-/// hand-rolled `#[workflow]` impl can reference `generated::CANCEL_SIGNAL_NAME`
-/// instead of the string `"Cancel"`. Doesn't emit a workflow trait — that's
-/// deferred to Phase 3.1.
+/// Worker workflow contracts emitted under `workflows=true`. The output is a
+/// proto-derived trait per workflow plus a thin registration helper that
+/// delegates to the SDK macro-generated `WorkflowImplementer`.
+fn render_workflow_contracts(out: &mut String, svc: &ServiceModel) {
+    let has_handlers =
+        !svc.signals.is_empty() || !svc.queries.is_empty() || !svc.updates.is_empty();
+    if has_handlers {
+        render_workflow_handler_name_consts(out, svc);
+    }
+
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "    // -- Workflow definitions --------------------------------"
+    );
+    let _ = writeln!(
+        out,
+        "    // workflows=true: typed proto contracts + registration helpers."
+    );
+    let _ = writeln!(
+        out,
+        "    // The consumer owns the temporalio-sdk #[workflow] body and"
+    );
+    let _ = writeln!(
+        out,
+        "    // implements the matching <Workflow>Definition trait on it."
+    );
+    let _ = writeln!(out);
+
+    for wf in &svc.workflows {
+        render_workflow_definition(out, svc, wf);
+    }
+}
+
+fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
+    let trait_name = format!("{}Definition", wf.rpc_method);
+    let register_fn = format!("register_{}_workflow", wf.rpc_method.to_snake_case());
+    let workflow_const = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
+    let task_queue_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
+    let input_ty = wf.input_type.rust_name();
+    let output_ty = wf.output_type.rust_name();
+
+    let _ = writeln!(out, "    pub trait {trait_name}: 'static {{");
+    let _ = writeln!(out, "        type Input;");
+    let _ = writeln!(out, "        type Output;");
+    let _ = writeln!(
+        out,
+        "        const WORKFLOW_NAME: &'static str = self::{workflow_const};"
+    );
+    let _ = writeln!(
+        out,
+        "        const TASK_QUEUE: &'static str = self::{task_queue_const};"
+    );
+
+    for sref in &wf.attached_signals {
+        if svc.signals.iter().any(|s| s.rpc_method == sref.rpc_method) {
+            let ident = format!("{}_SIGNAL_NAME", sref.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(out, "        const {ident}: &'static str = self::{ident};");
+        }
+    }
+    for qref in &wf.attached_queries {
+        if svc.queries.iter().any(|q| q.rpc_method == qref.rpc_method) {
+            let ident = format!("{}_QUERY_NAME", qref.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(out, "        const {ident}: &'static str = self::{ident};");
+        }
+    }
+    for uref in &wf.attached_updates {
+        if svc.updates.iter().any(|u| u.rpc_method == uref.rpc_method) {
+            let ident = format!("{}_UPDATE_NAME", uref.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(out, "        const {ident}: &'static str = self::{ident};");
+        }
+    }
+
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "    pub fn {register_fn}<W>(worker: &mut temporal_runtime::worker::Worker) -> &mut temporal_runtime::worker::Worker"
+    );
+    let _ = writeln!(out, "    where");
+    let _ = writeln!(
+        out,
+        "        W: temporal_runtime::worker::WorkflowImplementer + {trait_name}<Input = {input_ty}, Output = {output_ty}>,"
+    );
+    let _ = writeln!(out, "    {{");
+    let _ = writeln!(out, "        worker.register_workflow::<W>()");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// Per-rpc signal/query/update name consts. Emitted under the existing
+/// service module so a consumer's hand-rolled `#[workflow]` impl can reference
+/// generated constants instead of string literals.
 fn render_workflow_handler_name_consts(out: &mut String, svc: &ServiceModel) {
     use heck::ToShoutySnakeCase;
 

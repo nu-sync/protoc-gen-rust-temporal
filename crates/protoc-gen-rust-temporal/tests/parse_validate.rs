@@ -435,6 +435,11 @@ fn activities_emit_render_golden() {
 }
 
 #[test]
+fn worker_activities_only_render_golden() {
+    assert_golden("worker_activities_only");
+}
+
+#[test]
 fn activities_emit_renders_trait_and_consts() {
     let services = parse_and_validate("activities_emit");
     let opts = load_fixture_options("activities_emit");
@@ -465,6 +470,15 @@ fn activities_emit_renders_trait_and_consts() {
         source.contains("fn heartbeat(&self, ctx: temporal_runtime::ActivityContext, input: ())"),
         "Heartbeat (Empty input) trait method signature wrong: {source}"
     );
+    assert!(
+        source.contains("pub fn register_chunk_service_activities<I>("),
+        "missing activities registration helper: {source}"
+    );
+    assert!(
+        source
+            .contains("I: ChunkServiceActivities + temporal_runtime::worker::ActivityImplementer"),
+        "registration helper should require both generated trait and SDK implementer: {source}"
+    );
 }
 
 #[test]
@@ -479,6 +493,16 @@ fn activities_emit_off_by_default() {
 #[test]
 fn workflows_emit_render_golden() {
     assert_golden("workflows_emit");
+}
+
+#[test]
+fn worker_workflow_only_render_golden() {
+    assert_golden("worker_workflow_only");
+}
+
+#[test]
+fn worker_full_render_golden() {
+    assert_golden("worker_full");
 }
 
 #[test]
@@ -501,6 +525,26 @@ fn workflows_emit_renders_handler_name_consts() {
     assert!(
         source.contains("pub const CONFIRM_UPDATE_NAME: &str = \"wf.v1.OrderService.Confirm\";"),
         "missing Confirm update name const"
+    );
+    assert!(
+        source.contains("pub trait RunDefinition: 'static"),
+        "missing workflow definition trait: {source}"
+    );
+    assert!(
+        source.contains("const WORKFLOW_NAME: &'static str = self::RUN_WORKFLOW_NAME;"),
+        "missing workflow name associated const"
+    );
+    assert!(
+        source.contains("const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;"),
+        "missing task queue associated const"
+    );
+    assert!(
+        source.contains("pub fn register_run_workflow<W>("),
+        "missing workflow registration helper"
+    );
+    assert!(
+        source.contains("W: temporal_runtime::worker::WorkflowImplementer + RunDefinition<Input = OrderInput, Output = OrderOutput>"),
+        "registration helper should bind SDK implementer to generated definition trait: {source}"
     );
 }
 
