@@ -197,6 +197,10 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         type Output = temporal_runtime::TypedProtoMessage<WorkOutput>;
         fn name(&self) -> &str { self::RUN_WORKFLOW_NAME }
     }
+    impl RunWorkflow {
+        pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
+    }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: WorkInput,

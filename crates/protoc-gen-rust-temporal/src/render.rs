@@ -2469,6 +2469,20 @@ fn render_external_signal_helpers(out: &mut String, svc: &ServiceModel) {
             "        fn name(&self) -> &str {{ self::{signal_const} }}"
         );
         let _ = writeln!(out, "    }}");
+        // Inherent INPUT_TYPE const on the signal marker, mirroring
+        // the activity / workflow markers. Signal outputs are always
+        // Empty so no OUTPUT_TYPE const — the SDK's SignalDefinition
+        // doesn't model output either.
+        let in_const = format!(
+            "{}_SIGNAL_INPUT_TYPE",
+            sig.rpc_method.to_shouty_snake_case()
+        );
+        let _ = writeln!(out, "    impl {signal_marker} {{");
+        let _ = writeln!(
+            out,
+            "        pub const INPUT_TYPE: &'static str = self::{in_const};"
+        );
+        let _ = writeln!(out, "    }}");
 
         let helper_fn = format!("signal_{}_external", sig.rpc_method.to_snake_case());
         let _ = writeln!(out, "    pub async fn {helper_fn}<W>(");
@@ -2595,6 +2609,22 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         let _ = writeln!(
             out,
             "        fn name(&self) -> &str {{ self::{workflow_const} }}"
+        );
+        let _ = writeln!(out, "    }}");
+        // Inherent INPUT_TYPE / OUTPUT_TYPE consts on the child-
+        // workflow marker, mirroring the activity-marker shipment.
+        // Lets generic worker code spell `<MarkerStruct>::INPUT_TYPE`
+        // for the proto FQN without going through `WorkflowDefinition`.
+        let in_const = format!("{}_INPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+        let out_const = format!("{}_OUTPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(out, "    impl {marker_struct} {{");
+        let _ = writeln!(
+            out,
+            "        pub const INPUT_TYPE: &'static str = self::{in_const};"
+        );
+        let _ = writeln!(
+            out,
+            "        pub const OUTPUT_TYPE: &'static str = self::{out_const};"
         );
         let _ = writeln!(out, "    }}");
 

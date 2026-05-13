@@ -1213,6 +1213,35 @@ fn workflow_aliases_const_omitted_when_empty() {
 }
 
 #[test]
+fn child_workflow_and_signal_markers_expose_input_output_type_consts() {
+    // R4 — child-workflow markers (`<Wf>Workflow`) and signal
+    // markers (`<Sig>Signal`) gain inherent `INPUT_TYPE` /
+    // `OUTPUT_TYPE` consts (signal markers omit OUTPUT — signals
+    // are always Empty-output). Mirrors the activity-marker shipment.
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    // Child-workflow marker.
+    assert!(
+        source.contains("impl RunWorkflow {"),
+        "expected `impl RunWorkflow {{` for inherent consts: {source}"
+    );
+    assert!(
+        source.contains("pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;"),
+        "child-workflow marker must re-expose RUN_INPUT_TYPE: {source}"
+    );
+    assert!(
+        source.contains("pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;"),
+        "child-workflow marker must re-expose RUN_OUTPUT_TYPE: {source}"
+    );
+    // Signal marker — INPUT_TYPE only (signals are Empty-output).
+    assert!(
+        source.contains("pub const INPUT_TYPE: &'static str = self::CANCEL_SIGNAL_INPUT_TYPE;"),
+        "signal marker must re-expose CANCEL_SIGNAL_INPUT_TYPE: {source}"
+    );
+}
+
+#[test]
 fn activity_marker_struct_exposes_input_output_type_consts() {
     // R4 — each activity marker struct gains inherent
     // `INPUT_TYPE` / `OUTPUT_TYPE` `&'static str` consts (sourced

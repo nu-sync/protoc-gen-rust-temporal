@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` on child-workflow + signal markers):
+  extends the previous activity-marker shipment to the remaining
+  marker structs:
+  - Child-workflow markers (`<Wf>Workflow` under workflows=true,
+    emitted only when both input and output are non-Empty) gain
+    `INPUT_TYPE` and `OUTPUT_TYPE` consts sourced from the
+    workflow-level `<RPC>_INPUT_TYPE` / `_OUTPUT_TYPE` consts.
+  - Signal markers (`<Sig>Signal`) gain `INPUT_TYPE` only — signals
+    are always Empty-output and the SDK's `SignalDefinition` doesn't
+    model output, so an `OUTPUT_TYPE` const would be vestigial.
+  Together with the previous activity-marker and Definition-trait
+  commits, every per-rpc marker / trait now carries the proto FQN
+  metadata in a uniformly-named place. One new positive
+  parse_validate test pins both new emit paths against the
+  `worker_full` fixture. Several fixture goldens reblessed.
+  156 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` on activity marker structs):
   parallel of the workflow Definition trait shipment. Each generated
   activity marker struct (`<Activity>Activity`) now carries an
