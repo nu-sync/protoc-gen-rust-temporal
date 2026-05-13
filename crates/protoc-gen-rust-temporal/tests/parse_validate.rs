@@ -972,6 +972,43 @@ fn signal_returning_non_empty_fails_validation() {
 }
 
 #[test]
+fn client_exposes_update_by_id_methods() {
+    // R4 — client-level update-by-id. Mirrors the Empty matrix on the
+    // Handle plus a `wait_policy` arg. full_workflow's Reconfigure
+    // update is non-Empty in, non-Empty out, so we should see attach_handle
+    // + update_proto with wait_policy.
+    let services = parse_and_validate("full_workflow");
+    let svc = &services[0];
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains("pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput>"),
+        "client must expose Reconfigure update-by-id with wait_policy: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&inner, \"full.v1.FullService.Reconfigure\", &input, wait_policy).await"),
+        "non-Empty/non-Empty update must route to update_proto"
+    );
+}
+
+#[test]
+fn client_update_by_id_covers_empty_variants() {
+    // empty_output_query_update exercises (Empty-in/Empty-out) and
+    // (non-Empty-in/Empty-out) update branches. Both must compile to the
+    // correct bridge fn at the client level.
+    let services = parse_and_validate("empty_output_query_update");
+    let svc = &services[0];
+    let source = render::render(svc, &Default::default());
+    assert!(
+        source.contains("temporal_runtime::update_proto_empty_unit(&inner,"),
+        "Empty-in/Empty-out update must route to update_proto_empty_unit at client level: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::update_unit::<"),
+        "non-Empty-in/Empty-out update must route to update_unit at client level: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_query_by_id_methods() {
     // R4 — client-level query-by-id. Mirrors the Empty-variant matrix on
     // the Handle:

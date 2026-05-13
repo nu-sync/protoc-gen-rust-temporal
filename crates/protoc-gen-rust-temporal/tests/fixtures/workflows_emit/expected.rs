@@ -100,6 +100,12 @@ pub mod wf_v1_order_service_temporal {
             temporal_runtime::query_proto_empty::<StatusOutput>(&inner, "wf.v1.OrderService.Status").await
         }
 
+        /// Run the `wf.v1.OrderService.Confirm` update against a workflow by id.
+        pub async fn confirm(&self, workflow_id: impl Into<String>, input: ConfirmInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ConfirmOutput> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::update_proto::<ConfirmInput, ConfirmOutput>(&inner, "wf.v1.OrderService.Confirm", &input, wait_policy).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

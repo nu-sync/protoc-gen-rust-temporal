@@ -90,6 +90,24 @@ pub mod eoqu_v1_eoqu_service_temporal {
             temporal_runtime::query_proto_empty_unit(&inner, "eoqu.v1.EoquService.AckEmpty").await
         }
 
+        /// Run the `eoqu.v1.EoquService.Touch` update against a workflow by id.
+        pub async fn touch(&self, workflow_id: impl Into<String>, input: TouchInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::update_unit::<TouchInput>(&inner, "eoqu.v1.EoquService.Touch", &input, wait_policy).await
+        }
+
+        /// Run the `eoqu.v1.EoquService.TouchEmpty` update against a workflow by id.
+        pub async fn touch_empty(&self, workflow_id: impl Into<String>, wait_policy: temporal_runtime::WaitPolicy) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::update_proto_empty_unit(&inner, "eoqu.v1.EoquService.TouchEmpty", wait_policy).await
+        }
+
+        /// Run the `eoqu.v1.EoquService.TouchEmptyStart` update against a workflow by id.
+        pub async fn touch_empty_start(&self, workflow_id: impl Into<String>, input: TouchInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::update_unit::<TouchInput>(&inner, "eoqu.v1.EoquService.TouchEmptyStart", &input, wait_policy).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

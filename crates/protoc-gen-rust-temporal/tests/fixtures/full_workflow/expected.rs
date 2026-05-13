@@ -109,6 +109,12 @@ pub mod full_v1_full_service_temporal {
             temporal_runtime::query_proto_empty::<StatusOutput>(&inner, "full.v1.FullService.Status").await
         }
 
+        /// Run the `full.v1.FullService.Reconfigure` update against a workflow by id.
+        pub async fn reconfigure(&self, workflow_id: impl Into<String>, input: ReconfigureInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ReconfigureOutput> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::update_proto::<ReconfigureInput, ReconfigureOutput>(&inner, "full.v1.FullService.Reconfigure", &input, wait_policy).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

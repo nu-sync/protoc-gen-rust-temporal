@@ -102,6 +102,12 @@ pub mod workerfull_v1_orchestration_service_temporal {
             temporal_runtime::query_proto_empty::<StatusOutput>(&inner, "workerfull.v1.OrchestrationService.Status").await
         }
 
+        /// Run the `workerfull.v1.OrchestrationService.Confirm` update against a workflow by id.
+        pub async fn confirm(&self, workflow_id: impl Into<String>, input: ConfirmInput, wait_policy: temporal_runtime::WaitPolicy) -> Result<ConfirmOutput> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::update_proto::<ConfirmInput, ConfirmOutput>(&inner, "workerfull.v1.OrchestrationService.Confirm", &input, wait_policy).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

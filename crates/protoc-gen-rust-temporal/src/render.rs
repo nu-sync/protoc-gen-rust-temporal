@@ -339,7 +339,104 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
         render_client_query_method(out, q);
     }
 
+    // R4: client-level update-by-id. Same Empty matrix as on the Handle
+    // plus a `wait_policy` arg.
+    let attached_update_names: std::collections::HashSet<&str> = svc
+        .workflows
+        .iter()
+        .flat_map(|wf| wf.attached_updates.iter())
+        .map(|u| u.rpc_method.as_str())
+        .collect();
+    for u in &svc.updates {
+        if !attached_update_names.contains(u.rpc_method.as_str()) {
+            continue;
+        }
+        render_client_update_method(out, u);
+    }
+
     let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// Client-level update-by-id. Same Empty matrix as `render_update_method`
+/// on the Handle, with an additional `wait_policy` arg. Each variant first
+/// attaches a `WorkflowHandle` from the caller-supplied workflow id.
+fn render_client_update_method(out: &mut String, u: &UpdateModel) {
+    let method_snake = u.rpc_method.to_snake_case();
+    let out_ty = u.output_type.rust_name();
+    let _ = writeln!(
+        out,
+        "        /// Run the `{}` update against a workflow by id.",
+        u.registered_name
+    );
+    match (u.input_type.is_empty, u.output_type.is_empty) {
+        (true, true) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto_empty_unit(&inner, \"{}\", wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (true, false) => {
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto_empty::<{out_ty}>(&inner, \"{}\", wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, true) => {
+            let in_ty = u.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_unit::<{in_ty}>(&inner, \"{}\", &input, wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+        (false, false) => {
+            let in_ty = u.input_type.rust_name();
+            let _ = writeln!(
+                out,
+                "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {in_ty}, wait_policy: temporal_runtime::WaitPolicy) -> Result<{out_ty}> {{"
+            );
+            let _ = writeln!(
+                out,
+                "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+            );
+            let _ = writeln!(
+                out,
+                "            temporal_runtime::update_proto::<{in_ty}, {out_ty}>(&inner, \"{}\", &input, wait_policy).await",
+                u.registered_name
+            );
+            let _ = writeln!(out, "        }}");
+        }
+    }
     let _ = writeln!(out);
 }
 
