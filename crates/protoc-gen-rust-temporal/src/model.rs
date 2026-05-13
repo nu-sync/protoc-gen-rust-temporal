@@ -423,7 +423,16 @@ pub enum SearchAttributeLiteral {
     Bool(bool),
     Double(f64),
     StringField(String),
-    IntField(String),
+    /// `this.<field>` for an integer-typed input field. `widen` is
+    /// `true` when the source is a 32-bit variant (`int32`, `uint32`,
+    /// `sint32`, `fixed32`, `sfixed32`) — render emits `as i64` so the
+    /// bridge encoder's i64 signature works uniformly. `false` for
+    /// `int64`, `sint64`, `sfixed64` (already i64). `uint64` /
+    /// `fixed64` cannot widen safely so they stay rejected.
+    IntField {
+        rust_field: String,
+        widen: bool,
+    },
     BoolField(String),
     /// `this.<field>` where `<field>` is a `double` (f64) or `float`
     /// (f32) singular input field. Render emits a cast to `f64` for

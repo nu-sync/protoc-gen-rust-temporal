@@ -138,6 +138,23 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 slice 3 — narrow-int field refs widen to i64):
+  field-ref support extends from `int64`-only to also cover the full
+  set of fixed-width signed/unsigned integer scalars on the input
+  message. `IntField` is now `IntField { rust_field, widen: bool }`:
+  - `int64` / `sint64` / `sfixed64` → `widen = false`, value used
+    directly.
+  - `int32` / `sint32` / `sfixed32` / `uint32` / `fixed32` → `widen
+    = true`, render emits `as i64` (every i32 / u32 value fits in
+    i64 unconditionally).
+  - `uint64` / `fixed64` stay rejected: their range exceeds
+    `i64::MAX` and a silent narrowing cast would corrupt large
+    counter values.
+
+  Two new positive parse_validate tests pin: the i32+u32+i64 widen
+  matrix in one fixture, and the standalone uint64 rejection.
+  SUPPORT-STATUS row updated to enumerate the full primitive matrix
+  per kind. 134 parse_validate / 26 bridge tests green.
 - 2026-05-13 (R7 slice 3 — `this.<field>` for `double` and `float` inputs):
   field-ref support extends from `string` / `int64` / `bool` to also
   cover singular `double` (f64) and `float` (f32) fields. New

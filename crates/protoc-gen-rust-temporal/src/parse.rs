@@ -1032,7 +1032,24 @@ fn parse_search_attribute_literal(
         }
         return match descriptor.kind() {
             prost_reflect::Kind::String => Some(SearchAttributeLiteral::StringField(rust_field)),
-            prost_reflect::Kind::Int64 => Some(SearchAttributeLiteral::IntField(rust_field)),
+            // i64-shaped — no widening needed.
+            prost_reflect::Kind::Int64
+            | prost_reflect::Kind::Sint64
+            | prost_reflect::Kind::Sfixed64 => Some(SearchAttributeLiteral::IntField {
+                rust_field,
+                widen: false,
+            }),
+            // 32-bit signed and unsigned — widen safely to i64 (every
+            // i32 / u32 value fits in i64). `uint64` / `fixed64` stay
+            // rejected: their range exceeds i64::MAX.
+            prost_reflect::Kind::Int32
+            | prost_reflect::Kind::Sint32
+            | prost_reflect::Kind::Sfixed32
+            | prost_reflect::Kind::Uint32
+            | prost_reflect::Kind::Fixed32 => Some(SearchAttributeLiteral::IntField {
+                rust_field,
+                widen: true,
+            }),
             prost_reflect::Kind::Bool => Some(SearchAttributeLiteral::BoolField(rust_field)),
             prost_reflect::Kind::Double => Some(SearchAttributeLiteral::DoubleField {
                 rust_field,

@@ -1187,9 +1187,16 @@ fn search_attributes_literal(spec: Option<&crate::model::SearchAttributesSpec>) 
                     SearchAttributeLiteral::StringField(field) => format!(
                         "temporal_runtime::encode_search_attribute_string(input.{field}.as_str())"
                     ),
-                    SearchAttributeLiteral::IntField(field) => format!(
-                        "temporal_runtime::encode_search_attribute_int(input.{field})"
-                    ),
+                    SearchAttributeLiteral::IntField { rust_field, widen } => {
+                        let value_expr = if *widen {
+                            format!("input.{rust_field} as i64")
+                        } else {
+                            format!("input.{rust_field}")
+                        };
+                        format!(
+                            "temporal_runtime::encode_search_attribute_int({value_expr})"
+                        )
+                    }
                     SearchAttributeLiteral::BoolField(field) => format!(
                         "temporal_runtime::encode_search_attribute_bool(input.{field})"
                     ),

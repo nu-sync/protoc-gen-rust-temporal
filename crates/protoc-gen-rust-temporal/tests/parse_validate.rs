@@ -3944,7 +3944,10 @@ fn search_attributes_int_and_bool_field_refs_resolve_against_input() {
     assert!(
         entries.contains(&(
             "Priority".to_string(),
-            SearchAttributeLiteral::IntField("priority".to_string())
+            SearchAttributeLiteral::IntField {
+                rust_field: "priority".to_string(),
+                widen: false,
+            }
         )),
         "int field ref must land as IntField: {entries:?}"
     );
@@ -3965,6 +3968,112 @@ fn search_attributes_int_and_bool_field_refs_resolve_against_input() {
     assert!(
         source.contains("temporal_runtime::encode_search_attribute_bool(input.is_critical)"),
         "bool field-ref encoder must read from input: {source}"
+    );
+}
+
+#[test]
+fn search_attributes_narrow_int_field_refs_widen_to_i64() {
+    // R7 slice 3 — `int32` / `uint32` / `sint32` / `fixed32` /
+    // `sfixed32` input fields produce IntField with `widen = true`,
+    // emitting `input.<field> as i64` so the bridge encoder's i64
+    // signature works uniformly. `int64` / `sint64` / `sfixed64` use
+    // the value directly. `uint64` / `fixed64` cannot widen safely
+    // and remain rejected.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_int_narrow.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"P32\": this.priority32, \"U32\": this.priority_u32, \"P64\": this.priority64 }"
+            };
+          }
+        }
+        message In  {
+          int32  priority32     = 1;
+          uint32 priority_u32   = 2;
+          int64  priority64     = 3;
+        }
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept narrow int field refs");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let SearchAttributesSpec::Static(entries) = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the spec")
+    else {
+        panic!("expected Static spec");
+    };
+    // 32-bit signed must widen.
+    assert!(
+        entries
+            .iter()
+            .any(|(k, v)| k == "P32" && matches!(v, SearchAttributeLiteral::IntField { rust_field, widen } if rust_field == "priority32" && *widen)),
+        "int32 ref must land as IntField widen=true: {entries:?}"
+    );
+    // 32-bit unsigned must widen.
+    assert!(
+        entries
+            .iter()
+            .any(|(k, v)| k == "U32" && matches!(v, SearchAttributeLiteral::IntField { rust_field, widen } if rust_field == "priority_u32" && *widen)),
+        "uint32 ref must land as IntField widen=true: {entries:?}"
+    );
+    // i64 doesn't widen.
+    assert!(
+        entries
+            .iter()
+            .any(|(k, v)| k == "P64" && matches!(v, SearchAttributeLiteral::IntField { rust_field, widen } if rust_field == "priority64" && !*widen)),
+        "int64 ref must land as IntField widen=false: {entries:?}"
+    );
+
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("encode_search_attribute_int(input.priority32 as i64)"),
+        "int32 ref must widen via `as i64`: {source}"
+    );
+    assert!(
+        source.contains("encode_search_attribute_int(input.priority_u32 as i64)"),
+        "uint32 ref must widen via `as i64`: {source}"
+    );
+    assert!(
+        source.contains("encode_search_attribute_int(input.priority64)"),
+        "int64 ref must NOT widen: {source}"
+    );
+}
+
+#[test]
+fn search_attributes_uint64_field_ref_is_rejected() {
+    // `uint64` / `fixed64` exceed i64::MAX and cannot widen safely.
+    // Fall through to the standard unsupported-`search_attributes`
+    // diagnostic so callers see the limitation at codegen.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_u64.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": this.counter }"
+            };
+          }
+        }
+        message In  { uint64 counter = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "uint64 field ref must surface the unsupported diagnostic: {err}"
     );
 }
 
