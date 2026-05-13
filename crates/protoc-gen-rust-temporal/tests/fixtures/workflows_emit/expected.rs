@@ -319,6 +319,7 @@ pub mod wf_v1_order_service_temporal {
         fn name(&self) -> &str { self::RUN_WORKFLOW_NAME }
     }
     impl RunWorkflow {
+        pub const NAME: &'static str = self::RUN_WORKFLOW_NAME;
         pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;

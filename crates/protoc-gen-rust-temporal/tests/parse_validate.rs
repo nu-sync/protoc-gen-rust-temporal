@@ -1289,6 +1289,20 @@ fn workflow_id_template_const_omitted_when_unset() {
 }
 
 #[test]
+fn child_workflow_marker_exposes_name_const() {
+    // R4 — child-workflow markers (`<Wf>Workflow`) round out the
+    // marker `NAME` const surface. Pairs with the prior signal /
+    // activity NAME shipment.
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const NAME: &'static str = self::RUN_WORKFLOW_NAME;"),
+        "child-workflow marker must re-expose NAME: {source}"
+    );
+}
+
+#[test]
 fn signal_and_activity_markers_expose_name_const() {
     // R4 — every marker struct now also re-exposes the registered
     // `NAME` as an inherent const. The SDK's `name(&self)` /

@@ -2832,7 +2832,15 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
         // for the proto FQN without going through `WorkflowDefinition`.
         let in_const = format!("{}_INPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
         let out_const = format!("{}_OUTPUT_TYPE", wf.rpc_method.to_shouty_snake_case());
+        let name_const = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
         let _ = writeln!(out, "    impl {marker_struct} {{");
+        // Re-expose the registered name as `NAME` const so generic
+        // code can read `<W>::NAME` without importing the SDK
+        // `WorkflowDefinition` trait.
+        let _ = writeln!(
+            out,
+            "        pub const NAME: &'static str = self::{name_const};"
+        );
         let _ = writeln!(
             out,
             "        pub const INPUT_TYPE: &'static str = self::{in_const};"

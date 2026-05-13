@@ -182,6 +182,18 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R4 — `NAME` const on child-workflow markers):
+  rounds out the marker `NAME` const surface. Child-workflow
+  markers (`<Wf>Workflow`, emitted under workflows=true when both
+  input and output are non-Empty) now also re-expose
+  `pub const NAME: &'static str = self::<RPC>_WORKFLOW_NAME;`.
+  Pairs with the previous signal + activity `NAME` shipments —
+  every marker kind now uniformly carries `NAME` / `INPUT_TYPE` /
+  `OUTPUT_TYPE` / `TASK_QUEUE` (where applicable). Generic worker
+  code can spell `<W>::NAME` regardless of which trait is in
+  scope. One new positive parse_validate test pins the const emit
+  on the `worker_full` fixture. Several fixture goldens reblessed.
+  170 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R4 — `NAME` const on signal + activity markers):
   every marker struct now also re-exposes the registered name as
   `pub const NAME: &'static str = self::<RPC>_<KIND>_NAME;`. The
