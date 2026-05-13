@@ -88,6 +88,12 @@ pub mod wf_v1_order_service_temporal {
             }
         }
 
+        /// Send the `wf.v1.OrderService.Cancel` signal to a workflow by id.
+        pub async fn cancel(&self, workflow_id: impl Into<String>, input: CancelInput) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::signal_proto(&inner, "wf.v1.OrderService.Cancel", &input).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

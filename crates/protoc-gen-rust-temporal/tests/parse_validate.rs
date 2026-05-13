@@ -972,6 +972,70 @@ fn signal_returning_non_empty_fails_validation() {
 }
 
 #[test]
+fn client_exposes_signal_by_id_methods() {
+    // R4: `<Service>Client::<signal>(workflow_id, input)` lets callers send
+    // a signal without first calling `<rpc>_handle(id)`. Mirrors the Go
+    // plugin's top-level `client.<Signal>(ctx, id, runID, input)`.
+    let services = parse_and_validate("full_workflow");
+    let svc = &services[0];
+    let source = render::render(svc, &Default::default());
+
+    // Signal with non-Empty input → takes the input by value.
+    assert!(
+        source.contains("pub async fn cancel(&self, workflow_id: impl Into<String>, input: CancelInput) -> Result<()>"),
+        "client must expose Cancel signal-by-id with typed input: {source}"
+    );
+    assert!(
+        source.contains(
+            "temporal_runtime::signal_proto(&inner, \"full.v1.FullService.Cancel\", &input).await"
+        ),
+        "client signal-by-id must call signal_proto with the registered name"
+    );
+    // Sibling Bootstrap signal too.
+    assert!(
+        source.contains("pub async fn bootstrap(&self, workflow_id: impl Into<String>, input: BootstrapInput) -> Result<()>"),
+        "client must expose Bootstrap signal-by-id too"
+    );
+}
+
+#[test]
+fn client_signal_by_id_handles_empty_input() {
+    // Empty-input signal: the method takes only workflow_id and routes to
+    // `signal_unit`, not `signal_proto`, matching the existing Handle-side
+    // Empty-input emit.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package empty_sig.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Ping" }]
+            };
+          }
+          rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub async fn ping(&self, workflow_id: impl Into<String>) -> Result<()>"),
+        "Empty-input signal client method must not take an `input` arg: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::signal_unit(&inner, \"empty_sig.v1.Svc.Ping\").await"),
+        "Empty-input variant must route to signal_unit"
+    );
+}
+
+#[test]
 fn every_workflow_handle_exposes_run_id_accessor() {
     // R4: `<Workflow>Handle::run_id(&self) -> Option<&str>` forwards to the
     // facade's `WorkflowHandle::run_id`. `None` for `attach_handle`-produced

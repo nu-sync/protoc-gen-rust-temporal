@@ -90,6 +90,12 @@ pub mod workerfull_v1_orchestration_service_temporal {
             }
         }
 
+        /// Send the `workerfull.v1.OrchestrationService.Cancel` signal to a workflow by id.
+        pub async fn cancel(&self, workflow_id: impl Into<String>, input: CancelInput) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::signal_proto(&inner, "workerfull.v1.OrchestrationService.Cancel", &input).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

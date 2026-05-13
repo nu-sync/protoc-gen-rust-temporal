@@ -305,7 +305,72 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
         render_client_workflow_methods(out, svc, wf);
     }
 
+    // R4: client-level signal-by-id helpers. One method per signal rpc, so
+    // callers with a workflow id can send a signal without `<rpc>_handle`
+    // round-trip. Skips signals that aren't attached to any workflow on
+    // this service (defensive — validate.rs already requires each
+    // `WorkflowOptions.signal[].ref` to resolve, so the set of attached
+    // signals matches the set of signal rpcs in practice).
+    let attached_signal_names: std::collections::HashSet<&str> = svc
+        .workflows
+        .iter()
+        .flat_map(|wf| wf.attached_signals.iter())
+        .map(|s| s.rpc_method.as_str())
+        .collect();
+    for sig in &svc.signals {
+        if !attached_signal_names.contains(sig.rpc_method.as_str()) {
+            continue;
+        }
+        render_client_signal_method(out, sig);
+    }
+
     let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+}
+
+/// Client-level signal sender that takes a workflow id directly. Mirrors
+/// the Go plugin's `client.<Signal>(ctx, workflowID, runID, input)` shape,
+/// adapted to Rust's typed handle layer (we attach a `WorkflowHandle`
+/// internally and reuse the bridge's `signal_proto` / `signal_unit`).
+fn render_client_signal_method(out: &mut String, sig: &SignalModel) {
+    let method_snake = sig.rpc_method.to_snake_case();
+    let _ = writeln!(
+        out,
+        "        /// Send the `{}` signal to a workflow by id.",
+        sig.registered_name
+    );
+    if sig.input_type.is_empty {
+        let _ = writeln!(
+            out,
+            "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>) -> Result<()> {{"
+        );
+        let _ = writeln!(
+            out,
+            "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+        );
+        let _ = writeln!(
+            out,
+            "            temporal_runtime::signal_unit(&inner, \"{}\").await",
+            sig.registered_name
+        );
+        let _ = writeln!(out, "        }}");
+    } else {
+        let input_ty = sig.input_type.rust_name();
+        let _ = writeln!(
+            out,
+            "        pub async fn {method_snake}(&self, workflow_id: impl Into<String>, input: {input_ty}) -> Result<()> {{"
+        );
+        let _ = writeln!(
+            out,
+            "            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());"
+        );
+        let _ = writeln!(
+            out,
+            "            temporal_runtime::signal_proto(&inner, \"{}\", &input).await",
+            sig.registered_name
+        );
+        let _ = writeln!(out, "        }}");
+    }
     let _ = writeln!(out);
 }
 

@@ -88,6 +88,12 @@ pub mod jobs_v1_job_service_temporal {
             }
         }
 
+        /// Send the `jobs.v1.JobService.CancelJob` signal to a workflow by id.
+        pub async fn cancel_job(&self, workflow_id: impl Into<String>, input: CancelJobInput) -> Result<()> {
+            let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
+            temporal_runtime::signal_proto(&inner, "jobs.v1.JobService.CancelJob", &input).await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]
