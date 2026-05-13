@@ -1765,6 +1765,89 @@ fn cli_emit_renders_query_subcommands() {
 }
 
 #[test]
+fn cli_emit_renders_update_subcommands() {
+    // R6 — each `(temporal.v1.update)` rpc gains an `Update<Name>` CLI
+    // variant. Empty-input updates skip `--input-file`; non-Empty
+    // updates carry it. Dispatch calls `client.<update>(workflow_id,
+    // input?, None)` so the proto-declared default wait policy
+    // applies, and debug-prints the typed output (`()` for Empty
+    // outputs, the message for typed outputs).
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package ucli.v1;
+        import "temporal/v1/temporal.proto";
+        import "google/protobuf/empty.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Bump" }, { ref: "Apply" }]
+            };
+          }
+          rpc Bump(google.protobuf.Empty) returns (BumpOutput) {
+            option (temporal.v1.update) = {};
+          }
+          rpc Apply(ApplyInput) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message BumpOutput { uint64 next = 1; }
+        message ApplyInput { string payload = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("must parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("UpdateBump(UpdateBumpArgs),"),
+        "missing UpdateBump variant: {source}"
+    );
+    assert!(
+        source.contains("UpdateApply(UpdateApplyArgs),"),
+        "missing UpdateApply variant: {source}"
+    );
+    assert!(
+        source.contains("pub struct UpdateBumpArgs {"),
+        "missing UpdateBumpArgs struct: {source}"
+    );
+    assert!(
+        source.contains("pub struct UpdateApplyArgs {"),
+        "missing UpdateApplyArgs struct: {source}"
+    );
+    let bump_start = source.find("pub struct UpdateBumpArgs").unwrap();
+    let bump_end = bump_start + source[bump_start..].find('}').unwrap();
+    let bump_block = &source[bump_start..bump_end];
+    assert!(
+        !bump_block.contains("input_file"),
+        "Empty-input update must skip input_file flag: {bump_block}"
+    );
+    let apply_start = source.find("pub struct UpdateApplyArgs").unwrap();
+    let apply_end = apply_start + source[apply_start..].find('}').unwrap();
+    let apply_block = &source[apply_start..apply_end];
+    assert!(
+        apply_block.contains("pub input_file: ::std::path::PathBuf,"),
+        "non-Empty update must include input_file flag: {apply_block}"
+    );
+    // Empty-input dispatch — `(workflow_id, None)` wait_policy.
+    assert!(
+        source.contains("let out = client.bump(args.workflow_id.clone(), None).await?;"),
+        "Empty-input update dispatch wrong: {source}"
+    );
+    // Non-Empty dispatch — `(workflow_id, input, None)`.
+    assert!(
+        source.contains("let out = client.apply(args.workflow_id.clone(), input, None).await?;"),
+        "non-Empty update dispatch wrong: {source}"
+    );
+}
+
+#[test]
 fn cli_emit_off_by_default() {
     let services = parse_and_validate("cli_emit");
     let source = render::render(&services[0], &Default::default());

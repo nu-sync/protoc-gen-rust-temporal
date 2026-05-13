@@ -138,6 +138,19 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `update-<name>` CLI subcommands per update rpc):
+  every `(temporal.v1.update)` rpc on a service now gains a clap
+  `Update<Name>(Update<Name>Args)` variant in the `cli=true` scaffold.
+  Empty-input updates carry only the positional `workflow_id`;
+  non-Empty updates add the `--input-file` prost-json flag pattern.
+  Dispatch in `Cli::run_with` calls `client.<update>(workflow_id,
+  input?, None)` so the proto-declared default wait policy applies,
+  and debug-prints the typed output. With signal + query + update CLI
+  all shipped, the CLI now mirrors every same-service handler rpc the
+  workflow declares. One new inline parse_validate test pins both
+  variants, both Args structs, the input_file gating by Empty input,
+  and both dispatch shapes. No bridge signature change; no fixture
+  goldens touched.
 - 2026-05-13 (R6 — `query-<name>` CLI subcommands per query rpc):
   every `(temporal.v1.query)` rpc on a service now gains a clap
   `Query<Name>(Query<Name>Args)` variant in the `cli=true` scaffold.

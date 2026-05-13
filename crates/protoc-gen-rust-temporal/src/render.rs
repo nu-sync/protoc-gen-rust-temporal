@@ -2602,6 +2602,46 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "                }}");
     }
+    // Per-update dispatch arms — call into the existing client method
+    // with `wait_policy = None` (proto-declared default takes effect).
+    for u in &svc.updates {
+        let u_pascal = u.rpc_method.to_pascal_case();
+        let u_snake = u.rpc_method.to_snake_case();
+        let u_full = &u.input_type.full_name;
+        let _ = writeln!(out, "                Command::Update{u_pascal}(args) => {{");
+        if u.input_type.is_empty {
+            let _ = writeln!(out, "                    let _ = &mut read_input;");
+            let _ = writeln!(
+                out,
+                "                    let out = client.{u_snake}(args.workflow_id.clone(), None).await?;"
+            );
+        } else {
+            let in_ty = u.input_type.rust_name();
+            let in_ty_path = format!("super::{svc_mod}::{in_ty}");
+            let _ = writeln!(
+                out,
+                "                    let dyn_input = read_input(&args.input_file, \"{u_full}\").await?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let input: {in_ty_path} = *dyn_input.downcast::<{in_ty_path}>()"
+            );
+            let _ = writeln!(
+                out,
+                "                        .map_err(|_| ::std::format!(\"read_input returned the wrong type for {u_full}\"))?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let out = client.{u_snake}(args.workflow_id.clone(), input, None).await?;"
+            );
+        }
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"updated {{}}: workflow_id={{}} result={{:?}}\", \"{}\", args.workflow_id, out);",
+            u.registered_name.escape_default()
+        );
+        let _ = writeln!(out, "                }}");
+    }
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "            Ok(())");
     let _ = writeln!(out, "        }}");
@@ -2746,6 +2786,20 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "        Query{q_pascal}(Query{q_pascal}Args),");
     }
+    // R6 — per-update CLI subcommands. Each `(temporal.v1.update)` rpc
+    // becomes an `Update<Name>(Update<Name>Args)` variant. Dispatch
+    // calls `client.<update>(workflow_id, input?, wait_policy)` with
+    // `wait_policy = None` so the proto-declared default (or the
+    // `Completed` fallback) takes effect.
+    for u in &svc.updates {
+        let u_pascal = u.rpc_method.to_pascal_case();
+        let _ = writeln!(
+            out,
+            "        /// Send the `{}` update to a workflow by id.",
+            u.registered_name
+        );
+        let _ = writeln!(out, "        Update{u_pascal}(Update{u_pascal}Args),");
+    }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
@@ -2866,6 +2920,30 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
                 out,
                 "        /// Format: prost-json (matching pbjson) of `{}`.",
                 q.input_type.full_name
+            );
+            let _ = writeln!(out, "        #[arg(long)]");
+            let _ = writeln!(out, "        pub input_file: ::std::path::PathBuf,");
+        }
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
+
+    // Per-update Args structs.
+    for u in &svc.updates {
+        let u_pascal = u.rpc_method.to_pascal_case();
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Update{u_pascal}Args {{");
+        let _ = writeln!(out, "        /// Workflow id to update.");
+        let _ = writeln!(out, "        pub workflow_id: String,");
+        if !u.input_type.is_empty {
+            let _ = writeln!(
+                out,
+                "        /// Path to a JSON file containing the update input."
+            );
+            let _ = writeln!(
+                out,
+                "        /// Format: prost-json (matching pbjson) of `{}`.",
+                u.input_type.full_name
             );
             let _ = writeln!(out, "        #[arg(long)]");
             let _ = writeln!(out, "        pub input_file: ::std::path::PathBuf,");
