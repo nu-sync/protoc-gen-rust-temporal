@@ -1678,6 +1678,93 @@ fn cli_emit_renders_signal_subcommands() {
 }
 
 #[test]
+fn cli_emit_renders_query_subcommands() {
+    // R6 — each `(temporal.v1.query)` rpc gains a `Query<Name>` CLI
+    // variant. Empty-input queries skip `--input-file`; non-Empty
+    // queries carry it. Dispatch calls `client.<query>(workflow_id,
+    // input?)` and debug-prints the typed output.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package qcli.v1;
+        import "temporal/v1/temporal.proto";
+        import "google/protobuf/empty.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              query: [{ ref: "Status" }, { ref: "Lookup" }]
+            };
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Lookup(LookupInput) returns (LookupOutput) {
+            option (temporal.v1.query) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        message LookupInput  { string key = 1; }
+        message LookupOutput { string value = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("must parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("QueryStatus(QueryStatusArgs),"),
+        "missing QueryStatus variant: {source}"
+    );
+    assert!(
+        source.contains("QueryLookup(QueryLookupArgs),"),
+        "missing QueryLookup variant: {source}"
+    );
+    assert!(
+        source.contains("pub struct QueryStatusArgs {"),
+        "missing QueryStatusArgs struct: {source}"
+    );
+    assert!(
+        source.contains("pub struct QueryLookupArgs {"),
+        "missing QueryLookupArgs struct: {source}"
+    );
+    let status_start = source.find("pub struct QueryStatusArgs").unwrap();
+    let status_end = status_start + source[status_start..].find('}').unwrap();
+    let status_block = &source[status_start..status_end];
+    assert!(
+        !status_block.contains("input_file"),
+        "Empty-input query must skip input_file flag: {status_block}"
+    );
+    let lookup_start = source.find("pub struct QueryLookupArgs").unwrap();
+    let lookup_end = lookup_start + source[lookup_start..].find('}').unwrap();
+    let lookup_block = &source[lookup_start..lookup_end];
+    assert!(
+        lookup_block.contains("pub input_file: ::std::path::PathBuf,"),
+        "non-Empty query must include input_file flag: {lookup_block}"
+    );
+    // Empty-input dispatch.
+    assert!(
+        source.contains("let out = client.status(args.workflow_id.clone()).await?;"),
+        "Empty-input query dispatch wrong: {source}"
+    );
+    // Non-Empty dispatch.
+    assert!(
+        source.contains("let out = client.lookup(args.workflow_id.clone(), input).await?;"),
+        "non-Empty query dispatch wrong: {source}"
+    );
+    // Output is debug-printed for both.
+    assert!(
+        source.contains("result={:?}"),
+        "query dispatch must debug-print the output: {source}"
+    );
+}
+
+#[test]
 fn cli_emit_off_by_default() {
     let services = parse_and_validate("cli_emit");
     let source = render::render(&services[0], &Default::default());

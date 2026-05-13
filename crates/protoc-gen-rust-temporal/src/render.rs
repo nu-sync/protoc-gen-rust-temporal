@@ -2561,6 +2561,47 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "                }}");
     }
+    // Per-query dispatch arms — call into the existing client method
+    // and debug-print the typed output. The Empty-input branch skips
+    // the deserializer entirely.
+    for q in &svc.queries {
+        let q_pascal = q.rpc_method.to_pascal_case();
+        let q_snake = q.rpc_method.to_snake_case();
+        let q_full = &q.input_type.full_name;
+        let _ = writeln!(out, "                Command::Query{q_pascal}(args) => {{");
+        if q.input_type.is_empty {
+            let _ = writeln!(out, "                    let _ = &mut read_input;");
+            let _ = writeln!(
+                out,
+                "                    let out = client.{q_snake}(args.workflow_id.clone()).await?;"
+            );
+        } else {
+            let in_ty = q.input_type.rust_name();
+            let in_ty_path = format!("super::{svc_mod}::{in_ty}");
+            let _ = writeln!(
+                out,
+                "                    let dyn_input = read_input(&args.input_file, \"{q_full}\").await?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let input: {in_ty_path} = *dyn_input.downcast::<{in_ty_path}>()"
+            );
+            let _ = writeln!(
+                out,
+                "                        .map_err(|_| ::std::format!(\"read_input returned the wrong type for {q_full}\"))?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let out = client.{q_snake}(args.workflow_id.clone(), input).await?;"
+            );
+        }
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"queried {{}}: workflow_id={{}} result={{:?}}\", \"{}\", args.workflow_id, out);",
+            q.registered_name.escape_default()
+        );
+        let _ = writeln!(out, "                }}");
+    }
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "            Ok(())");
     let _ = writeln!(out, "        }}");
@@ -2692,6 +2733,19 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "        Signal{sig_pascal}(Signal{sig_pascal}Args),");
     }
+    // R6 — per-query CLI subcommands. Each `(temporal.v1.query)` rpc
+    // becomes a `Query<Name>(Query<Name>Args)` variant that calls into
+    // the existing `client.<query>(workflow_id, input)` method and
+    // debug-prints the typed output.
+    for q in &svc.queries {
+        let q_pascal = q.rpc_method.to_pascal_case();
+        let _ = writeln!(
+            out,
+            "        /// Run the `{}` query against a workflow by id.",
+            q.registered_name
+        );
+        let _ = writeln!(out, "        Query{q_pascal}(Query{q_pascal}Args),");
+    }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
@@ -2788,6 +2842,30 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
                 out,
                 "        /// Format: prost-json (matching pbjson) of `{}`.",
                 sig.input_type.full_name
+            );
+            let _ = writeln!(out, "        #[arg(long)]");
+            let _ = writeln!(out, "        pub input_file: ::std::path::PathBuf,");
+        }
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
+
+    // Per-query Args structs.
+    for q in &svc.queries {
+        let q_pascal = q.rpc_method.to_pascal_case();
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Query{q_pascal}Args {{");
+        let _ = writeln!(out, "        /// Workflow id to query.");
+        let _ = writeln!(out, "        pub workflow_id: String,");
+        if !q.input_type.is_empty {
+            let _ = writeln!(
+                out,
+                "        /// Path to a JSON file containing the query input."
+            );
+            let _ = writeln!(
+                out,
+                "        /// Format: prost-json (matching pbjson) of `{}`.",
+                q.input_type.full_name
             );
             let _ = writeln!(out, "        #[arg(long)]");
             let _ = writeln!(out, "        pub input_file: ::std::path::PathBuf,");
