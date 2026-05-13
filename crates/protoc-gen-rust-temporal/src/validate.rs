@@ -30,26 +30,49 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
 /// duplicate subcommand names at runtime — better to surface the
 /// conflict at codegen with the workflow names called out.
 fn reject_workflow_cli_name_collisions(model: &ServiceModel) -> Result<()> {
-    // Each CLI subcommand value maps to its owning workflow; first
-    // insertion wins, the second is the duplicate-subcommand bug.
-    let mut owners: HashMap<&str, &str> = HashMap::new();
+    use heck::{ToKebabCase, ToPascalCase};
+
+    // Each CLI subcommand value maps to its owning workflow. We
+    // collect both:
+    //   1. Explicit `cli.name` and `cli.aliases` values.
+    //   2. Clap's default subcommand value derived from the variant
+    //      name, kebab-cased — e.g. `Wf1` becomes `start-wf-1`.
+    // A collision between (1) on one workflow and (2) on another
+    // is the same duplicate-subcommand bug at runtime.
+    let mut owners: HashMap<String, String> = HashMap::new();
+    let bail_collision = |value: &str,
+                          prior: &str,
+                          owner: &str,
+                          model_service: &str|
+     -> Result<()> {
+        bail!(
+            "{model_service}: cli subcommand value `{value}` is declared by both `{prior}` and `{owner}` — clap would reject the duplicate at runtime; reconcile the cli.name / cli.aliases values",
+        );
+    };
     for wf in &model.workflows {
-        if let Some(name) = wf.cli_name.as_deref() {
-            if let Some(prior) = owners.insert(name, wf.rpc_method.as_str()) {
-                bail!(
-                    "{service}: cli subcommand value `{name}` is declared by both `{prior}` and `{owner}` — clap would reject the duplicate at runtime; reconcile the cli.name / cli.aliases values",
-                    service = model.service,
-                    owner = wf.rpc_method,
-                );
-            }
+        if wf.cli_ignore {
+            continue;
         }
-        for alias in &wf.cli_aliases {
-            if let Some(prior) = owners.insert(alias.as_str(), wf.rpc_method.as_str()) {
-                bail!(
-                    "{service}: cli subcommand value `{alias}` is declared by both `{prior}` and `{owner}` — clap would reject the duplicate at runtime; reconcile the cli.name / cli.aliases values",
-                    service = model.service,
-                    owner = wf.rpc_method,
-                );
+        // Explicit overrides take priority over derived defaults.
+        let explicit: Vec<String> = wf
+            .cli_name
+            .iter()
+            .chain(wf.cli_aliases.iter())
+            .cloned()
+            .collect();
+        if !explicit.is_empty() {
+            for value in &explicit {
+                if let Some(prior) = owners.insert(value.clone(), wf.rpc_method.clone()) {
+                    bail_collision(value, &prior, &wf.rpc_method, &model.service)?;
+                }
+            }
+        } else {
+            // Default-derived: clap uses the kebab-case of the variant
+            // name (Pascal-cased rpc method). Same value clap would
+            // emit on the wire.
+            let derived = wf.rpc_method.to_pascal_case().to_kebab_case();
+            if let Some(prior) = owners.insert(derived.clone(), wf.rpc_method.clone()) {
+                bail_collision(&derived, &prior, &wf.rpc_method, &model.service)?;
             }
         }
     }

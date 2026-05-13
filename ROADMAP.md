@@ -138,6 +138,18 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6/R1 — reject CLI subcommand collisions vs default-derived values):
+  the cross-workflow CLI subcommand collision check previously only
+  compared explicit `cli.name` / `cli.aliases` against each other.
+  Now it also compares against the default-derived clap value
+  (kebab-case of the Pascal-case rpc method) for workflows without
+  overrides. Catches e.g. `AlphaFlow` (default `alpha-flow`) + `Beta`
+  with `cli.name = "alpha-flow"` — clap would reject the duplicate
+  at runtime, but the user wouldn't know until launching the
+  generated CLI. Skips `cli.ignore`'d workflows since they don't
+  emit subcommands. One new positive parse_validate test pins the
+  override-vs-derived-default rejection. 148 parse_validate tests
+  green. No bridge signature change; no fixture goldens touched.
 - 2026-05-13 (R6/R1 — reject cross-workflow `cli.name` / `cli.aliases` collisions):
   two workflows on the same service can no longer claim the same
   CLI subcommand value via `cli.name` or any entry in `cli.aliases`.

@@ -1698,6 +1698,44 @@ fn workflow_attached_handler_name_consts_emit() {
 }
 
 #[test]
+fn cli_name_override_colliding_with_default_derived_fails_validation() {
+    // A workflow's `cli.name` override that matches the kebab-case
+    // default-derived subcommand value of another workflow would
+    // produce duplicate clap subcommand names. Catch at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package cli_default_clash.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          // Default-derived clap subcommand value: "alpha-flow".
+          rpc AlphaFlow(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          // Explicit override claims the same value.
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "alpha-flow" }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("override colliding with default-derived value must be rejected")
+        .to_string();
+    assert!(
+        err.contains("`alpha-flow`") && err.contains("AlphaFlow") && err.contains("Beta"),
+        "diagnostic must name value + both workflows, got: {err}"
+    );
+}
+
+#[test]
 fn cross_workflow_cli_name_collision_fails_validation() {
     // Two workflows on the same service can't claim the same
     // `cli.name` — they'd produce identical clap subcommand names
