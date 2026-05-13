@@ -104,6 +104,13 @@ Progress:
   by a table-driven `unsupported_field_support_status_table` test. Closes the
   R1 ask to add a test for each unsupported-field diagnostic. New rejection
   rules must add a row to that table so silent drops cannot regress.
+- 2026-05-13: co-annotations on a single rpc are now refused at parse with a
+  diagnostic naming the combination. Previously `method_kind` did first-match
+  on the extension chain and silently dropped the others — a service with
+  workflow+activity could ship with the activity invisibly missing.
+  `co_annotations_are_rejected_with_clear_diagnostic` covers all three
+  combinations R1 calls out. Lifting the rejection is the natural next step
+  toward full co-annotation support.
 
 Deliverables:
 
@@ -291,7 +298,7 @@ toward majority parity.
 
 | Area | Current behavior | Roadmap |
 |---|---|---|
-| Method co-annotations | Modeled as one primary generated method kind today. | R1 |
+| Method co-annotations | Refused at parse with a clear diagnostic (2026-05-13); generator still models one primary kind per rpc. Full support is the next R1 step. | R1 |
 | Cross-service refs | Workflow refs are validated against methods on the same service. | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |

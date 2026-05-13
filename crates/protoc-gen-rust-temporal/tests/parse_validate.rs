@@ -1333,6 +1333,89 @@ fn unsupported_field_support_status_table() {
     }
 }
 
+/// Co-annotations on a single rpc — Go's plugin supports several combinations
+/// (workflow+activity, signal+activity, update+activity); the Rust emit does
+/// not, and R1 in ROADMAP.md tracks adding support. Until then the parser
+/// must refuse them so users cannot accidentally ship a service with half
+/// its Temporal contract silently dropped.
+#[test]
+fn co_annotations_are_rejected_with_clear_diagnostic() {
+    struct Case {
+        label: &'static str,
+        snippet: &'static str,
+        expect_combo: &'static str,
+    }
+
+    // Each case attaches two `temporal.v1.*` extensions to the same rpc. The
+    // returned diagnostic must name both kinds so users see which combination
+    // tripped the limitation.
+    let cases: &[Case] = &[
+        Case {
+            label: "workflow + activity",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = { task_queue: "tq" };
+                  option (temporal.v1.activity) = {};
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_combo: "workflow + activity",
+        },
+        Case {
+            label: "signal + activity",
+            snippet: r#"
+              import "google/protobuf/empty.proto";
+              service Svc {
+                rpc Notify(In) returns (google.protobuf.Empty) {
+                  option (temporal.v1.signal) = {};
+                  option (temporal.v1.activity) = {};
+                }
+              }
+              message In {}
+            "#,
+            expect_combo: "activity + signal",
+        },
+        Case {
+            label: "update + activity",
+            snippet: r#"
+              service Svc {
+                rpc Patch(In) returns (Out) {
+                  option (temporal.v1.update) = {};
+                  option (temporal.v1.activity) = {};
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_combo: "activity + update",
+        },
+    ];
+
+    for case in cases {
+        let source = format!(
+            "syntax = \"proto3\";\npackage co_anno.v1;\nimport \"temporal/v1/temporal.proto\";\n{}",
+            case.snippet,
+        );
+        let (pool, files_to_generate, _tmp) = compile_fixture_inline(&source);
+        let err = match parse::parse(&pool, &files_to_generate) {
+            Ok(_) => panic!("{}: expected parse to fail, but it succeeded", case.label),
+            Err(e) => e.to_string(),
+        };
+        assert!(
+            err.contains(case.expect_combo),
+            "{}: diagnostic must name the combination `{}`, got: {err}",
+            case.label,
+            case.expect_combo,
+        );
+        assert!(
+            err.contains("co-annotations are not yet supported"),
+            "{}: diagnostic must mark co-annotations as not-yet-supported (so users see the roadmap path), got: {err}",
+            case.label,
+        );
+    }
+}
+
 #[test]
 fn workflow_schema_defaults_apply_at_start() {
     // full_workflow declares id_reuse_policy + 3 timeouts on the proto;

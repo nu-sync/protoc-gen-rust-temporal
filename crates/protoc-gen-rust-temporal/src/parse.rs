@@ -186,10 +186,38 @@ enum MethodKind {
 fn method_kind(method: &MethodDescriptor, ext: &ExtensionSet) -> Result<MethodKind> {
     let opts: DynamicMessage = method.options();
 
-    // A single rpc is expected to carry at most one Temporal annotation.
-    // First-match wins; validate.rs would reject a method that lands in two
-    // buckets, but in practice it cannot — only one extension field number
-    // can be set on a given MethodOptions.
+    // Different `temporal.v1.*` extensions live at different extension field
+    // numbers, so a single MethodOptions *can* carry more than one of them
+    // simultaneously — that's the Go plugin's co-annotation surface (e.g.
+    // workflow + activity, signal + activity). The Rust emit does not yet
+    // model co-annotations (see ROADMAP.md R1). Refuse the proto rather than
+    // silently honour one annotation and drop the others, which would compile
+    // clean and ship a service that's missing half its Temporal contract.
+    let mut declared: Vec<&'static str> = Vec::new();
+    if opts.has_extension(&ext.workflow) {
+        declared.push("workflow");
+    }
+    if opts.has_extension(&ext.activity) {
+        declared.push("activity");
+    }
+    if opts.has_extension(&ext.signal) {
+        declared.push("signal");
+    }
+    if opts.has_extension(&ext.query) {
+        declared.push("query");
+    }
+    if opts.has_extension(&ext.update) {
+        declared.push("update");
+    }
+    if declared.len() > 1 {
+        return Err(anyhow!(
+            "{}.{}: rpc carries multiple Temporal annotations ({}) — co-annotations are not yet supported by the v1 Rust plugin (see ROADMAP.md R1). Split the rpc or pin to a generator release that supports the combination.",
+            method.parent_service().name(),
+            method.name(),
+            declared.join(" + "),
+        ));
+    }
+
     if opts.has_extension(&ext.workflow) {
         return decode_kind::<WorkflowOptions>(&opts.get_extension(&ext.workflow));
     }
