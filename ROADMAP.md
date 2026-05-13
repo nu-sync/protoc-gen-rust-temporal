@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `signal-<name>` CLI subcommands per signal rpc):
+  every `(temporal.v1.signal)` rpc on a service now gains a clap
+  `Signal<Name>(Signal<Name>Args)` variant in the `cli=true` scaffold.
+  Empty-input signals carry only the positional `workflow_id`;
+  non-Empty signals add the same `--input-file` prost-json pattern
+  used by workflow starts. Dispatch in `Cli::run_with` calls into the
+  existing client-level `<signal>(workflow_id, input)` method (or the
+  Empty-input overload). One new inline parse_validate test pins:
+  both variants, both Args structs, the input_file gating by Empty,
+  and both dispatch shapes. No bridge signature change; no fixture
+  goldens touched (no fixture combines `cli=true` with signals).
 - 2026-05-13 (R6 — `cancel-<wf>` + `terminate-<wf>` CLI subcommands):
   the `cli=true` scaffold gains two new variants per workflow:
   `Cancel<Wf>(Cancel<Wf>Args)` and `Terminate<Wf>(Terminate<Wf>Args)`,

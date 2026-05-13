@@ -1597,6 +1597,87 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn cli_emit_renders_signal_subcommands() {
+    // R6 — each `(temporal.v1.signal)` rpc gains a `Signal<Name>` CLI
+    // variant. Empty-input signals skip `--input-file`; non-Empty
+    // signals carry the same prost-json input-file flag pattern as
+    // workflow starts.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sigcli.v1;
+        import "temporal/v1/temporal.proto";
+        import "google/protobuf/empty.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Pause" }, { ref: "Resume" }]
+            };
+          }
+          rpc Pause(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Resume(ResumeInput) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message ResumeInput { string mode = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("must parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("SignalPause(SignalPauseArgs),"),
+        "missing SignalPause variant: {source}"
+    );
+    assert!(
+        source.contains("SignalResume(SignalResumeArgs),"),
+        "missing SignalResume variant: {source}"
+    );
+    assert!(
+        source.contains("pub struct SignalPauseArgs {"),
+        "missing SignalPauseArgs struct: {source}"
+    );
+    assert!(
+        source.contains("pub struct SignalResumeArgs {"),
+        "missing SignalResumeArgs struct: {source}"
+    );
+    // Empty-input signal must NOT carry an input_file flag.
+    let pause_block_start = source.find("pub struct SignalPauseArgs").unwrap();
+    let pause_block_end = pause_block_start + source[pause_block_start..].find('}').unwrap();
+    let pause_block = &source[pause_block_start..pause_block_end];
+    assert!(
+        !pause_block.contains("input_file"),
+        "Empty-input signal must skip input_file flag: {pause_block}"
+    );
+    // Non-Empty signal must carry input_file.
+    let resume_block_start = source.find("pub struct SignalResumeArgs").unwrap();
+    let resume_block_end = resume_block_start + source[resume_block_start..].find('}').unwrap();
+    let resume_block = &source[resume_block_start..resume_block_end];
+    assert!(
+        resume_block.contains("pub input_file: ::std::path::PathBuf,"),
+        "non-Empty signal must include input_file flag: {resume_block}"
+    );
+    // Dispatch must call the client method.
+    assert!(
+        source.contains("client.pause(args.workflow_id.clone()).await?;"),
+        "Empty-input signal dispatch must call client.<snake>(workflow_id): {source}"
+    );
+    assert!(
+        source.contains("client.resume(args.workflow_id.clone(), input).await?;"),
+        "non-Empty signal dispatch must call client.<snake>(workflow_id, input): {source}"
+    );
+}
+
+#[test]
 fn cli_emit_off_by_default() {
     let services = parse_and_validate("cli_emit");
     let source = render::render(&services[0], &Default::default());

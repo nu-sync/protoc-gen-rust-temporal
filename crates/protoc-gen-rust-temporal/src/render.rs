@@ -2519,6 +2519,48 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "                }}");
     }
+    // Per-signal dispatch arms.
+    for sig in &svc.signals {
+        let sig_pascal = sig.rpc_method.to_pascal_case();
+        let sig_snake = sig.rpc_method.to_snake_case();
+        let sig_full = &sig.input_type.full_name;
+        let _ = writeln!(
+            out,
+            "                Command::Signal{sig_pascal}(args) => {{"
+        );
+        if sig.input_type.is_empty {
+            let _ = writeln!(out, "                    let _ = &mut read_input;");
+            let _ = writeln!(
+                out,
+                "                    client.{sig_snake}(args.workflow_id.clone()).await?;"
+            );
+        } else {
+            let in_ty = sig.input_type.rust_name();
+            let in_ty_path = format!("super::{svc_mod}::{in_ty}");
+            let _ = writeln!(
+                out,
+                "                    let dyn_input = read_input(&args.input_file, \"{sig_full}\").await?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    let input: {in_ty_path} = *dyn_input.downcast::<{in_ty_path}>()"
+            );
+            let _ = writeln!(
+                out,
+                "                        .map_err(|_| ::std::format!(\"read_input returned the wrong type for {sig_full}\"))?;"
+            );
+            let _ = writeln!(
+                out,
+                "                    client.{sig_snake}(args.workflow_id.clone(), input).await?;"
+            );
+        }
+        let _ = writeln!(
+            out,
+            "                    ::std::println!(\"signaled {{}}: workflow_id={{}}\", \"{}\", args.workflow_id);",
+            sig.registered_name.escape_default()
+        );
+        let _ = writeln!(out, "                }}");
+    }
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "            Ok(())");
     let _ = writeln!(out, "        }}");
@@ -2637,6 +2679,19 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         }
         let _ = writeln!(out, "        Terminate{pascal}(Terminate{pascal}Args),");
     }
+    // R6 — per-signal CLI subcommands. Each `(temporal.v1.signal)` rpc
+    // becomes a `Signal<Name>(Signal<Name>Args)` variant that calls
+    // into the existing `client.<signal>(workflow_id, input)` method.
+    // Empty-input signals skip the `--input-file` flag entirely.
+    for sig in &svc.signals {
+        let sig_pascal = sig.rpc_method.to_pascal_case();
+        let _ = writeln!(
+            out,
+            "        /// Send the `{}` signal to a workflow by id.",
+            sig.registered_name
+        );
+        let _ = writeln!(out, "        Signal{sig_pascal}(Signal{sig_pascal}Args),");
+    }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
@@ -2712,6 +2767,31 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         );
         let _ = writeln!(out, "        #[arg(long, default_value = \"\")]");
         let _ = writeln!(out, "        pub reason: String,");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
+
+    // Per-signal Args structs — emitted whether or not any visible
+    // workflow exists, since signals are top-level service-scoped.
+    for sig in &svc.signals {
+        let sig_pascal = sig.rpc_method.to_pascal_case();
+        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    pub struct Signal{sig_pascal}Args {{");
+        let _ = writeln!(out, "        /// Workflow id to signal.");
+        let _ = writeln!(out, "        pub workflow_id: String,");
+        if !sig.input_type.is_empty {
+            let _ = writeln!(
+                out,
+                "        /// Path to a JSON file containing the signal input."
+            );
+            let _ = writeln!(
+                out,
+                "        /// Format: prost-json (matching pbjson) of `{}`.",
+                sig.input_type.full_name
+            );
+            let _ = writeln!(out, "        #[arg(long)]");
+            let _ = writeln!(out, "        pub input_file: ::std::path::PathBuf,");
+        }
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }
