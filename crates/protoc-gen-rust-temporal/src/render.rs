@@ -1769,6 +1769,22 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.workflow_id().to_string()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Workflow-id-based equality — two handles to the same Temporal
+    // workflow id are considered "same workflow" even if their
+    // run_ids differ (one started via `<rpc>` returning a typed
+    // handle, the other attached via `<rpc>_handle`). Useful for
+    // deduplication in handle collections where multiple subsystems
+    // construct handles independently.
+    let _ = writeln!(
+        out,
+        "        pub fn same_workflow_as(&self, other: &Self) -> bool {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.inner.workflow_id() == other.inner.workflow_id()"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Consuming accessor — drop the typed wrapper and recover the
     // bridge handle for downstream code that wants to use the
     // bridge surface directly (e.g. custom polling loops).

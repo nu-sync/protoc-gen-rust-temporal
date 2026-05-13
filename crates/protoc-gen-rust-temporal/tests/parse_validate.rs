@@ -2876,6 +2876,26 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_same_workflow_as_helper() {
+    // R6 ergonomics — `<Wf>Handle::same_workflow_as(&other)`
+    // compares two handles by workflow_id only (ignoring run_id).
+    // Useful for deduplication in handle collections where one
+    // subsystem may have a start-path handle (run_id known) and
+    // another may have an attach handle (run_id `None`) for the
+    // same logical workflow.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn same_workflow_as(&self, other: &Self) -> bool {"),
+        "missing same_workflow_as comparison: {source}"
+    );
+    assert!(
+        source.contains("self.inner.workflow_id() == other.inner.workflow_id()"),
+        "comparison body must check workflow_id equality: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_run_id_owned_accessor() {
     // R6 ergonomics — `<Wf>Handle::run_id_owned()` returns
     // `Option<String>`, the owned-string parallel of the

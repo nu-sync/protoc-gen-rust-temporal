@@ -303,6 +303,10 @@ pub mod cli_v1_report_service_temporal {
             self.inner.workflow_id().to_string()
         }
 
+        pub fn same_workflow_as(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+        }
+
         pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
             self.inner
         }
@@ -455,6 +459,10 @@ pub mod cli_v1_report_service_temporal {
 
         pub fn workflow_id_owned(&self) -> String {
             self.inner.workflow_id().to_string()
+        }
+
+        pub fn same_workflow_as(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
         }
 
         pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {

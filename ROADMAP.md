@@ -293,6 +293,19 @@ Progress:
   parse_validate test pins the fn signature + body. Several
   fixture goldens reblessed (every Handle gained the accessor).
   189 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::same_workflow_as()` comparison):
+  every generated `<Wf>Handle` now exposes `same_workflow_as(&self,
+  other: &Self) -> bool` comparing two handles by workflow_id only
+  (ignoring run_id). Useful for deduplication in handle collections
+  where one subsystem may hold a start-path handle (run_id known)
+  and another an attach handle (run_id `None`) for the same logical
+  workflow. We don't derive `PartialEq` on the handle because
+  `WorkflowHandle` doesn't and two handles with different run_ids
+  are arguably "different executions" under a stricter equality —
+  the named comparison helper makes the intent explicit. One new
+  positive parse_validate test pins the fn signature + body. Several
+  fixture goldens reblessed (every Handle gained the comparison).
+  191 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::workflow_id_owned()` accessor):
   every generated `<Wf>Handle` now exposes
   `workflow_id_owned(&self) -> String` returning an owned String.
