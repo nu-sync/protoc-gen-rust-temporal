@@ -1047,6 +1047,15 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     for sref in &wf.attached_signals {
         if let Some(sig) = svc.signals.iter().find(|s| s.rpc_method == sref.rpc_method) {
             render_signal_method(out, sig);
+        } else if let Some(target) = sref.cross_service.as_ref() {
+            // R1 — cross-service ref. The target lives on a sibling
+            // service; we don't have its `SignalModel` in this service's
+            // bucket, so build a transient one from the parse-time
+            // resolution metadata. Method-snake-case derives from the
+            // last segment of the dotted ref (e.g. `Cancel` for
+            // `other.v1.Other.Cancel`).
+            let fabricated = fabricate_signal_model(&sref.rpc_method, target);
+            render_signal_method(out, &fabricated);
         }
     }
     for qref in &wf.attached_queries {
@@ -1056,6 +1065,9 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
             .find(|qq| qq.rpc_method == qref.rpc_method)
         {
             render_query_method(out, q);
+        } else if let Some(target) = qref.cross_service.as_ref() {
+            let fabricated = fabricate_query_model(&qref.rpc_method, target);
+            render_query_method(out, &fabricated);
         }
     }
     for uref in &wf.attached_updates {
@@ -1065,11 +1077,69 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
             .find(|uu| uu.rpc_method == uref.rpc_method)
         {
             render_update_method(out, u);
+        } else if let Some(target) = uref.cross_service.as_ref() {
+            let fabricated = fabricate_update_model(&uref.rpc_method, target);
+            render_update_method(out, &fabricated);
         }
     }
 
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
+}
+
+/// Cross-service refs don't live in the local service's bucket. Build a
+/// transient SignalModel/QueryModel/UpdateModel from the parse-time
+/// resolution metadata so the existing per-handler render fns can emit
+/// a Handle method without special-casing cross-service refs.
+///
+/// `local_method_name` derives from the last `.`-segment of the dotted
+/// ref. That keeps the generated Handle method name short
+/// (e.g. `cancel(...)` rather than `other_v1_other_cancel(...)`).
+fn fabricate_signal_model(
+    dotted_ref: &str,
+    target: &crate::model::CrossServiceTarget,
+) -> SignalModel {
+    SignalModel {
+        rpc_method: last_segment(dotted_ref).to_string(),
+        registered_name: target.registered_name.clone(),
+        input_type: target.input_type.clone(),
+        output_type: target.output_type.clone(),
+    }
+}
+
+fn fabricate_query_model(
+    dotted_ref: &str,
+    target: &crate::model::CrossServiceTarget,
+) -> QueryModel {
+    QueryModel {
+        rpc_method: last_segment(dotted_ref).to_string(),
+        registered_name: target.registered_name.clone(),
+        input_type: target.input_type.clone(),
+        output_type: target.output_type.clone(),
+    }
+}
+
+fn fabricate_update_model(
+    dotted_ref: &str,
+    target: &crate::model::CrossServiceTarget,
+) -> UpdateModel {
+    UpdateModel {
+        rpc_method: last_segment(dotted_ref).to_string(),
+        registered_name: target.registered_name.clone(),
+        input_type: target.input_type.clone(),
+        output_type: target.output_type.clone(),
+        // The model's `validate` flag drives generator-time emit
+        // decisions we don't have visibility into for cross-service
+        // targets; default to `false` and document that a future R1
+        // step might thread it through.
+        validate: false,
+        id_expression: None,
+        default_wait_policy: None,
+    }
+}
+
+fn last_segment(dotted: &str) -> &str {
+    dotted.rsplit('.').next().unwrap_or(dotted)
 }
 
 fn render_signal_method(out: &mut String, sig: &SignalModel) {

@@ -108,6 +108,13 @@ fn validate_workflows(model: &ServiceModel) -> Result<()> {
         }
 
         for sref in &wf.attached_signals {
+            // Cross-service refs already validated their target through
+            // the DescriptorPool at parse-time (see
+            // `resolve_cross_service_ref`); skip the same-service
+            // existence check.
+            if sref.cross_service.is_some() {
+                continue;
+            }
             check_ref(
                 model,
                 wf,
@@ -118,6 +125,9 @@ fn validate_workflows(model: &ServiceModel) -> Result<()> {
             )?;
         }
         for qref in &wf.attached_queries {
+            if qref.cross_service.is_some() {
+                continue;
+            }
             check_ref(
                 model,
                 wf,
@@ -128,6 +138,9 @@ fn validate_workflows(model: &ServiceModel) -> Result<()> {
             )?;
         }
         for uref in &wf.attached_updates {
+            if uref.cross_service.is_some() {
+                continue;
+            }
             check_ref(
                 model,
                 wf,
@@ -152,15 +165,13 @@ fn check_ref(
     if declared.contains(target) {
         return Ok(());
     }
-    // A target containing a `.` is almost certainly a fully-qualified
-    // cross-service ref (e.g. `other.v1.OtherService.Cancel`). The Go plugin
-    // resolves these against any sibling service in the descriptor pool; the
-    // Rust plugin does not yet (tracked under R1 in ROADMAP.md). Surface that
-    // limitation explicitly so users porting from Go don't waste time chasing
-    // the generic "no sibling rpc carries…" diagnostic.
+    // Dotted refs that reach here didn't carry resolved cross-service
+    // metadata — that shouldn't happen post-2026-05-13 because parse.rs
+    // either resolves them or fails. This branch stays as a defensive
+    // diagnostic in case future refactors drop the parse-time resolution.
     if target.contains('.') {
         bail!(
-            "{}.{}: workflow references {kind} \"{target}\" using a fully-qualified path — cross-service refs are not yet supported by the v1 Rust plugin (see ROADMAP.md R1). Move the {kind} rpc onto this service, or pin to a generator release that supports cross-service refs.",
+            "{}.{}: workflow references {kind} \"{target}\" using a fully-qualified path but parse-time resolution didn't capture cross-service metadata — this is a plugin bug (parse.rs::resolve_cross_service_ref should have populated `{kind}_ref.cross_service`).",
             model.service,
             wf.rpc_method,
         );

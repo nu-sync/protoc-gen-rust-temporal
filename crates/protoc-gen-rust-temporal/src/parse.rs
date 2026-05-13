@@ -80,7 +80,7 @@ fn resolve_cross_service_ref(
     parent_rpc: &str,
     target_path: &str,
     kind: &'static str,
-) -> Result<()> {
+) -> Result<crate::model::CrossServiceTarget> {
     // Walk every service in the pool and look for a method whose
     // fully-qualified name matches `target_path`. prost-reflect doesn't
     // expose a direct `get_method_by_name`, but services()+methods() is
@@ -107,7 +107,34 @@ fn resolve_cross_service_ref(
             "{parent_service}.{parent_rpc}: cross-service {kind} ref `{target_path}` resolves to a real rpc but the target method does not carry `(temporal.v1.{kind})`; either add the annotation on the target or fix the ref"
         ));
     }
-    Ok(())
+    // Decode the target annotation to pull out an override `name`. When
+    // unset, the registered name is the proto method's full name
+    // (matches the same-service default).
+    let registered_name = {
+        let value = target_opts.get_extension(expected_ext);
+        let bytes = encode_message_value(&value)?;
+        let override_name: Option<String> = match kind {
+            "signal" => {
+                let parsed = SignalOptions::decode(bytes.as_slice())?;
+                (!parsed.name.is_empty()).then_some(parsed.name)
+            }
+            "query" => {
+                let parsed = QueryOptions::decode(bytes.as_slice())?;
+                (!parsed.name.is_empty()).then_some(parsed.name)
+            }
+            "update" => {
+                let parsed = UpdateOptions::decode(bytes.as_slice())?;
+                (!parsed.name.is_empty()).then_some(parsed.name)
+            }
+            _ => unreachable!(),
+        };
+        override_name.unwrap_or_else(|| target_method.full_name().to_string())
+    };
+    Ok(crate::model::CrossServiceTarget {
+        registered_name,
+        input_type: ProtoType::new(target_method.input().full_name()),
+        output_type: ProtoType::new(target_method.output().full_name()),
+    })
 }
 
 pub fn parse(
@@ -196,46 +223,49 @@ fn parse_service(
         return Ok(None);
     }
 
-    // R1 — cross-service ref pre-resolution. validate.rs still refuses
-    // dotted refs with the "emit not implemented" diagnostic, but parse
-    // catches structural problems (typos, missing imports, wrong-kind
-    // targets) first so the user sees what's actually wrong with the
-    // ref before the catch-all rejection fires.
-    for wf in &workflows {
-        for sref in &wf.attached_signals {
+    // R1 — cross-service ref resolution. Walks attached signal/query/
+    // update refs that contain a dot, resolves the target through the
+    // DescriptorPool, and stashes the target metadata
+    // (registered_name + I/O types) on the ref so render.rs can emit a
+    // typed Handle method without re-traversing the pool. Parse errors
+    // surface typos (unresolved) and wrong-kind targets (resolved but
+    // missing `(temporal.v1.{kind})`) before validate.rs's downstream
+    // checks.
+    for wf in workflows.iter_mut() {
+        for sref in wf.attached_signals.iter_mut() {
             if sref.rpc_method.contains('.') {
-                resolve_cross_service_ref(
+                sref.cross_service = Some(resolve_cross_service_ref(
                     pool,
                     ext,
                     &service_name,
                     &wf.rpc_method,
                     &sref.rpc_method,
                     "signal",
-                )?;
+                )?);
             }
         }
-        for qref in &wf.attached_queries {
+        for qref in wf.attached_queries.iter_mut() {
             if qref.rpc_method.contains('.') {
-                resolve_cross_service_ref(
+                qref.cross_service = Some(resolve_cross_service_ref(
                     pool,
                     ext,
                     &service_name,
                     &wf.rpc_method,
                     &qref.rpc_method,
                     "query",
-                )?;
+                )?);
             }
         }
-        for uref in &wf.attached_updates {
+        for uref in wf.attached_updates.iter_mut() {
             if uref.rpc_method.contains('.') {
-                resolve_cross_service_ref(
+                uref.cross_service = Some(resolve_cross_service_ref(
                     pool,
                     ext,
                     &service_name,
                     &wf.rpc_method,
                     &uref.rpc_method,
                     "update",
-                )?;
+                )?);
             }
         }
     }
@@ -472,6 +502,7 @@ fn workflow_from(
             .map(|s| SignalRef {
                 rpc_method: s.r#ref,
                 start: s.start,
+                cross_service: None,
             })
             .collect(),
         attached_queries: opts
@@ -479,6 +510,7 @@ fn workflow_from(
             .into_iter()
             .map(|q| QueryRef {
                 rpc_method: q.r#ref,
+                cross_service: None,
             })
             .collect(),
         attached_updates: opts
@@ -488,6 +520,7 @@ fn workflow_from(
                 rpc_method: u.r#ref,
                 start: u.start,
                 validate: u.validate,
+                cross_service: None,
             })
             .collect(),
     })

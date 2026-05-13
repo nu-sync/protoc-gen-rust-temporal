@@ -2792,13 +2792,14 @@ fn cross_service_ref_to_wrong_annotation_kind_fails_at_parse() {
 }
 
 /// Cross-service refs — Go's plugin resolves `ref: "other.v1.OtherService.Cancel"`
-/// against any sibling service in the descriptor pool. The Rust plugin does
-/// not yet (R1). Users porting from Go must see an explicit "cross-service
-/// refs are not yet supported" diagnostic, not the generic "no sibling rpc
-/// carries…" one, or they'll spend time hunting for a missing same-service
-/// signal that the Go side never had.
+/// R1 — full cross-service ref support: a workflow attaches a signal
+/// declared on a *different* service via the fully-qualified
+/// `pkg.Service.Method` syntax. Parse resolves the target through the
+/// DescriptorPool, validate accepts the ref, and render emits a typed
+/// Handle method that uses the target's wire-format registered name
+/// and proto I/O types.
 #[test]
-fn cross_service_ref_is_rejected_with_clear_diagnostic() {
+fn cross_service_signal_ref_emits_handle_method() {
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
@@ -2821,7 +2822,8 @@ fn cross_service_ref_is_rejected_with_clear_diagnostic() {
           }
         }
 
-        message In {} message Out {}
+        message In  { string name = 1; }
+        message Out { string id = 1; }
         "#,
     );
     let services = parse::parse(&pool, &files_to_generate).expect("parse");
@@ -2830,16 +2832,21 @@ fn cross_service_ref_is_rejected_with_clear_diagnostic() {
         .find(|s| s.service == "Workflows")
         .expect("Workflows service parsed");
     let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
-    let err = validate::validate(workflows_svc, &opts)
-        .expect_err("validate should fail")
-        .to_string();
+    // Validate must now accept the cross-service ref (parse already
+    // resolved + captured target metadata).
+    validate::validate(workflows_svc, &opts)
+        .expect("validate must accept resolved cross-service ref");
+
+    // Render emits a `cancel` Handle method that targets the
+    // cross-service registered name.
+    let source = render::render(workflows_svc, &opts);
     assert!(
-        err.contains("cross-service refs are not yet supported"),
-        "diagnostic should call out cross-service refs as unsupported, got: {err}"
+        source.contains("pub async fn cancel(&self, input: In) -> Result<()>"),
+        "cross-service signal must produce a typed Handle method using the target's input type: {source}"
     );
     assert!(
-        err.contains("xs.v1.Notifications.Cancel"),
-        "diagnostic should quote the offending ref so users can search it, got: {err}"
+        source.contains("temporal_runtime::signal_proto(&self.inner, \"xs.v1.Notifications.Cancel\", &input).await"),
+        "the bridge call must use the cross-service registered name on the wire: {source}"
     );
 }
 

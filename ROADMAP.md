@@ -138,6 +138,22 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R1 — full cross-service ref emit): well-formed dotted
+  refs (`xs.v1.OtherService.Cancel`) now produce typed Handle methods
+  on the parent workflow. Parse-time resolution captures the target's
+  registered name + input/output types into a new
+  `CrossServiceTarget` field on the ref; validate stops rejecting
+  resolved refs; render fabricates a transient `SignalModel` /
+  `QueryModel` / `UpdateModel` from the target metadata and feeds it
+  into the existing per-handler render fns. Method-snake-case derives
+  from the last `.`-segment of the dotted ref so the generated method
+  stays short (`handle.cancel(...)` rather than
+  `handle.other_v1_other_cancel(...)`). The wire-format registered
+  name still points at the cross-service target so the SDK routes to
+  the right workflow. Old "cross-service refs are not yet supported"
+  rejection test deleted, replaced by a positive
+  `cross_service_signal_ref_emits_handle_method` test. Closes R1's
+  cross-service ref work.
 - 2026-05-13 (R2 — per-handler typed I/O aliases): under `workflows=true`,
   every non-Empty signal input, non-Empty query input/output, and
   non-Empty update input/output now ships a `pub type
@@ -621,7 +637,7 @@ toward majority parity.
 | Area | Current behavior | Roadmap |
 |---|---|---|
 | Method co-annotations | Shipped 2026-05-13: `activity` co-occurs with `workflow` / `signal` / `update`; both buckets populate. Two-primary combinations (workflow+signal etc.) still refused because their generated symbols would collide. | R1 |
-| Cross-service refs | Same-service emit only; parse-time DescriptorPool resolution catches typos and wrong-kind targets with pinpoint diagnostics (2026-05-13); validate still rejects well-formed cross-service refs with "emit not yet implemented". | R1 |
+| Cross-service refs | Shipped 2026-05-13: parse-time resolution captures target metadata on the ref, render emits typed Handle methods using the cross-service registered name and proto I/O types. | R1 |
 | Aliases | Workflow aliases emit a module const + Definition associated const (2026-05-13); signal/query/update/activity have no alias field in cludden's schema. | R1 |
 | Worker handler surface | Definition trait + registration + child-workflow markers/start + continue-as-new + external-signal markers/helpers + per-handler I/O type aliases shipped 2026-05-13. Signal-receive/select helpers and query/update handler hooks are blocked on the SDK macro shape — see R2 "Blocked on upstream SDK shape". | R2 |
 | Activity calls from workflows | `<RPC>Activity` markers + `execute_<activity>` + `execute_<activity>_local` + `<activity>_default_options()` shipped 2026-05-13. Empty-input/output sides supported via `temporal_runtime::ProtoEmpty` wrapping; helper signatures hide the wrapper (no input arg for Empty-input, `()` return for Empty-output). | R3 |

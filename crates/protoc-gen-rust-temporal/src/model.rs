@@ -106,15 +106,22 @@ pub struct WorkflowModel {
 /// Reference from a `WorkflowOptions.signal` entry to a sibling signal rpc.
 #[derive(Debug, Clone)]
 pub struct SignalRef {
-    /// Value of the `ref` field — must match a sibling rpc method name.
+    /// Value of the `ref` field — same-service refs hold the bare rpc
+    /// method name; cross-service refs hold the fully-qualified path
+    /// (`pkg.Service.Method`).
     pub rpc_method: String,
     /// If `true`, emit a `_with_start` free function alongside the client.
     pub start: bool,
+    /// Metadata captured at parse time when `rpc_method` resolves to an
+    /// rpc on a *different* service. `None` for same-service refs (the
+    /// existing same-service signal lookup in `render.rs` covers those).
+    pub cross_service: Option<CrossServiceTarget>,
 }
 
 #[derive(Debug, Clone)]
 pub struct QueryRef {
     pub rpc_method: String,
+    pub cross_service: Option<CrossServiceTarget>,
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +129,26 @@ pub struct UpdateRef {
     pub rpc_method: String,
     pub start: bool,
     pub validate: Option<bool>,
+    pub cross_service: Option<CrossServiceTarget>,
+}
+
+/// Resolved target of a cross-service `signal` / `query` / `update`
+/// ref. Captured at parse time so `render.rs` can emit a typed Handle
+/// method without re-traversing the descriptor pool.
+#[derive(Debug, Clone)]
+pub struct CrossServiceTarget {
+    /// Cross-language registration name (the fully-qualified proto
+    /// method name, mirroring `<package>.<Service>.<Rpc>`). This is
+    /// what gets sent over the wire — `WorkflowHandle::<rpc>` uses it
+    /// to find the target signal/query/update handler on the target
+    /// workflow.
+    pub registered_name: String,
+    /// Proto input type of the target rpc.
+    pub input_type: ProtoType,
+    /// Proto output type of the target rpc. Always `Empty` for signals,
+    /// per cludden's schema invariant — carried here for symmetry with
+    /// query/update so the same struct works for all three.
+    pub output_type: ProtoType,
 }
 
 #[derive(Debug)]
