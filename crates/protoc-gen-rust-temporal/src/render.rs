@@ -2693,6 +2693,19 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
             out,
             "        pub const OUTPUT_TYPE: &'static str = self::{out_const};"
         );
+        // TASK_QUEUE — re-expose when the workflow declares its own
+        // queue (via `(temporal.v1.workflow).task_queue` or inherited
+        // from service-level default). `effective_task_queue` returns
+        // the resolved value either way; the `<RPC>_TASK_QUEUE` const
+        // is only emitted when set, so this re-exposure is gated by
+        // the same condition.
+        if effective_task_queue(svc, wf).is_some() {
+            let tq_const = format!("{}_TASK_QUEUE", wf.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(
+                out,
+                "        pub const TASK_QUEUE: &'static str = self::{tq_const};"
+            );
+        }
         let _ = writeln!(out, "    }}");
 
         // R5 — `<workflow>_default_child_options() -> ChildWorkflowOptions`

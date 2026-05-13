@@ -1270,6 +1270,22 @@ fn workflow_id_template_const_omitted_when_unset() {
 }
 
 #[test]
+fn child_workflow_marker_exposes_task_queue_const() {
+    // R4 — the child-workflow marker (`<Wf>Workflow`, emitted under
+    // workflows=true when both input + output are non-Empty) now
+    // also carries an inherent `TASK_QUEUE` const re-exposing the
+    // workflow's effective task queue. Parallel of the activity-
+    // marker shipment.
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;"),
+        "child-workflow marker must re-expose TASK_QUEUE: {source}"
+    );
+}
+
+#[test]
 fn child_workflow_and_signal_markers_expose_input_output_type_consts() {
     // R4 — child-workflow markers (`<Wf>Workflow`) and signal
     // markers (`<Sig>Signal`) gain inherent `INPUT_TYPE` /

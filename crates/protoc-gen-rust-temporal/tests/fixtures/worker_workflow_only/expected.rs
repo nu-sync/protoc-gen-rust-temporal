@@ -201,6 +201,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     impl RunWorkflow {
         pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
     }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

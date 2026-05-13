@@ -182,6 +182,18 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R4 — `TASK_QUEUE` on child-workflow marker structs):
+  parallel of the activity-marker shipment but for child-workflow
+  markers. Each `<Wf>Workflow` marker (under workflows=true, when
+  both input + output are non-Empty) now also re-exposes the
+  `<RPC>_TASK_QUEUE` const as an inherent `TASK_QUEUE: &'static
+  str`. Always emits because workflows always have an effective
+  task queue (validate.rs requires it). Lets generic worker code
+  spell `<MarkerStruct>::TASK_QUEUE` to read the registered queue
+  without going through the SDK's `WorkflowDefinition` trait. One
+  new positive parse_validate test pins the const emit on the
+  `worker_full` fixture. Several fixture goldens reblessed.
+  162 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R4 — `TASK_QUEUE` on activity marker structs when declared):
   extends the activity-marker inherent-const surface from
   `INPUT_TYPE` / `OUTPUT_TYPE` to also include `TASK_QUEUE`
