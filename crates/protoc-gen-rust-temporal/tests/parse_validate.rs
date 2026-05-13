@@ -2876,6 +2876,24 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_exposes_without_run_id_convenience() {
+    // R6 ergonomics — `<Wf>Handle::without_run_id(self) -> Self`
+    // is sugar over `with_run_id(None)`. Lets callers transition
+    // a handle from a specific historical run to "latest" semantics
+    // without spelling the `Option::None` literal.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn without_run_id(self) -> Self {"),
+        "missing without_run_id convenience: {source}"
+    );
+    assert!(
+        source.contains("self.with_run_id(None)"),
+        "without_run_id body must delegate to with_run_id(None): {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_with_run_id_consuming_builder() {
     // R6 ergonomics — `<Wf>Handle::with_run_id(self, Option<String>)
     // -> Self` lets callers branch from a current handle to a known

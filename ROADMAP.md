@@ -318,6 +318,19 @@ Progress:
   parse_validate test pins the fn signature + body. Several
   fixture goldens reblessed (every Handle gained the accessor).
   189 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::without_run_id()` convenience):
+  sugar over the `with_run_id(None)` form shipped in the previous
+  commit. Lets callers transition a handle from a specific
+  historical run to "latest" semantics without spelling the
+  `Option::None` literal:
+  ```
+  let latest = audit_handle.without_run_id();
+  ```
+  Pure delegation — the body is `self.with_run_id(None)`. One new
+  positive parse_validate test pins the fn signature + delegation.
+  Several fixture goldens reblessed (every Handle gained the
+  convenience). 195 parse_validate tests green. No bridge signature
+  change.
 - 2026-05-13 (R6 — `<Wf>Handle::with_run_id()` consuming builder):
   every generated `<Wf>Handle` now exposes `with_run_id(self,
   Option<String>) -> Self` letting callers branch from a current

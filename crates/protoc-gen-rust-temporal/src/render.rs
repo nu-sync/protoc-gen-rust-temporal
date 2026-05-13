@@ -1848,6 +1848,12 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Convenience: drop the run_id (target "latest"). Sugar over
+    // `with_run_id(None)`.
+    let _ = writeln!(out, "        pub fn without_run_id(self) -> Self {{");
+    let _ = writeln!(out, "            self.with_run_id(None)");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Workflow-id-based equality — two handles to the same Temporal
     // workflow id are considered "same workflow" even if their
     // run_ids differ (one started via `<rpc>` returning a typed

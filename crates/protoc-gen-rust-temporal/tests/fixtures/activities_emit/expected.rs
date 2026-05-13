@@ -290,6 +290,10 @@ pub mod acts_v1_chunk_service_temporal {
             Self { inner: self.inner.with_run_id(run_id) }
         }
 
+        pub fn without_run_id(self) -> Self {
+            self.with_run_id(None)
+        }
+
         pub fn same_workflow_as(&self, other: &Self) -> bool {
             self.inner.workflow_id() == other.inner.workflow_id()
         }

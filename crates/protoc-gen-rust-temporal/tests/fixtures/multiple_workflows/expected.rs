@@ -331,6 +331,10 @@ pub mod multi_v1_multi_service_temporal {
             Self { inner: self.inner.with_run_id(run_id) }
         }
 
+        pub fn without_run_id(self) -> Self {
+            self.with_run_id(None)
+        }
+
         pub fn same_workflow_as(&self, other: &Self) -> bool {
             self.inner.workflow_id() == other.inner.workflow_id()
         }
@@ -501,6 +505,10 @@ pub mod multi_v1_multi_service_temporal {
 
         pub fn with_run_id(self, run_id: Option<String>) -> Self {
             Self { inner: self.inner.with_run_id(run_id) }
+        }
+
+        pub fn without_run_id(self) -> Self {
+            self.with_run_id(None)
         }
 
         pub fn same_workflow_as(&self, other: &Self) -> bool {
