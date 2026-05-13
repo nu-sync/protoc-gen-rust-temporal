@@ -936,10 +936,12 @@ fn parse_search_attribute_literal(
         if descriptor.is_list() || descriptor.is_map() {
             return None;
         }
-        if !matches!(descriptor.kind(), prost_reflect::Kind::String) {
-            return None;
-        }
-        return Some(SearchAttributeLiteral::StringField(rust_field));
+        return match descriptor.kind() {
+            prost_reflect::Kind::String => Some(SearchAttributeLiteral::StringField(rust_field)),
+            prost_reflect::Kind::Int64 => Some(SearchAttributeLiteral::IntField(rust_field)),
+            prost_reflect::Kind::Bool => Some(SearchAttributeLiteral::BoolField(rust_field)),
+            _ => None,
+        };
     }
     None
 }

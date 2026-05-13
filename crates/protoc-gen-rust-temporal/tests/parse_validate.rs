@@ -2572,32 +2572,119 @@ fn search_attributes_field_ref_to_unknown_field_is_rejected() {
 }
 
 #[test]
-fn search_attributes_field_ref_to_non_string_is_rejected() {
-    // Slice 3a only graduates `string`-typed fields. Int / bool / repeated
-    // / message refs stay refused so the encoder coverage matches what
-    // the bridge actually offers.
+fn search_attributes_int_and_bool_field_refs_resolve_against_input() {
+    // R7 slice 3b — `this.<field>` resolves against `int64` and `bool`
+    // input fields too, emitting the per-type bridge encoder.
     let (pool, files, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package sa_field_int.v1;
+        package sa_field_int_bool.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
               task_queue:        "tq"
-              search_attributes: "root = { \"K\": this.priority }"
+              search_attributes: "root = { \"Priority\": this.priority, \"Critical\": this.is_critical }"
             };
           }
         }
-        message In  { int64 priority = 1; }
+        message In  { int64 priority = 1; bool is_critical = 2; }
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse must accept int + bool field refs");
+    use protoc_gen_rust_temporal::model::{SearchAttributeLiteral, SearchAttributesSpec};
+    let SearchAttributesSpec::Static(entries) = services[0].workflows[0]
+        .search_attributes
+        .as_ref()
+        .expect("model carries the slice-3b spec")
+    else {
+        panic!("expected Static spec");
+    };
+    assert!(
+        entries.contains(&(
+            "Priority".to_string(),
+            SearchAttributeLiteral::IntField("priority".to_string())
+        )),
+        "int field ref must land as IntField: {entries:?}"
+    );
+    assert!(
+        entries.contains(&(
+            "Critical".to_string(),
+            SearchAttributeLiteral::BoolField("is_critical".to_string())
+        )),
+        "bool field ref must land as BoolField: {entries:?}"
+    );
+
+    let opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("temporal_runtime::encode_search_attribute_int(input.priority)"),
+        "int field-ref encoder must read from input: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::encode_search_attribute_bool(input.is_critical)"),
+        "bool field-ref encoder must read from input: {source}"
+    );
+}
+
+#[test]
+fn search_attributes_field_ref_to_unsupported_type_is_rejected() {
+    // Float / bytes / message / enum field refs still fall through to
+    // the standard "does not yet honour" diagnostic — encoder coverage
+    // stops at string + int64 + bool.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_field_float.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": this.score }"
+            };
+          }
+        }
+        message In  { double score = 1; }
         message Out {}
         "#,
     );
     let err = parse::parse(&pool, &files).unwrap_err().to_string();
     assert!(
         err.contains("search_attributes") && err.contains("does not yet honour"),
-        "non-string field ref must surface the unsupported diagnostic: {err}"
+        "unsupported-type field ref must surface the unsupported diagnostic: {err}"
+    );
+}
+
+#[test]
+fn search_attributes_field_ref_to_repeated_field_is_rejected() {
+    // Repeated fields fall through regardless of element type — the
+    // encoders are scalar-only.
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package sa_field_repeated.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue:        "tq"
+              search_attributes: "root = { \"K\": this.tags }"
+            };
+          }
+        }
+        message In  { repeated string tags = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files).unwrap_err().to_string();
+    assert!(
+        err.contains("search_attributes") && err.contains("does not yet honour"),
+        "repeated field ref must surface the unsupported diagnostic: {err}"
     );
 }
 

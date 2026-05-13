@@ -138,6 +138,23 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R7 — slice 3b lands: `this.<field>` for int64 + bool):
+  the field-ref support graduated from strings-only to also cover
+  singular `int64` and `bool` input fields. `SearchAttributeLiteral`
+  picks up `IntField` / `BoolField` variants alongside `StringField`,
+  the parser routes the per-`prost_reflect::Kind` mapping, and render
+  emits `encode_search_attribute_int(input.<field>)` /
+  `encode_search_attribute_bool(input.<field>)`. Other scalar types
+  (`int32`, `uint64`, `float`, `double`, `bytes`, enums) and any
+  repeated / map / message field still fall through to the standard
+  unsupported-`search_attributes` diagnostic — the bridge encoders
+  are scalar-only and the matrix stays in lock-step. Three new
+  parse_validate tests: positive int + bool emit, unsupported scalar
+  type rejection, repeated-field rejection. The slice-3a "non-string
+  rejected" test was replaced by the slice-3b "non-int/bool rejected"
+  one. No bridge signature change; no fixture goldens touched. The
+  remaining R7 work is `typed_search_attributes` (slice 3c — needs the
+  `SearchAttributeKey<T>` surface from `temporalio-common`).
 - 2026-05-13 (R7 — slice 3a lands: `this.<field>` for strings):
   `(temporal.v1.workflow).search_attributes` Bloblang expressions of
   the form `root = { "K": this.<field>, … }` now resolve at parse time

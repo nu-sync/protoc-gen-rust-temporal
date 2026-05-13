@@ -343,20 +343,19 @@ pub enum SearchAttributesSpec {
 
 /// One entry in a `Static` `SearchAttributesSpec`. Slices 2 + 3:
 /// - `String` / `Int` / `Bool` — slice-2 primitive literals.
-/// - `StringField` — slice-3 `this.<field>` reference where `<field>`
-///   resolves to a `string`-typed field on the workflow input message.
-///   The string is the Rust snake_case field name (validated against
-///   the descriptor at parse time).
-///
-/// Slice 3 only models string-field references for the first cut;
-/// integer / bool field references graduate when the encoder coverage
-/// catches up.
+/// - `StringField` / `IntField` / `BoolField` — slice-3 `this.<field>`
+///   references where `<field>` resolves to a singular `string`,
+///   `int64`, or `bool` field on the workflow input message. The
+///   string is the Rust snake_case field name (validated against the
+///   descriptor at parse time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchAttributeLiteral {
     String(String),
     Int(i64),
     Bool(bool),
     StringField(String),
+    IntField(String),
+    BoolField(String),
 }
 
 /// Compiled form of `(temporal.v1.workflow).retry_policy`. Holds the
