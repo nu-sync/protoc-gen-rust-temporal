@@ -1,0 +1,8 @@
+{
+  "message_type": "jobs.v1.JobMap",
+  "fields": {
+    "inputs": {
+      "primary": { "name": "demo" }
+    }
+  }
+}

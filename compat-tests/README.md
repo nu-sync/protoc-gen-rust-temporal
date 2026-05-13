@@ -8,7 +8,7 @@ runtime. If the audit passes, a Go client written against cludden's plugin
 can drive a Rust worker registered with ours (and vice versa) with no
 adapter code.
 
-**Status: passed (2026-05-12)** against `cludden/protoc-gen-go-temporal@v1.22.1`
+**Status: passed (2026-05-13)** against `cludden/protoc-gen-go-temporal@v1.22.1`
 and `go.temporal.io/sdk@v1.43.0`. The CI `compat-audit` job re-runs both
 arms on every PR and fails on any non-empty diff.
 
@@ -93,22 +93,16 @@ then serialise via prost / `proto.Marshal` and assemble the Payload.
 - [x] Rust generator binary (`compat-tests/rust/`).
 - [x] Go generator (`compat-tests/go/`).
 - [x] Fixture set covering scalar, `google.protobuf.Empty`, nested message,
-      and repeated message (including an empty element).
+      repeated message (including an empty element), oneof arms, enum
+      zero/non-zero values, and a deterministic single-entry map.
 - [x] CI job that runs both generators and diffs (`compat-audit` in
       `.github/workflows/ci.yml`).
 
 ### Fast-follow fixtures
 
 The current set covers the structural decisions in the triple. Future
-additions to harden the audit further:
-
-- `oneof` field with multiple arms exercised (catches tag-collision /
-  unset-arm encoding).
-- Proto3 `enum` field including the zero value (catches default-elision
-  rules — proto3 omits enum=0 from the wire).
-- `map<K, V>` field (each entry is a synthesised message; ordering is
-  *not* guaranteed across encoders — the audit would need either a single
-  entry or a deterministic-order comparison).
+additions to harden the audit further should target well-known protobuf
+types or optional proto3 scalars if generated clients begin relying on them.
 
 Re-cut the Go side whenever cludden's schema or runtime moves; the version
 pinned in `compat-tests/go/go.mod` is the source of truth for what was

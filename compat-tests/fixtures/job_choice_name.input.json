@@ -1,0 +1,6 @@
+{
+  "message_type": "jobs.v1.JobChoice",
+  "fields": {
+    "name": "direct"
+  }
+}

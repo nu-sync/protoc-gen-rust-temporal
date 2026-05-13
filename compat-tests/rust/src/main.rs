@@ -31,6 +31,15 @@ impl TemporalProtoMessage for jobs_v1::JobBatch {
 impl TemporalProtoMessage for jobs_v1::JobList {
     const MESSAGE_TYPE: &'static str = "jobs.v1.JobList";
 }
+impl TemporalProtoMessage for jobs_v1::JobChoice {
+    const MESSAGE_TYPE: &'static str = "jobs.v1.JobChoice";
+}
+impl TemporalProtoMessage for jobs_v1::JobEnum {
+    const MESSAGE_TYPE: &'static str = "jobs.v1.JobEnum";
+}
+impl TemporalProtoMessage for jobs_v1::JobMap {
+    const MESSAGE_TYPE: &'static str = "jobs.v1.JobMap";
+}
 
 #[derive(Deserialize)]
 struct Fixture {
@@ -107,6 +116,18 @@ fn encode_fixture(fx: &Fixture) -> Result<Vec<u8>> {
             let msg: jobs_v1::JobList = decode_fields(&fx.fields)?;
             Ok(msg.encode_to_vec())
         }
+        "jobs.v1.JobChoice" => {
+            let msg: jobs_v1::JobChoice = decode_fields(&fx.fields)?;
+            Ok(msg.encode_to_vec())
+        }
+        "jobs.v1.JobEnum" => {
+            let msg: jobs_v1::JobEnum = decode_fields(&fx.fields)?;
+            Ok(msg.encode_to_vec())
+        }
+        "jobs.v1.JobMap" => {
+            let msg: jobs_v1::JobMap = decode_fields(&fx.fields)?;
+            Ok(msg.encode_to_vec())
+        }
         "google.protobuf.Empty" => Ok(Vec::new()),
         other => bail!(
             "unknown fixture message_type {other:?}. Add an arm in compat-tests/rust/src/main.rs."
@@ -122,8 +143,13 @@ fn decode_fields<T: for<'de> Deserialize<'de>>(value: &serde_json::Value) -> Res
 // prost-build invocation doesn't add serde derives, so we re-implement
 // Deserialize for the two fixture types by hand. They're small.
 mod _serde_impls {
-    use super::jobs_v1::{JobBatch, JobInput, JobList, JobOutput};
+    use super::jobs_v1::{
+        JobBatch, JobChoice, JobEnum, JobInput, JobList, JobMap, JobOutput, job_choice,
+    };
+    use std::collections::HashMap;
+
     use serde::Deserialize;
+    use serde::de::Error as _;
 
     #[derive(Deserialize)]
     struct JobInputJson {
@@ -148,6 +174,11 @@ mod _serde_impls {
     struct JobListJson {
         #[serde(default)]
         items: Vec<JobInput>,
+    }
+    #[derive(Deserialize)]
+    struct JobMapJson {
+        #[serde(default)]
+        inputs: HashMap<String, JobInput>,
     }
 
     impl<'de> serde::Deserialize<'de> for JobInput {
@@ -176,6 +207,66 @@ mod _serde_impls {
         fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
             let j = JobListJson::deserialize(d)?;
             Ok(JobList { items: j.items })
+        }
+    }
+    impl<'de> serde::Deserialize<'de> for JobChoice {
+        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let v = serde_json::Value::deserialize(d)?;
+            let name = v.get("name");
+            let input = v.get("input");
+            let target = match (name, input) {
+                (Some(name), None) => {
+                    let name = name
+                        .as_str()
+                        .ok_or_else(|| D::Error::custom("JobChoice.name must be a string"))?;
+                    Some(job_choice::Target::Name(name.to_string()))
+                }
+                (None, Some(input)) => {
+                    let input: JobInput =
+                        serde_json::from_value(input.clone()).map_err(D::Error::custom)?;
+                    Some(job_choice::Target::Input(input))
+                }
+                (None, None) => None,
+                (Some(_), Some(_)) => {
+                    return Err(D::Error::custom(
+                        "JobChoice fixture must set exactly one oneof arm",
+                    ));
+                }
+            };
+            Ok(JobChoice { target })
+        }
+    }
+    impl<'de> serde::Deserialize<'de> for JobEnum {
+        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let v = serde_json::Value::deserialize(d)?;
+            let kind = match v.get("kind") {
+                None | Some(serde_json::Value::Null) => 0,
+                Some(serde_json::Value::String(s)) => match s.as_str() {
+                    "JOB_KIND_UNSPECIFIED" => 0,
+                    "JOB_KIND_BATCH" => 1,
+                    other => {
+                        return Err(D::Error::custom(format!(
+                            "unknown JobKind fixture value {other:?}"
+                        )));
+                    }
+                },
+                Some(serde_json::Value::Number(n)) => n
+                    .as_i64()
+                    .ok_or_else(|| D::Error::custom("JobKind number must fit in i64"))?
+                    as i32,
+                Some(other) => {
+                    return Err(D::Error::custom(format!(
+                        "JobEnum.kind must be a string or number, got {other}"
+                    )));
+                }
+            };
+            Ok(JobEnum { kind })
+        }
+    }
+    impl<'de> serde::Deserialize<'de> for JobMap {
+        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let j = JobMapJson::deserialize(d)?;
+            Ok(JobMap { inputs: j.inputs })
         }
     }
 }

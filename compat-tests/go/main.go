@@ -42,6 +42,9 @@ type wirePayload struct {
 
 // Force registration of the fixture types in the global proto registry.
 var _ = (*jobsv1.JobInput)(nil)
+var _ = (*jobsv1.JobChoice)(nil)
+var _ = (*jobsv1.JobEnum)(nil)
+var _ = (*jobsv1.JobMap)(nil)
 var _ = (*emptypb.Empty)(nil)
 
 func main() {

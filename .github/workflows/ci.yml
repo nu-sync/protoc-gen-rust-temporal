@@ -27,7 +27,7 @@ jobs:
       - name: Install protoc
         uses: arduino/setup-protoc@v3
         with:
-          version: "27.x"
+          version: "34.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install buf
         uses: bufbuild/buf-setup-action@v1
@@ -51,6 +51,36 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --all-targets
+
+  codegen-idempotence:
+    # Prove the checked-in job-queue Temporal client is exactly what the
+    # repo-local plugin emits through buf generate. The prost-owned files are
+    # intentionally left to cargo check because their formatting varies by the
+    # installed generator path.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "34.1"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.68.4"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install protoc-gen-prost
+        run: cargo install protoc-gen-prost --version 0.5.0 --locked
+      - name: Build repo-local plugin
+        run: cargo build -p protoc-gen-rust-temporal
+      - name: Regenerate job-queue sources
+        run: cd examples/job-queue/proto && PATH="${GITHUB_WORKSPACE}/target/debug:${PATH}" buf generate
+      - name: Format generated Rust
+        run: cargo fmt -p jobs-proto
+      - name: Assert Temporal generated source is current
+        run: git diff --exit-code -- examples/job-queue/crates/jobs-proto/src/gen/jobs/v1/jobs_temporal.rs
 
   msrv:
     runs-on: ubuntu-latest
