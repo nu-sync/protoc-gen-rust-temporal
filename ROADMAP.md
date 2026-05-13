@@ -343,6 +343,18 @@ Progress:
   (every Handle gained the derive). 186 parse_validate tests
   green. Bridge change is additive (only adds the Clone trait
   impl); no signature change.
+- 2026-05-13 (R6 — `<Service>Client::random_workflow_id()` static helper):
+  every generated `<Service>Client` now exposes
+  `random_workflow_id() -> String` as a static method passing
+  through to the bridge's UUID generator. Saves a
+  `temporal_runtime::random_workflow_id()` import at call sites
+  that already have the typed client in scope — most common
+  pattern is tests and ad-hoc CLI tooling that mint a fresh id
+  per invocation. Static (no `&self`) so it's also reachable
+  before constructing the client. One new positive parse_validate
+  test pins the fn signature + bridge passthrough. Several
+  fixture goldens reblessed (every Client gained the helper).
+  192 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::namespace()` passthrough):
   every generated `<Service>Client` now exposes `namespace(&self)
   -> String` returning the Temporal namespace the client is

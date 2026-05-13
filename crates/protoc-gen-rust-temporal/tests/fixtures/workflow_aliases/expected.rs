@@ -67,6 +67,10 @@ pub mod aliases_v1_alias_service_temporal {
             self.client.namespace()
         }
 
+        pub fn random_workflow_id() -> String {
+            temporal_runtime::random_workflow_id()
+        }
+
         pub fn into_inner(self) -> temporal_runtime::TemporalClient {
             self.client
         }

@@ -736,6 +736,15 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "            self.client.namespace()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Convenience static — passthrough to the bridge's
+    // `random_workflow_id()` UUID generator. Saves a
+    // `temporal_runtime::random_workflow_id()` import at call sites
+    // that already have the typed client in scope (most common
+    // pattern: tests + ad-hoc CLI tooling).
+    let _ = writeln!(out, "        pub fn random_workflow_id() -> String {{");
+    let _ = writeln!(out, "            temporal_runtime::random_workflow_id()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Consuming accessor — lets callers transfer ownership of the
     // underlying `TemporalClient` for sharing across multiple
     // typed service clients (e.g. wrapping the same connection in

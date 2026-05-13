@@ -2968,6 +2968,26 @@ fn handle_struct_derives_clone() {
 }
 
 #[test]
+fn client_exposes_random_workflow_id_static_helper() {
+    // R6 ergonomics — `<Service>Client::random_workflow_id() ->
+    // String` is a static convenience over the bridge's
+    // `random_workflow_id()` UUID generator. Saves a
+    // `temporal_runtime::random_workflow_id()` import at call
+    // sites that already have the typed client in scope (most
+    // common: tests + ad-hoc CLI tooling).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn random_workflow_id() -> String {"),
+        "missing random_workflow_id static helper: {source}"
+    );
+    assert!(
+        source.contains("temporal_runtime::random_workflow_id()"),
+        "helper body must call through to the bridge: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_namespace_passthrough() {
     // R6 ergonomics — `<Service>Client::namespace()` returns the
     // Temporal namespace the client is bound to. Saves an
