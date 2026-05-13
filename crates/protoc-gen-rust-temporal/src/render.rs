@@ -633,6 +633,32 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
+    // Manual `Debug` impl — bridge `TemporalClient` doesn't derive
+    // Debug (the inner SDK client is opaque), so derive on the
+    // wrapper isn't an option. Print only the structured identity
+    // (package, service, plugin version) rather than the inner
+    // client. Useful for `tracing::info!(?client, ...)` style
+    // logging without dumping connection internals.
+    let _ = writeln!(out, "    impl ::std::fmt::Debug for {client_struct} {{");
+    let _ = writeln!(
+        out,
+        "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+    );
+    let _ = writeln!(out, "            f.debug_struct(\"{client_struct}\")");
+    let _ = writeln!(out, "                .field(\"package\", &Self::PACKAGE)");
+    let _ = writeln!(
+        out,
+        "                .field(\"service\", &Self::SERVICE_NAME)"
+    );
+    let _ = writeln!(
+        out,
+        "                .field(\"plugin_version\", &Self::GENERATED_BY_PLUGIN_VERSION)"
+    );
+    let _ = writeln!(out, "                .finish_non_exhaustive()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+
     let _ = writeln!(out, "    impl {client_struct} {{");
     // Service-level aggregate name consts — let tooling enumerate
     // every workflow / signal / query / update / activity registered

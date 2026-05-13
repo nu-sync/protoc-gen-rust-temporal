@@ -45,6 +45,16 @@ pub mod acts_v1_chunk_service_temporal {
         client: temporal_runtime::TemporalClient,
     }
 
+    impl ::std::fmt::Debug for ChunkServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("ChunkServiceClient")
+                .field("package", &Self::PACKAGE)
+                .field("service", &Self::SERVICE_NAME)
+                .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
+                .finish_non_exhaustive()
+        }
+    }
+
     impl ChunkServiceClient {
         pub const PACKAGE: &'static str = "acts.v1";
         pub const SERVICE_NAME: &'static str = "ChunkService";

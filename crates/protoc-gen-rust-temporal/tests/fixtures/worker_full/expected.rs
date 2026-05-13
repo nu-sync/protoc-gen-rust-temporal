@@ -53,6 +53,16 @@ pub mod workerfull_v1_orchestration_service_temporal {
         client: temporal_runtime::TemporalClient,
     }
 
+    impl ::std::fmt::Debug for OrchestrationServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("OrchestrationServiceClient")
+                .field("package", &Self::PACKAGE)
+                .field("service", &Self::SERVICE_NAME)
+                .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
+                .finish_non_exhaustive()
+        }
+    }
+
     impl OrchestrationServiceClient {
         pub const PACKAGE: &'static str = "workerfull.v1";
         pub const SERVICE_NAME: &'static str = "OrchestrationService";

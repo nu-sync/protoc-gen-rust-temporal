@@ -24,6 +24,16 @@ pub mod workeract_v1_activity_worker_service_temporal {
         client: temporal_runtime::TemporalClient,
     }
 
+    impl ::std::fmt::Debug for ActivityWorkerServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("ActivityWorkerServiceClient")
+                .field("package", &Self::PACKAGE)
+                .field("service", &Self::SERVICE_NAME)
+                .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
+                .finish_non_exhaustive()
+        }
+    }
+
     impl ActivityWorkerServiceClient {
         pub const PACKAGE: &'static str = "workeract.v1";
         pub const SERVICE_NAME: &'static str = "ActivityWorkerService";

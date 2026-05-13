@@ -2532,6 +2532,37 @@ fn start_options_exposes_with_field_builders() {
 }
 
 #[test]
+fn client_struct_implements_debug() {
+    // R6 ergonomics — `<Service>Client` carries a manual `Debug`
+    // impl that prints `package`, `service`, `plugin_version`
+    // (`finish_non_exhaustive` since the inner client is opaque).
+    // Lets `tracing::info!(?client, ...)` emit useful structured
+    // output without dumping connection internals.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("impl ::std::fmt::Debug for JobServiceClient {"),
+        "missing Debug impl: {source}"
+    );
+    assert!(
+        source.contains(".field(\"package\", &Self::PACKAGE)"),
+        "Debug impl must include package: {source}"
+    );
+    assert!(
+        source.contains(".field(\"service\", &Self::SERVICE_NAME)"),
+        "Debug impl must include service: {source}"
+    );
+    assert!(
+        source.contains(".field(\"plugin_version\", &Self::GENERATED_BY_PLUGIN_VERSION)"),
+        "Debug impl must include plugin_version: {source}"
+    );
+    assert!(
+        source.contains(".finish_non_exhaustive()"),
+        "Debug impl must use finish_non_exhaustive() since inner client is opaque: {source}"
+    );
+}
+
+#[test]
 fn handle_struct_implements_debug() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Debug` impl
     // that prints `workflow_name`, `workflow_id`, `run_id`. Bridge

@@ -182,6 +182,19 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client` `Debug` impl):
+  parallel of the `<Wf>Handle` Debug shipment for the service-level
+  client. `<Service>Client` now carries a manual Debug impl that
+  prints `package`, `service`, `plugin_version` and uses
+  `finish_non_exhaustive()` since the inner `TemporalClient` is
+  opaque (an SDK client whose internals shouldn't dump into log
+  output). Reuses the existing identity consts (`PACKAGE`,
+  `SERVICE_NAME`, `GENERATED_BY_PLUGIN_VERSION`). Lets
+  `tracing::info!(?client, "starting workflow")` produce useful
+  structured output without exposing connection internals. One new
+  positive parse_validate test pins the impl shape including
+  `finish_non_exhaustive`. Several fixture goldens reblessed.
+  167 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle` `Debug` impl):
   every generated `<Wf>Handle` struct now carries a manual `Debug`
   impl that prints a structured `RunJobHandle { workflow_name,

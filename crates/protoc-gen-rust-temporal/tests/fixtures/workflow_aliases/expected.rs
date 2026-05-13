@@ -25,6 +25,16 @@ pub mod aliases_v1_alias_service_temporal {
         client: temporal_runtime::TemporalClient,
     }
 
+    impl ::std::fmt::Debug for AliasServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("AliasServiceClient")
+                .field("package", &Self::PACKAGE)
+                .field("service", &Self::SERVICE_NAME)
+                .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
+                .finish_non_exhaustive()
+        }
+    }
+
     impl AliasServiceClient {
         pub const PACKAGE: &'static str = "aliases.v1";
         pub const SERVICE_NAME: &'static str = "AliasService";
