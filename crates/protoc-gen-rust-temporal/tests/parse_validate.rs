@@ -1906,6 +1906,73 @@ fn matching_signal_ref_cli_overrides_across_workflows_pass_validation() {
 }
 
 #[test]
+fn workflow_cli_name_with_space_fails_validation() {
+    // clap subcommand names must be a single shell token — a value
+    // with a space splits into two args at runtime. Reject at codegen.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package cli_ws.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              cli: { name: "run command" }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("whitespace in cli.name must be rejected")
+        .to_string();
+    assert!(
+        err.contains("cli.name") && err.contains("whitespace") && err.contains("Run"),
+        "diagnostic must name site + flavour + workflow, got: {err}"
+    );
+}
+
+#[test]
+fn signal_ref_cli_alias_with_newline_fails_validation() {
+    // Same printable-name guard applies to signal-ref cli aliases.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package cli_nl.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" cli: { aliases: ["bad\nalias"] } }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(&services[0], &render_opts)
+        .expect_err("newline in signal-ref cli alias must be rejected")
+        .to_string();
+    assert!(
+        err.contains("signal[ref=Cancel]") && err.contains("control"),
+        "diagnostic must name site + control-char flavour, got: {err}"
+    );
+}
+
+#[test]
 fn workflow_registered_name_with_whitespace_fails_validation() {
     // A `name:` override containing whitespace would round-trip but
     // make production logs ambiguous — reject at codegen.

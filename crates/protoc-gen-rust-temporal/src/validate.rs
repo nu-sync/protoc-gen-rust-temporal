@@ -17,9 +17,157 @@ pub fn validate(model: &ServiceModel, _options: &crate::options::RenderOptions) 
     reject_conflicting_ref_cli_overrides(model)?;
     reject_workflow_cli_name_collisions(model)?;
     reject_unprintable_registered_names(model)?;
+    reject_unusable_cli_overrides(model)?;
     validate_workflows(model)?;
     validate_signal_outputs(model)?;
     validate_empty_with_start(model)?;
+    Ok(())
+}
+
+/// Reject CLI override values that clap can't accept as subcommand
+/// names: empty strings, or anything containing whitespace / control
+/// characters. clap parses subcommand tokens off the shell command
+/// line — a value with a space splits into two args at runtime.
+/// Diagnostics name the override site (workflow / signal-ref /
+/// update-ref / service-level / method-level) and the bad character
+/// so authors don't have to guess.
+fn reject_unusable_cli_overrides(model: &ServiceModel) -> Result<()> {
+    fn check(model_service: &str, site: &str, value: &str) -> Result<()> {
+        if value.is_empty() {
+            bail!(
+                "{model_service}: {site} cli override is the empty string — clap cannot use an empty subcommand name; remove the field or set a non-empty value",
+            );
+        }
+        for c in value.chars() {
+            if c.is_whitespace() || c.is_control() {
+                bail!(
+                    "{model_service}: {site} cli override {value:?} contains whitespace / control character `{c:?}` — clap subcommand names must be a single shell token",
+                );
+            }
+        }
+        Ok(())
+    }
+    // Service-level (temporal.v1.cli) — name + each alias.
+    if let Some(spec) = model.cli_options.as_ref() {
+        if let Some(name) = spec.name.as_deref() {
+            check(&model.service, "service-level cli.name", name)?;
+        }
+        for alias in &spec.aliases {
+            check(&model.service, "service-level cli.aliases entry", alias)?;
+        }
+    }
+    // Per-workflow (temporal.v1.workflow).cli.
+    for wf in &model.workflows {
+        if let Some(name) = wf.cli_name.as_deref() {
+            check(
+                &model.service,
+                &format!("workflow `{}` cli.name", wf.rpc_method),
+                name,
+            )?;
+        }
+        for alias in &wf.cli_aliases {
+            check(
+                &model.service,
+                &format!("workflow `{}` cli.aliases entry", wf.rpc_method),
+                alias,
+            )?;
+        }
+        // Per-signal-ref (WorkflowOptions.signal[N].cli).
+        for sref in &wf.attached_signals {
+            if let Some(name) = sref.cli_name.as_deref() {
+                check(
+                    &model.service,
+                    &format!(
+                        "workflow `{}` signal[ref={}] cli.name",
+                        wf.rpc_method, sref.rpc_method
+                    ),
+                    name,
+                )?;
+            }
+            for alias in &sref.cli_aliases {
+                check(
+                    &model.service,
+                    &format!(
+                        "workflow `{}` signal[ref={}] cli.aliases entry",
+                        wf.rpc_method, sref.rpc_method
+                    ),
+                    alias,
+                )?;
+            }
+        }
+        // Per-update-ref (WorkflowOptions.update[N].cli).
+        for uref in &wf.attached_updates {
+            if let Some(name) = uref.cli_name.as_deref() {
+                check(
+                    &model.service,
+                    &format!(
+                        "workflow `{}` update[ref={}] cli.name",
+                        wf.rpc_method, uref.rpc_method
+                    ),
+                    name,
+                )?;
+            }
+            for alias in &uref.cli_aliases {
+                check(
+                    &model.service,
+                    &format!(
+                        "workflow `{}` update[ref={}] cli.aliases entry",
+                        wf.rpc_method, uref.rpc_method
+                    ),
+                    alias,
+                )?;
+            }
+        }
+    }
+    // Method-level (temporal.v1.{signal,query,update}).cli.
+    for s in &model.signals {
+        if let Some(name) = s.cli_name.as_deref() {
+            check(
+                &model.service,
+                &format!("signal `{}` cli.name", s.rpc_method),
+                name,
+            )?;
+        }
+        for alias in &s.cli_aliases {
+            check(
+                &model.service,
+                &format!("signal `{}` cli.aliases entry", s.rpc_method),
+                alias,
+            )?;
+        }
+    }
+    for q in &model.queries {
+        if let Some(name) = q.cli_name.as_deref() {
+            check(
+                &model.service,
+                &format!("query `{}` cli.name", q.rpc_method),
+                name,
+            )?;
+        }
+        for alias in &q.cli_aliases {
+            check(
+                &model.service,
+                &format!("query `{}` cli.aliases entry", q.rpc_method),
+                alias,
+            )?;
+        }
+    }
+    for u in &model.updates {
+        if let Some(name) = u.cli_name.as_deref() {
+            check(
+                &model.service,
+                &format!("update `{}` cli.name", u.rpc_method),
+                name,
+            )?;
+        }
+        for alias in &u.cli_aliases {
+            check(
+                &model.service,
+                &format!("update `{}` cli.aliases entry", u.rpc_method),
+                alias,
+            )?;
+        }
+    }
     Ok(())
 }
 

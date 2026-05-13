@@ -138,6 +138,21 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6/R1 — reject unusable cli override values):
+  every CLI override site now goes through a printable-token check
+  at validate. Rejects empty strings (clap can't use them as
+  subcommand names) and any character matching `is_whitespace()` or
+  `is_control()` (clap parses subcommand tokens from the shell
+  command line — a value with a space splits into two args at
+  runtime). Covers all override sites: service-level
+  `(temporal.v1.cli)`; per-workflow `cli`; per-signal-ref +
+  per-update-ref `cli`; method-level signal/query/update `cli`.
+  Diagnostics name the override site explicitly (e.g. `workflow
+  \`Run\` signal[ref=Cancel] cli.aliases entry`) so authors can
+  pinpoint the bad declaration. Two new positive parse_validate
+  tests pin a workflow-cli-name space rejection and a signal-ref-cli
+  alias newline rejection. 153 parse_validate tests green. No bridge
+  signature change; no fixture goldens touched.
 - 2026-05-13 (R1 — reject unprintable / empty registered names):
   every workflow / signal / query / update / activity `registered_name`
   (and workflow aliases) now goes through a printable-name check at
