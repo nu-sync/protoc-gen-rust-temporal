@@ -34,7 +34,9 @@ pub mod multi_v1_multi_service_temporal {
     pub const PING_SIGNAL_INPUT_TYPE: &str = "google.protobuf.Empty";
 
     fn alpha_id(input: &AlphaInput) -> String {
-        format!("alpha-{}", input.label)
+        let id = format!("alpha-{}", input.label);
+        assert!(!id.is_empty(), "workflow id template `alpha-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        id
     }
 
     pub struct MultiServiceClient {

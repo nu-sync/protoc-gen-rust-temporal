@@ -182,6 +182,21 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R1 — workflow id template runtime emptiness guard):
+  the generated `<wf>_id(input)` helper now asserts non-empty after
+  the template substitution. Field refs that resolve to empty
+  strings at runtime (proto3 string defaults — a string field
+  unset on the wire is `""`) would silently produce an empty
+  workflow id Temporal then rejects with an opaque server-side
+  error. The assert panics locally with the original template
+  literal in the message so the bug is locally fixable. The assert
+  message escapes `{` / `}` via `{{` / `}}` so templates with field
+  substitutions render verbatim without re-interpreting as
+  format-string placeholders. Empty-input workflows (template is
+  purely literal) skip the guard since their result is always the
+  literal text. One new positive parse_validate test pins the
+  guard emit. 163 parse_validate / 26 bridge tests green. Several
+  fixture goldens reblessed. No bridge signature change.
 - 2026-05-13 (R4 — `TASK_QUEUE` on child-workflow marker structs):
   parallel of the activity-marker shipment but for child-workflow
   markers. Each `<Wf>Workflow` marker (under workflows=true, when

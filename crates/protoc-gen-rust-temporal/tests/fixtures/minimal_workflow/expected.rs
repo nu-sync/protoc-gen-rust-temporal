@@ -45,7 +45,9 @@ pub mod jobs_v1_job_service_temporal {
     pub const PROCESS_CHUNK_ACTIVITY_OUTPUT_TYPE: &str = "jobs.v1.ChunkOutput";
 
     fn run_job_id(input: &JobInput) -> String {
-        format!("{}", input.name)
+        let id = format!("{}", input.name);
+        assert!(!id.is_empty(), "workflow id template `{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        id
     }
 
     pub struct JobServiceClient {

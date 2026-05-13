@@ -43,7 +43,9 @@ pub mod wf_v1_order_service_temporal {
     pub const CONFIRM_UPDATE_OUTPUT_TYPE: &str = "wf.v1.ConfirmOutput";
 
     fn run_id(input: &OrderInput) -> String {
-        format!("order-{}", input.id)
+        let id = format!("order-{}", input.id);
+        assert!(!id.is_empty(), "workflow id template `order-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        id
     }
 
     pub struct OrderServiceClient {

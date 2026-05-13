@@ -32,7 +32,9 @@ pub mod cli_v1_report_service_temporal {
     pub const INTERNAL_TASK_QUEUE: &str = "reports";
 
     fn generate_id(input: &GenerateInput) -> String {
-        format!("gen-{}", input.name)
+        let id = format!("gen-{}", input.name);
+        assert!(!id.is_empty(), "workflow id template `gen-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        id
     }
 
     pub struct ReportServiceClient {

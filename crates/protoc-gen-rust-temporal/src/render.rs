@@ -462,7 +462,26 @@ fn emit_id_fn(
         let _ = writeln!(out, "        let _ = input;");
         let _ = writeln!(out, "        \"{fmt}\".to_string()");
     } else {
-        let _ = writeln!(out, "        format!(\"{fmt}\", {})", args.join(", "));
+        // Substitute the proto-id template via `format!`, then guard
+        // against an empty result. Field refs that resolve to empty
+        // strings at runtime (proto3 string defaults) would produce
+        // a workflow id Temporal then rejects with an opaque server
+        // error — surface the failure here so the bug is locally
+        // fixable. The assert message can't reuse `fmt` directly:
+        // any `{}` from field substitution would be re-interpreted
+        // as a format placeholder. Double-brace-escape so the
+        // template renders verbatim in the panic message.
+        let escaped_fmt = fmt.replace('{', "{{").replace('}', "}}");
+        let _ = writeln!(
+            out,
+            "        let id = format!(\"{fmt}\", {});",
+            args.join(", ")
+        );
+        let _ = writeln!(
+            out,
+            "        assert!(!id.is_empty(), \"workflow id template `{escaped_fmt}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value\");"
+        );
+        let _ = writeln!(out, "        id");
     }
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);

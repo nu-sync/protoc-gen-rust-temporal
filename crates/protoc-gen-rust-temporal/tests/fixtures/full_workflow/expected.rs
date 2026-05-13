@@ -49,7 +49,9 @@ pub mod full_v1_full_service_temporal {
     pub const DO_CHUNK_ACTIVITY_OUTPUT_TYPE: &str = "full.v1.ChunkOutput";
 
     fn run_id(input: &RunInput) -> String {
-        format!("run-{}", input.name)
+        let id = format!("run-{}", input.name);
+        assert!(!id.is_empty(), "workflow id template `run-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        id
     }
 
     pub struct FullServiceClient {

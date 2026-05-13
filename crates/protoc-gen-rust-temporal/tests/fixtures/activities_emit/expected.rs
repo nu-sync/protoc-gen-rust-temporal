@@ -36,7 +36,9 @@ pub mod acts_v1_chunk_service_temporal {
     pub const HEARTBEAT_ACTIVITY_OUTPUT_TYPE: &str = "acts.v1.HeartbeatOutput";
 
     fn run_batch_id(input: &BatchInput) -> String {
-        format!("batch-{}", input.name)
+        let id = format!("batch-{}", input.name);
+        assert!(!id.is_empty(), "workflow id template `batch-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        id
     }
 
     pub struct ChunkServiceClient {

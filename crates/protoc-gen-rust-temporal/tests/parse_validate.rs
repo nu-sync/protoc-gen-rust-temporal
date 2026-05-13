@@ -1227,6 +1227,25 @@ fn workflow_definition_trait_exposes_id_template_when_declared() {
 }
 
 #[test]
+fn workflow_id_template_emits_runtime_emptiness_guard() {
+    // R1 — workflow id template with field substitution emits a
+    // runtime `assert!` guarding against an empty result, so an
+    // input with empty string fields surfaces immediately as a
+    // panic with the template literal instead of a Temporal-side
+    // "workflow id is required" error.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("assert!(!id.is_empty(),"),
+        "id template fn must emit emptiness guard: {source}"
+    );
+    assert!(
+        source.contains("resolved to an empty string at runtime"),
+        "guard message must mention the resolution failure: {source}"
+    );
+}
+
+#[test]
 fn workflow_and_update_id_template_source_consts_emit() {
     // R4 — when proto declares `id:` on a workflow or update, the
     // generator now emits a `<RPC>_WORKFLOW_ID_TEMPLATE` /
