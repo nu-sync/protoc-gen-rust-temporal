@@ -73,7 +73,7 @@ sections below define the order in which those gaps should close.
 | R5 | Runtime option coverage | Makes proto options behave consistently across Go and Rust. |
 | R6 | CLI execution surface | Turns today's parser scaffold into a useful generated command runner. |
 | R7 | Bloblang-backed templates | Supports Go-style workflow/update ids and search attributes. |
-| R8 | Advanced subsystems | Nexus, XNS, codec server, docs, test clients, and other lower-frequency Go features. |
+| R8 | Advanced subsystems | Codec server, test clients, patch handling, and other lower-frequency Go features. (XNS, Nexus, generated docs, and Go-specific naming knobs are explicitly out of scope — see R8 below.) |
 
 ## R0 - Documentation Alignment
 
@@ -452,18 +452,39 @@ worker/activity/client coverage.
 
 Candidates:
 
-- XNS helpers.
-- Nexus service and operation generation.
 - Codec server generation.
-- Generated Markdown or API docs.
 - Generated test clients or mocks, gated by Rust SDK support.
 - Patch/protopatch handling.
-- Go-specific naming knobs only when they have a Rust equivalent.
 
 Done when:
 
 - Each subsystem has a dedicated design note explaining the Rust API shape,
   SDK dependencies, and test strategy before implementation starts.
+
+### Explicitly out of scope
+
+The following items appear in cludden's Go plugin but are not pursued by this
+Rust plugin. The reasons differ; the common thread is that the cost of
+maintaining them in Rust outweighs the value relative to the core
+worker/activity/client surface. These do not block "majority parity."
+
+- **XNS helpers (cross-namespace workflow execution).** The annotation schema
+  carries `xns` fields on every method ref; this plugin rejects them at parse
+  so users see the no-op explicitly. Reviving them would require a parallel
+  emit path that targets a different SDK API. Not pursued.
+- **Nexus service and operation generation.** Nexus is Temporal's
+  cross-service operation API. cludden generates a separate code path for it;
+  this plugin does not. Annotated Nexus surfaces should be split into their
+  own protos and used directly against the Nexus SDK.
+- **Generated Markdown or API documentation.** `docs/RUNTIME-API.md` and
+  `docs/SUPPORT-STATUS.md` already document the runtime contract by hand;
+  per-service generated docs would duplicate that surface and drift quickly.
+  Users should consult the generated Rust source via `cargo doc` for
+  per-service detail.
+- **Go-specific naming knobs.** Cludden's plugin exposes Go-side flags for
+  PascalCase/camelCase overrides, package paths, etc. Rust idioms and the
+  proto-driven defaults this plugin already emits cover the same ground;
+  these flags would not have a Rust equivalent worth maintaining.
 
 ## Current Unsupported Items
 
@@ -483,7 +504,8 @@ toward majority parity.
 | Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |
-| XNS/Nexus/codec/docs/test clients | Not generated. | R8 |
+| Codec server / test clients / patch handling | Not generated. | R8 |
+| XNS / Nexus / generated docs / Go-specific naming knobs | Out of scope — see R8 "Explicitly out of scope". | — |
 
 ## Verification Gate
 

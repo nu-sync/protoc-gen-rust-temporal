@@ -142,9 +142,28 @@ the per-method overrides not yet wired into that scaffold. R6 widens this.
 
 ## XNS-related schema (`XNSActivityOptions`)
 
-Read but not used; cross-namespace workflow execution is R8.
+**Out of scope.** Cross-namespace workflow execution is not pursued by this
+plugin (see ROADMAP "R8 — Explicitly out of scope"). The `xns` field on every
+method ref is refused at parse with an unsupported-field diagnostic so users
+see the no-op explicitly.
 
 ## Patch (`Patch`, `Patch.Version`, `Patch.Mode`)
 
 The wrapper message is read for rejection purposes only; full patch
 versioning is R8.
+
+## Out-of-scope features
+
+The following features from cludden's Go plugin are explicitly not pursued
+here — see ROADMAP "R8 — Explicitly out of scope" for the reasoning. They do
+not block "majority parity" against the Rust client/worker surface.
+
+- **XNS (cross-namespace workflow execution).** `xns` annotation fields are
+  rejected at parse.
+- **Nexus services and operations.** Not generated.
+- **Generated Markdown / API documentation.** Documentation lives in
+  `docs/RUNTIME-API.md` and `docs/SUPPORT-STATUS.md` (this file); per-service
+  generated docs would duplicate the surface and drift.
+- **Go-specific naming knobs** (PascalCase/camelCase overrides, package
+  paths, etc.). The proto-driven defaults this plugin already emits cover
+  the same ground for Rust consumers.
