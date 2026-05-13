@@ -358,6 +358,21 @@ Progress:
   goldens reblessed (every workflows=true fixture's Definition trait
   gained the two new const lines). 154 parse_validate tests green.
   No bridge signature change.
+- 2026-05-13 (R1 — Empty-with-start guard covers cross-service refs):
+  `validate_empty_with_start` previously only checked same-service
+  signal/update refs marked `start: true`. Cross-service refs
+  silently skipped the check because the lookup against
+  `model.signals` / `model.updates` came back empty (cross-service
+  targets aren't in the local service's model). Now the check reads
+  the input-Empty flag from `sref.cross_service.input_type` /
+  `uref.cross_service.input_type` when present, falling back to
+  the same-service lookup otherwise. Catches a real footgun:
+  cross-service signal-with-start emit (shipped earlier this
+  session) doesn't support Empty payloads any more than same-
+  service does. One new positive parse_validate test pins a
+  cross-service signal with `start: true` and Empty input getting
+  rejected. 174 parse_validate tests green. No bridge signature
+  change; no fixture goldens touched.
 - 2026-05-13 (R1 — reject unprintable / empty task_queue values):
   parallel of the registered-name printable-token check, applied to
   every `task_queue:` site: service-level

@@ -749,19 +749,28 @@ fn validate_empty_with_start(model: &ServiceModel) -> Result<()> {
             if !sref.start {
                 continue;
             }
-            let Some(sig) = model
-                .signals
-                .iter()
-                .find(|s| s.rpc_method == sref.rpc_method)
-            else {
-                continue; // unresolved ref — caught earlier
+            // Same-service refs look up the SignalModel by rpc method;
+            // cross-service refs already captured the input type on
+            // `sref.cross_service.input_type` at parse. The shared
+            // input-emptiness check works against either source.
+            let sig_input_empty = if let Some(target) = sref.cross_service.as_ref() {
+                target.input_type.is_empty
+            } else {
+                let Some(sig) = model
+                    .signals
+                    .iter()
+                    .find(|s| s.rpc_method == sref.rpc_method)
+                else {
+                    continue; // unresolved ref — caught earlier
+                };
+                sig.input_type.is_empty
             };
-            if wf.input_type.is_empty || sig.input_type.is_empty {
+            if wf.input_type.is_empty || sig_input_empty {
                 bail!(
                     "{}.{}: signal `{}` is marked start:true but {} input is google.protobuf.Empty; the with_start emit path doesn't support Empty payloads. Wrap the empty side in a single-field message and retry.",
                     model.service,
                     wf.rpc_method,
-                    sig.rpc_method,
+                    sref.rpc_method,
                     if wf.input_type.is_empty {
                         "the workflow's"
                     } else {
@@ -774,19 +783,24 @@ fn validate_empty_with_start(model: &ServiceModel) -> Result<()> {
             if !uref.start {
                 continue;
             }
-            let Some(u) = model
-                .updates
-                .iter()
-                .find(|u| u.rpc_method == uref.rpc_method)
-            else {
-                continue;
+            let upd_input_empty = if let Some(target) = uref.cross_service.as_ref() {
+                target.input_type.is_empty
+            } else {
+                let Some(u) = model
+                    .updates
+                    .iter()
+                    .find(|u| u.rpc_method == uref.rpc_method)
+                else {
+                    continue;
+                };
+                u.input_type.is_empty
             };
-            if wf.input_type.is_empty || u.input_type.is_empty {
+            if wf.input_type.is_empty || upd_input_empty {
                 bail!(
                     "{}.{}: update `{}` is marked start:true but {} input is google.protobuf.Empty; the with_start emit path doesn't support Empty payloads. Wrap the empty side in a single-field message and retry.",
                     model.service,
                     wf.rpc_method,
-                    u.rpc_method,
+                    uref.rpc_method,
                     if wf.input_type.is_empty {
                         "the workflow's"
                     } else {

@@ -5838,6 +5838,57 @@ fn cross_service_ref_to_wrong_annotation_kind_fails_at_parse() {
 /// Handle method that uses the target's wire-format registered name
 /// and proto I/O types.
 #[test]
+fn cross_service_signal_with_start_rejects_empty_signal_input() {
+    // R1 — the Empty-with-start guard now applies to cross-service
+    // refs too. A cross-service signal with `start: true` and Empty
+    // input must be rejected with the same diagnostic as the
+    // same-service case, since the with_start emit can't payload
+    // an empty proto across services either.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package xs_ws_bad.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Workflows {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "xs_ws_bad.v1.Notifications.Cancel" start: true }]
+            };
+          }
+        }
+
+        service Notifications {
+          // Empty input — the with_start emit can't carry a payload.
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse must succeed");
+    let workflows_svc = services
+        .iter()
+        .find(|s| s.service == "Workflows")
+        .expect("Workflows service must be in the model");
+    let render_opts = protoc_gen_rust_temporal::options::RenderOptions::default();
+    let err = protoc_gen_rust_temporal::validate::validate(workflows_svc, &render_opts)
+        .expect_err("empty-input cross-service signal-with-start must be rejected")
+        .to_string();
+    assert!(
+        err.contains("start:true")
+            && err.contains("Empty")
+            && err.contains("xs_ws_bad.v1.Notifications.Cancel"),
+        "diagnostic must surface the ref + empty + start:true context: {err}"
+    );
+}
+
+#[test]
 fn cross_service_signal_ref_with_start_emits_with_start_fn() {
     // R1 — when a cross-service `signal` ref carries `start: true`,
     // the workflow gains a `<signal>_with_start` free function that
