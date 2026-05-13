@@ -730,6 +730,12 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "            &self.client");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Namespace passthrough — saves an `inner().namespace()` chain.
+    // Returns owned `String` to match the SDK client's signature.
+    let _ = writeln!(out, "        pub fn namespace(&self) -> String {{");
+    let _ = writeln!(out, "            self.client.namespace()");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Consuming accessor — lets callers transfer ownership of the
     // underlying `TemporalClient` for sharing across multiple
     // typed service clients (e.g. wrapping the same connection in

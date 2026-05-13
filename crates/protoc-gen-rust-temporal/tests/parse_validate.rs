@@ -2948,6 +2948,25 @@ fn handle_struct_derives_clone() {
 }
 
 #[test]
+fn client_exposes_namespace_passthrough() {
+    // R6 ergonomics — `<Service>Client::namespace()` returns the
+    // Temporal namespace the client is bound to. Saves an
+    // `inner().namespace()` chain at call sites that want to
+    // log or report the active namespace. SDK returns owned
+    // `String`; we mirror that signature.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn namespace(&self) -> String {"),
+        "missing namespace passthrough: {source}"
+    );
+    assert!(
+        source.contains("self.client.namespace()"),
+        "namespace body must call through to the bridge: {source}"
+    );
+}
+
+#[test]
 fn client_struct_derives_clone() {
     // R6 ergonomics — `<Service>Client` derives Clone. Free since
     // the bridge's `TemporalClient` is `Arc`-backed and derives

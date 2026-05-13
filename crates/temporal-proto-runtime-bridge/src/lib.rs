@@ -105,6 +105,16 @@ impl TemporalClient {
     pub fn sdk(&self) -> &Client {
         &self.inner
     }
+
+    /// The Temporal namespace this client is bound to. Pulled directly
+    /// from the SDK client so it always matches what `connect()` was
+    /// called with (or what the consumer set on their custom Client).
+    /// SDK returns owned `String`; we mirror that shape rather than
+    /// hold an internal cache to stay in sync with SDK side-effects
+    /// (e.g. namespace switch on a custom Client).
+    pub fn namespace(&self) -> String {
+        self.inner.namespace()
+    }
 }
 
 /// Live workflow handle. Stores the workflow id (and run id if known) so we

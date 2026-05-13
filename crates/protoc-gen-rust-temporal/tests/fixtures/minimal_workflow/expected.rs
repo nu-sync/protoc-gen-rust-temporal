@@ -99,6 +99,10 @@ pub mod jobs_v1_job_service_temporal {
             &self.client
         }
 
+        pub fn namespace(&self) -> String {
+            self.client.namespace()
+        }
+
         pub fn into_inner(self) -> temporal_runtime::TemporalClient {
             self.client
         }

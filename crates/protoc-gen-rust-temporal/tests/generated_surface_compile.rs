@@ -259,6 +259,12 @@ pub mod temporal_runtime {
     #[derive(Clone, Debug, Default)]
     pub struct TemporalClient;
 
+    impl TemporalClient {
+        pub fn namespace(&self) -> String {
+            "stub-namespace".to_string()
+        }
+    }
+
     #[derive(Clone, Debug, Default)]
     pub struct WorkflowHandle;
 
