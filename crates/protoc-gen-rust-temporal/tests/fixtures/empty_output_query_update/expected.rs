@@ -26,6 +26,17 @@ pub mod eoqu_v1_eoqu_service_temporal {
     pub const RUN_OUTPUT_TYPE: &str = "eoqu.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "eoqu";
 
+    pub const ACK_QUERY_INPUT_TYPE: &str = "eoqu.v1.AckInput";
+    pub const ACK_QUERY_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const ACK_EMPTY_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const ACK_EMPTY_QUERY_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const TOUCH_UPDATE_INPUT_TYPE: &str = "eoqu.v1.TouchInput";
+    pub const TOUCH_UPDATE_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const TOUCH_EMPTY_UPDATE_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const TOUCH_EMPTY_UPDATE_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const TOUCH_EMPTY_START_UPDATE_INPUT_TYPE: &str = "eoqu.v1.TouchInput";
+    pub const TOUCH_EMPTY_START_UPDATE_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+
     pub struct EoquServiceClient {
         client: temporal_runtime::TemporalClient,
     }

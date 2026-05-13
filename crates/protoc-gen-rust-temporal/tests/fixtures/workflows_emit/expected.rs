@@ -32,6 +32,12 @@ pub mod wf_v1_order_service_temporal {
     pub const RUN_OUTPUT_TYPE: &str = "wf.v1.OrderOutput";
     pub const RUN_TASK_QUEUE: &str = "orders";
 
+    pub const CANCEL_SIGNAL_INPUT_TYPE: &str = "wf.v1.CancelInput";
+    pub const STATUS_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const STATUS_QUERY_OUTPUT_TYPE: &str = "wf.v1.StatusOutput";
+    pub const CONFIRM_UPDATE_INPUT_TYPE: &str = "wf.v1.ConfirmInput";
+    pub const CONFIRM_UPDATE_OUTPUT_TYPE: &str = "wf.v1.ConfirmOutput";
+
     fn run_id(input: &OrderInput) -> String {
         format!("order-{}", input.id)
     }

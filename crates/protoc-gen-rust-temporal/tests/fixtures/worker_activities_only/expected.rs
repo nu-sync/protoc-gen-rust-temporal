@@ -15,6 +15,11 @@ pub mod workeract_v1_activity_worker_service_temporal {
         const MESSAGE_TYPE: &'static str = "workeract.v1.FetchOutput";
     }
 
+    pub const FETCH_ACTIVITY_INPUT_TYPE: &str = "workeract.v1.FetchInput";
+    pub const FETCH_ACTIVITY_OUTPUT_TYPE: &str = "workeract.v1.FetchOutput";
+    pub const PING_ACTIVITY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const PING_ACTIVITY_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+
     pub struct ActivityWorkerServiceClient {
         client: temporal_runtime::TemporalClient,
     }

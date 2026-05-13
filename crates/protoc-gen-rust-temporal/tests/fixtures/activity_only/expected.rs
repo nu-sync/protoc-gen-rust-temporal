@@ -8,6 +8,11 @@ pub mod act_v1_worker_only_service_temporal {
     use crate::temporal_runtime;
     use crate::act::v1::*;
 
+    pub const PROCESS_CHUNK_ACTIVITY_INPUT_TYPE: &str = "act.v1.ChunkInput";
+    pub const PROCESS_CHUNK_ACTIVITY_OUTPUT_TYPE: &str = "act.v1.ChunkOutput";
+    pub const CLEANUP_ACTIVITY_INPUT_TYPE: &str = "act.v1.CleanupInput";
+    pub const CLEANUP_ACTIVITY_OUTPUT_TYPE: &str = "act.v1.CleanupOutput";
+
     pub struct WorkerOnlyServiceClient {
         client: temporal_runtime::TemporalClient,
     }

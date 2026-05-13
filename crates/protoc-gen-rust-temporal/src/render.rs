@@ -205,6 +205,77 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
     if !svc.workflows.is_empty() {
         let _ = writeln!(out);
     }
+    // Per-rpc input/output type FQN consts for signals, queries,
+    // updates, and activities — same shape as the workflow `_INPUT_TYPE`
+    // / `_OUTPUT_TYPE` consts above. Lets consumer tooling enumerate
+    // proto type names for every rpc kind without descriptor-pool
+    // round-trips.
+    for sig in &svc.signals {
+        let in_const = format!(
+            "{}_SIGNAL_INPUT_TYPE",
+            sig.rpc_method.to_shouty_snake_case()
+        );
+        let _ = writeln!(
+            out,
+            "    pub const {in_const}: &str = \"{}\";",
+            sig.input_type.full_name
+        );
+    }
+    for q in &svc.queries {
+        let in_const = format!("{}_QUERY_INPUT_TYPE", q.rpc_method.to_shouty_snake_case());
+        let out_const = format!("{}_QUERY_OUTPUT_TYPE", q.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {in_const}: &str = \"{}\";",
+            q.input_type.full_name
+        );
+        let _ = writeln!(
+            out,
+            "    pub const {out_const}: &str = \"{}\";",
+            q.output_type.full_name
+        );
+    }
+    for u in &svc.updates {
+        let in_const = format!("{}_UPDATE_INPUT_TYPE", u.rpc_method.to_shouty_snake_case());
+        let out_const = format!("{}_UPDATE_OUTPUT_TYPE", u.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "    pub const {in_const}: &str = \"{}\";",
+            u.input_type.full_name
+        );
+        let _ = writeln!(
+            out,
+            "    pub const {out_const}: &str = \"{}\";",
+            u.output_type.full_name
+        );
+    }
+    for act in &svc.activities {
+        let in_const = format!(
+            "{}_ACTIVITY_INPUT_TYPE",
+            act.rpc_method.to_shouty_snake_case()
+        );
+        let out_const = format!(
+            "{}_ACTIVITY_OUTPUT_TYPE",
+            act.rpc_method.to_shouty_snake_case()
+        );
+        let _ = writeln!(
+            out,
+            "    pub const {in_const}: &str = \"{}\";",
+            act.input_type.full_name
+        );
+        let _ = writeln!(
+            out,
+            "    pub const {out_const}: &str = \"{}\";",
+            act.output_type.full_name
+        );
+    }
+    if !svc.signals.is_empty()
+        || !svc.queries.is_empty()
+        || !svc.updates.is_empty()
+        || !svc.activities.is_empty()
+    {
+        let _ = writeln!(out);
+    }
 }
 
 /// Emit one private `<wf>_id` function per workflow that has an `id`

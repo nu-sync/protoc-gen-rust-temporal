@@ -1620,6 +1620,83 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn handler_input_output_type_consts_emit_for_all_rpc_kinds() {
+    // R4 — per-rpc `_INPUT_TYPE` / `_OUTPUT_TYPE` consts emit for
+    // signals, queries, updates, and activities (parallel of the
+    // workflow consts). Signal outputs are always `Empty` so we only
+    // emit the input const. Activities emit both.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package types.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(CancelInput) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(TouchInput) returns (TouchOutput) {
+            option (temporal.v1.update) = {};
+          }
+          rpc DoWork(WorkInput) returns (WorkOutput) {
+            option (temporal.v1.activity) = { start_to_close_timeout: { seconds: 30 } };
+          }
+        }
+        message In  {}
+        message Out {}
+        message CancelInput { string reason = 1; }
+        message StatusOutput { string phase = 1; }
+        message TouchInput { string key = 1; }
+        message TouchOutput { uint64 next = 1; }
+        message WorkInput { string id = 1; }
+        message WorkOutput { string result = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const CANCEL_SIGNAL_INPUT_TYPE: &str = \"types.v1.CancelInput\";"),
+        "signal input type const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const STATUS_QUERY_INPUT_TYPE: &str = \"google.protobuf.Empty\";"),
+        "Empty-input query const must use canonical Empty FQN: {source}"
+    );
+    assert!(
+        source.contains("pub const STATUS_QUERY_OUTPUT_TYPE: &str = \"types.v1.StatusOutput\";"),
+        "query output type const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const TOUCH_UPDATE_INPUT_TYPE: &str = \"types.v1.TouchInput\";"),
+        "update input type const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const TOUCH_UPDATE_OUTPUT_TYPE: &str = \"types.v1.TouchOutput\";"),
+        "update output type const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const DO_WORK_ACTIVITY_INPUT_TYPE: &str = \"types.v1.WorkInput\";"),
+        "activity input type const missing: {source}"
+    );
+    assert!(
+        source.contains("pub const DO_WORK_ACTIVITY_OUTPUT_TYPE: &str = \"types.v1.WorkOutput\";"),
+        "activity output type const missing: {source}"
+    );
+}
+
+#[test]
 fn workflow_input_output_type_consts_emit() {
     // Per-workflow `<RPC>_INPUT_TYPE` / `<RPC>_OUTPUT_TYPE` consts
     // carry the fully-qualified proto type name so consumer tooling

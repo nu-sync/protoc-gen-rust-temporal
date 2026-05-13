@@ -38,6 +38,14 @@ pub mod workerfull_v1_orchestration_service_temporal {
     pub const RUN_OUTPUT_TYPE: &str = "workerfull.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "worker-full";
 
+    pub const CANCEL_SIGNAL_INPUT_TYPE: &str = "workerfull.v1.CancelInput";
+    pub const STATUS_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const STATUS_QUERY_OUTPUT_TYPE: &str = "workerfull.v1.StatusOutput";
+    pub const CONFIRM_UPDATE_INPUT_TYPE: &str = "workerfull.v1.ConfirmInput";
+    pub const CONFIRM_UPDATE_OUTPUT_TYPE: &str = "workerfull.v1.ConfirmOutput";
+    pub const LOAD_ACTIVITY_INPUT_TYPE: &str = "workerfull.v1.LoadInput";
+    pub const LOAD_ACTIVITY_OUTPUT_TYPE: &str = "workerfull.v1.LoadOutput";
+
     pub struct OrchestrationServiceClient {
         client: temporal_runtime::TemporalClient,
     }

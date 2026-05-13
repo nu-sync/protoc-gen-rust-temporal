@@ -29,6 +29,11 @@ pub mod acts_v1_chunk_service_temporal {
     pub const RUN_BATCH_OUTPUT_TYPE: &str = "acts.v1.BatchOutput";
     pub const RUN_BATCH_TASK_QUEUE: &str = "chunks";
 
+    pub const PROCESS_ACTIVITY_INPUT_TYPE: &str = "acts.v1.ChunkInput";
+    pub const PROCESS_ACTIVITY_OUTPUT_TYPE: &str = "acts.v1.ChunkOutput";
+    pub const HEARTBEAT_ACTIVITY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const HEARTBEAT_ACTIVITY_OUTPUT_TYPE: &str = "acts.v1.HeartbeatOutput";
+
     fn run_batch_id(input: &BatchInput) -> String {
         format!("batch-{}", input.name)
     }

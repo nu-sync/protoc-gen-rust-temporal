@@ -30,6 +30,8 @@ pub mod multi_v1_multi_service_temporal {
     pub const BETA_OUTPUT_TYPE: &str = "multi.v1.BetaOutput";
     pub const BETA_TASK_QUEUE: &str = "multi-beta";
 
+    pub const PING_SIGNAL_INPUT_TYPE: &str = "google.protobuf.Empty";
+
     fn alpha_id(input: &AlphaInput) -> String {
         format!("alpha-{}", input.label)
     }

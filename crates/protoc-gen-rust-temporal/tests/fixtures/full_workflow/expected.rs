@@ -35,6 +35,15 @@ pub mod full_v1_full_service_temporal {
     pub const RUN_OUTPUT_TYPE: &str = "full.v1.RunOutput";
     pub const RUN_TASK_QUEUE: &str = "full";
 
+    pub const CANCEL_SIGNAL_INPUT_TYPE: &str = "full.v1.CancelInput";
+    pub const BOOTSTRAP_SIGNAL_INPUT_TYPE: &str = "full.v1.BootstrapInput";
+    pub const STATUS_QUERY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const STATUS_QUERY_OUTPUT_TYPE: &str = "full.v1.StatusOutput";
+    pub const RECONFIGURE_UPDATE_INPUT_TYPE: &str = "full.v1.ReconfigureInput";
+    pub const RECONFIGURE_UPDATE_OUTPUT_TYPE: &str = "full.v1.ReconfigureOutput";
+    pub const DO_CHUNK_ACTIVITY_INPUT_TYPE: &str = "full.v1.ChunkInput";
+    pub const DO_CHUNK_ACTIVITY_OUTPUT_TYPE: &str = "full.v1.ChunkOutput";
+
     fn run_id(input: &RunInput) -> String {
         format!("run-{}", input.name)
     }

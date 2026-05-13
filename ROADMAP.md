@@ -138,6 +138,17 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — handler `_INPUT_TYPE` / `_OUTPUT_TYPE` consts for signals/queries/updates/activities):
+  extends the previous workflow-only commit to all rpc kinds. Each
+  signal emits `<RPC>_SIGNAL_INPUT_TYPE` (signal outputs are always
+  Empty so no output const); queries / updates / activities emit
+  both `<RPC>_<KIND>_INPUT_TYPE` and `<RPC>_<KIND>_OUTPUT_TYPE`.
+  Same const shape (`pub const X: &str = "pkg.Type"`), same
+  Empty-handling (canonical `google.protobuf.Empty`). One new
+  positive parse_validate test covers all four rpc kinds in one
+  service. 6 fixture goldens reblessed (every fixture that has at
+  least one signal / query / update / activity gained the
+  corresponding const block). No bridge signature change.
 - 2026-05-13 (R4 — per-workflow `<RPC>_INPUT_TYPE` / `_OUTPUT_TYPE` consts):
   every workflow rpc now emits two `&str` consts carrying the fully-
   qualified proto type names for its input and output messages. Empty
