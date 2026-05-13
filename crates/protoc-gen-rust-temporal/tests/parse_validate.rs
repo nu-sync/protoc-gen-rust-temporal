@@ -2608,6 +2608,38 @@ fn workflow_alias_duplicate_within_list_fails_at_parse() {
 }
 
 #[test]
+fn start_options_exposes_merge_method() {
+    // R6 ergonomics — `<Wf>StartOptions::merge(other)` layers two
+    // option structs together with `other`'s `Some`-fields winning.
+    // Lets callers fold env-driven overrides over a base config
+    // without re-deriving each field manually.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn merge(mut self, other: Self) -> Self {"),
+        "missing merge fn signature: {source}"
+    );
+    // Each field must be folded via `other.<f>.or(self.<f>)`.
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let line = format!("self.{field} = other.{field}.or(self.{field});");
+        assert!(
+            source.contains(&line),
+            "merge body missing fold for `{field}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn start_options_exposes_with_field_builders() {
     // R6 ergonomics — `<Wf>StartOptions` gains `with_<field>`
     // builder-style setters complementing struct-init. Each takes the

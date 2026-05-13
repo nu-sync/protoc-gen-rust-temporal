@@ -147,6 +147,22 @@ pub mod empty_v1_nop_service_temporal {
             self.retry_policy = Some(v);
             self
         }
+
+        /// Layer `other` over `self`, with `other`'s fields winning.
+        /// Lets callers fold env-driven overrides over a base config without
+        /// re-deriving each field. Per-field: `other.<f>.or(self.<f>)`.
+        pub fn merge(mut self, other: Self) -> Self {
+            self.workflow_id = other.workflow_id.or(self.workflow_id);
+            self.task_queue = other.task_queue.or(self.task_queue);
+            self.id_reuse_policy = other.id_reuse_policy.or(self.id_reuse_policy);
+            self.id_conflict_policy = other.id_conflict_policy.or(self.id_conflict_policy);
+            self.execution_timeout = other.execution_timeout.or(self.execution_timeout);
+            self.run_timeout = other.run_timeout.or(self.run_timeout);
+            self.task_timeout = other.task_timeout.or(self.task_timeout);
+            self.enable_eager_workflow_start = other.enable_eager_workflow_start.or(self.enable_eager_workflow_start);
+            self.retry_policy = other.retry_policy.or(self.retry_policy);
+            self
+        }
     }
 
     pub struct TickHandle {

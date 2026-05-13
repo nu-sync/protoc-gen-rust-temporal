@@ -436,6 +436,24 @@ Progress:
   parse_validate tests pin the whitespace and newline rejection
   shapes. 151 parse_validate tests green. No bridge signature
   change; no fixture goldens touched.
+- 2026-05-13 (R6 — `<Wf>StartOptions::merge(other)`):
+  every generated `<Wf>StartOptions` struct now exposes
+  `merge(self, other: Self) -> Self` that layers two options
+  structs together — `other`'s `Some` fields win, `self`'s fields
+  fill the rest. Folds field-by-field via `other.<f>.or(self.<f>)`.
+  Lets callers fold env-driven overrides over a base config:
+  ```
+  let base = MyOpts::default().with_task_queue("base-queue");
+  let env = env_overrides(); // produces a MyOpts
+  let resolved = base.merge(env);
+  ```
+  Without this, callers manually pattern-matched each Option to
+  decide which to keep — error-prone with nine fields. Pairs with
+  the `with_<field>` builders shipped earlier. One new positive
+  parse_validate test pins the merge fn signature and the
+  per-field fold lines (asserted for all nine fields). Several
+  fixture goldens reblessed (every Wf gained the merge method).
+  177 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::with_<field>` builder setters):
   every generated `<Wf>StartOptions` struct now exposes
   builder-style setters per field (`with_workflow_id`,

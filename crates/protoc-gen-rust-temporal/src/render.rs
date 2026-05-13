@@ -1533,6 +1533,66 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.retry_policy = Some(v);");
     let _ = writeln!(out, "            self");
     let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
+    // `merge(other)` — layer two options structs with `other`
+    // winning. Lets callers fold env-driven overrides over a base
+    // config without re-deriving each field manually. Field-by-
+    // field: prefer `other.<field>` when `Some`, else keep
+    // `self.<field>`.
+    let _ = writeln!(
+        out,
+        "        /// Layer `other` over `self`, with `other`'s fields winning."
+    );
+    let _ = writeln!(
+        out,
+        "        /// Lets callers fold env-driven overrides over a base config without"
+    );
+    let _ = writeln!(
+        out,
+        "        /// re-deriving each field. Per-field: `other.<f>.or(self.<f>)`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn merge(mut self, other: Self) -> Self {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.workflow_id = other.workflow_id.or(self.workflow_id);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.task_queue = other.task_queue.or(self.task_queue);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.id_reuse_policy = other.id_reuse_policy.or(self.id_reuse_policy);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.id_conflict_policy = other.id_conflict_policy.or(self.id_conflict_policy);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.execution_timeout = other.execution_timeout.or(self.execution_timeout);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.run_timeout = other.run_timeout.or(self.run_timeout);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.task_timeout = other.task_timeout.or(self.task_timeout);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.enable_eager_workflow_start = other.enable_eager_workflow_start.or(self.enable_eager_workflow_start);"
+    );
+    let _ = writeln!(
+        out,
+        "            self.retry_policy = other.retry_policy.or(self.retry_policy);"
+    );
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 }
