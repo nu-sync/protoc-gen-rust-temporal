@@ -3441,6 +3441,27 @@ fn signal_ref_cli_override_threads_into_subcommand() {
 }
 
 #[test]
+fn cli_args_structs_derive_debug() {
+    // R6 ergonomics — every generated `<Verb><Wf>Args` /
+    // `Signal<Name>Args` / `Query<Name>Args` / `Update<Name>Args`
+    // struct now derives `Debug` alongside `clap::Args`. Lets
+    // dispatch logging spell `tracing::info!(?args, ...)` to print
+    // the parsed CLI args structurally.
+    let services = parse_and_validate("cli_emit");
+    let opts = load_fixture_options("cli_emit");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("#[derive(Debug, temporal_runtime::clap::Args)]"),
+        "Args structs must derive Debug alongside clap::Args: {source}"
+    );
+    // Old single-derive form must not survive.
+    assert!(
+        !source.contains("#[derive(temporal_runtime::clap::Args)]"),
+        "no Args struct should keep the bare clap::Args derive: {source}"
+    );
+}
+
+#[test]
 fn cli_emit_renders_signal_subcommands() {
     // R6 — each `(temporal.v1.signal)` rpc gains a `Signal<Name>` CLI
     // variant. Empty-input signals skip `--input-file`; non-Empty

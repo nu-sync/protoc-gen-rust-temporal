@@ -488,7 +488,7 @@ pub mod report_service_cli {
         }
     }
 
-    #[derive(temporal_runtime::clap::Args)]
+    #[derive(Debug, temporal_runtime::clap::Args)]
     pub struct StartGenerateArgs {
         /// Path to a JSON file containing the workflow input.
         /// Format: prost-json (matching pbjson) of `cli.v1.GenerateInput`.
@@ -502,7 +502,7 @@ pub mod report_service_cli {
         pub wait: bool,
     }
 
-    #[derive(temporal_runtime::clap::Args)]
+    #[derive(Debug, temporal_runtime::clap::Args)]
     pub struct AttachGenerateArgs {
         /// Workflow id to attach to.
         pub workflow_id: String,
@@ -511,7 +511,7 @@ pub mod report_service_cli {
         pub wait: bool,
     }
 
-    #[derive(temporal_runtime::clap::Args)]
+    #[derive(Debug, temporal_runtime::clap::Args)]
     pub struct CancelGenerateArgs {
         /// Workflow id to cancel.
         pub workflow_id: String,
@@ -520,7 +520,7 @@ pub mod report_service_cli {
         pub reason: String,
     }
 
-    #[derive(temporal_runtime::clap::Args)]
+    #[derive(Debug, temporal_runtime::clap::Args)]
     pub struct TerminateGenerateArgs {
         /// Workflow id to terminate.
         pub workflow_id: String,

@@ -3828,7 +3828,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
 
     for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
         let pascal = wf.rpc_method.to_pascal_case();
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Start{pascal}Args {{");
         let _ = writeln!(
             out,
@@ -3856,7 +3856,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
 
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Attach{pascal}Args {{");
         let _ = writeln!(out, "        /// Workflow id to attach to.");
         let _ = writeln!(out, "        pub workflow_id: String,");
@@ -3871,7 +3871,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
 
         // Cancel<Wf> args: workflow id (positional) + optional reason
         // recorded in event history. Mirrors `Handle::cancel_workflow`.
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Cancel{pascal}Args {{");
         let _ = writeln!(out, "        /// Workflow id to cancel.");
         let _ = writeln!(out, "        pub workflow_id: String,");
@@ -3886,7 +3886,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
 
         // Terminate<Wf> args: same shape as Cancel — workflow id +
         // optional reason. Mirrors `Handle::terminate_workflow`.
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Terminate{pascal}Args {{");
         let _ = writeln!(out, "        /// Workflow id to terminate.");
         let _ = writeln!(out, "        pub workflow_id: String,");
@@ -3904,7 +3904,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     // workflow exists, since signals are top-level service-scoped.
     for sig in &svc.signals {
         let sig_pascal = sig.rpc_method.to_pascal_case();
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Signal{sig_pascal}Args {{");
         let _ = writeln!(out, "        /// Workflow id to signal.");
         let _ = writeln!(out, "        pub workflow_id: String,");
@@ -3928,7 +3928,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     // Per-query Args structs.
     for q in &svc.queries {
         let q_pascal = q.rpc_method.to_pascal_case();
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Query{q_pascal}Args {{");
         let _ = writeln!(out, "        /// Workflow id to query.");
         let _ = writeln!(out, "        pub workflow_id: String,");
@@ -3952,7 +3952,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     // Per-update Args structs.
     for u in &svc.updates {
         let u_pascal = u.rpc_method.to_pascal_case();
-        let _ = writeln!(out, "    #[derive(temporal_runtime::clap::Args)]");
+        let _ = writeln!(out, "    #[derive(Debug, temporal_runtime::clap::Args)]");
         let _ = writeln!(out, "    pub struct Update{u_pascal}Args {{");
         let _ = writeln!(out, "        /// Workflow id to update.");
         let _ = writeln!(out, "        pub workflow_id: String,");

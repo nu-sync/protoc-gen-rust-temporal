@@ -436,6 +436,19 @@ Progress:
   parse_validate tests pin the whitespace and newline rejection
   shapes. 151 parse_validate tests green. No bridge signature
   change; no fixture goldens touched.
+- 2026-05-13 (R6 — CLI Args structs derive `Debug`):
+  every generated CLI `<Verb><Wf>Args` / `Signal<Name>Args` /
+  `Query<Name>Args` / `Update<Name>Args` struct now derives
+  `Debug` alongside `temporal_runtime::clap::Args`. Lets dispatch
+  logging spell `tracing::info!(?args, "running command")` to
+  print the parsed CLI args structurally — useful for debugging
+  command-line invocations in production. Free since clap-Args
+  fields are already user-supplied types that derive Debug
+  themselves. One new positive parse_validate test pins the
+  combined derive line and asserts the bare-clap-Args form is
+  gone. Several fixture goldens reblessed (every Args struct
+  gained the Debug derive). 178 parse_validate tests green. No
+  bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::merge(other)`):
   every generated `<Wf>StartOptions` struct now exposes
   `merge(self, other: Self) -> Self` that layers two options
