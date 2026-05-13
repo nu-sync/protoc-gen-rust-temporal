@@ -2375,6 +2375,25 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
             out,
             "        pub const OUTPUT_TYPE: &'static str = self::{out_const};"
         );
+        // TASK_QUEUE — only when the activity declared one. Skipped
+        // otherwise so the marker stays surface-clean and tooling
+        // can disambiguate "activity declares its own queue" vs
+        // "activity inherits the workflow's queue".
+        if act
+            .default_options
+            .as_ref()
+            .and_then(|s| s.task_queue.as_deref())
+            .is_some()
+        {
+            let tq_const = format!(
+                "{}_ACTIVITY_TASK_QUEUE",
+                act.rpc_method.to_shouty_snake_case()
+            );
+            let _ = writeln!(
+                out,
+                "        pub const TASK_QUEUE: &'static str = self::{tq_const};"
+            );
+        }
         let _ = writeln!(out, "    }}");
 
         render_activity_helper(out, act, /* local: */ false, &marker_struct);

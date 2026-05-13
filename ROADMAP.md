@@ -182,6 +182,19 @@ Progress:
   parse_validate test pins both new emit paths against the
   `worker_full` fixture. Several fixture goldens reblessed.
   156 parse_validate tests green. No bridge signature change.
+- 2026-05-13 (R4 — `TASK_QUEUE` on activity marker structs when declared):
+  extends the activity-marker inherent-const surface from
+  `INPUT_TYPE` / `OUTPUT_TYPE` to also include `TASK_QUEUE`
+  whenever the proto declared `(temporal.v1.activity).task_queue`.
+  Re-exposes the per-rpc `<RPC>_ACTIVITY_TASK_QUEUE` const through
+  the marker. Markers for activities that omit `task_queue`
+  (inheriting the workflow's queue at start time) skip the const so
+  generic worker code can disambiguate via the `if A::TASK_QUEUE …`
+  type-system pattern (the const's mere presence is meaningful).
+  One new positive parse_validate test pins both cases — declared
+  (marker carries const) and not declared (marker omits const). 161
+  parse_validate tests green. No bridge signature change; no
+  fixture goldens touched (no fixture declares activity task_queue).
 - 2026-05-13 (R4 — `INPUT_TYPE` / `OUTPUT_TYPE` on activity marker structs):
   parallel of the workflow Definition trait shipment. Each generated
   activity marker struct (`<Activity>Activity`) now carries an

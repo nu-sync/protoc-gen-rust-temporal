@@ -1299,6 +1299,58 @@ fn child_workflow_and_signal_markers_expose_input_output_type_consts() {
 }
 
 #[test]
+fn activity_marker_exposes_task_queue_const_when_declared() {
+    // R4 — activity marker structs gain `TASK_QUEUE: &'static str`
+    // when proto declares `(temporal.v1.activity).task_queue`,
+    // re-exposing the per-rpc `<RPC>_ACTIVITY_TASK_QUEUE` const.
+    // Markers without a declared task_queue stay surface-clean so
+    // tooling can disambiguate "activity overrides queue" vs
+    // "activity inherits workflow queue".
+    let (pool, files, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package amk_tq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc DoWorkLocal(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              task_queue: "specialised-queue"
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+          rpc DoWorkShared(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In {} message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        activities: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains(
+            "pub const TASK_QUEUE: &'static str = self::DO_WORK_LOCAL_ACTIVITY_TASK_QUEUE;"
+        ),
+        "DoWorkLocal marker must re-expose TASK_QUEUE: {source}"
+    );
+    // DoWorkShared must NOT carry a TASK_QUEUE const.
+    let shared_block_start = source.find("impl DoWorkSharedActivity").unwrap();
+    let shared_block_end = shared_block_start + source[shared_block_start..].find("    }").unwrap();
+    let shared_block = &source[shared_block_start..shared_block_end];
+    assert!(
+        !shared_block.contains("TASK_QUEUE"),
+        "DoWorkShared marker must omit TASK_QUEUE when no override: {shared_block}"
+    );
+}
+
+#[test]
 fn activity_marker_struct_exposes_input_output_type_consts() {
     // R4 — each activity marker struct gains inherent
     // `INPUT_TYPE` / `OUTPUT_TYPE` `&'static str` consts (sourced
