@@ -121,6 +121,28 @@ jobs:
           cargo check -p jobs-proto -p job-worker -p job-api -p jobctl --all-targets
           cargo clippy -p jobs-proto -p job-worker -p job-api -p jobctl --all-targets -- -D warnings
 
+  job-queue-e2e:
+    # Live Temporal smoke test. PR-only because it downloads and starts a
+    # Temporal dev server, then drives the generated client against the real
+    # job-worker implementation.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Generated client + worker E2E
+        run: |
+          cargo test -p job-worker \
+            --features e2e-tests \
+            --test generated_temporal_e2e \
+            -- --ignored --nocapture
+
   compat-audit:
     # Cross-language wire-format audit. Runs both the Rust and Go arms of
     # compat-tests/ and asserts the per-fixture Payload JSON diffs are empty.
