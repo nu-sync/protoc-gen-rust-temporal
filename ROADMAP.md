@@ -283,6 +283,19 @@ Progress:
   `minimal_workflow` fixture. 16 fixture goldens reblessed (every
   Handle gained the four const lines). 165 parse_validate tests
   green. No bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::into_inner()` consuming accessor):
+  parallel of the previous `<Service>Client::into_inner` shipment
+  for typed workflow handles. Every `<Wf>Handle` now exposes
+  `into_inner(self) -> WorkflowHandle` returning the underlying
+  bridge handle by value. Lets downstream code drop the typed
+  wrapper and use the bridge surface directly when the typed
+  surface doesn't fit (custom polling loops, history scans,
+  bespoke describe-workflow calls). Both `<Service>Client` and
+  `<Wf>Handle` now expose the borrow + own accessor duality
+  (`inner(&self)` / `into_inner(self)`). One new positive
+  parse_validate test pins the fn signature. Several fixture
+  goldens reblessed (every Handle gained the new method). 181
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::into_inner()` consuming accessor):
   every generated `<Service>Client` now exposes
   `into_inner(self) -> TemporalClient` returning the underlying

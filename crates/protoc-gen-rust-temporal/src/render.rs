@@ -1690,6 +1690,16 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.workflow_id()");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Consuming accessor — drop the typed wrapper and recover the
+    // bridge handle for downstream code that wants to use the
+    // bridge surface directly (e.g. custom polling loops).
+    let _ = writeln!(
+        out,
+        "        pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {{"
+    );
+    let _ = writeln!(out, "            self.inner");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     let _ = writeln!(
         out,
         "        /// The execution's run id, if known. `None` for handles created"

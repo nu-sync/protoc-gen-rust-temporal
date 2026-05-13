@@ -2746,6 +2746,22 @@ fn client_struct_implements_debug() {
 }
 
 #[test]
+fn handle_exposes_into_inner_consuming_accessor() {
+    // R6 ergonomics — `<Wf>Handle::into_inner(self)` returns the
+    // underlying `WorkflowHandle` by value, letting downstream
+    // code use the bridge surface directly (e.g. custom polling
+    // loops that don't fit the typed wrapper). Pairs with the
+    // `<Service>Client::into_inner` shipment so both wrappers
+    // expose the borrow + own duality.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {"),
+        "missing handle into_inner consuming accessor: {source}"
+    );
+}
+
+#[test]
 fn handle_struct_implements_display() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Display` impl
     // producing a concise `<WorkflowName>(<workflow_id>)` form for

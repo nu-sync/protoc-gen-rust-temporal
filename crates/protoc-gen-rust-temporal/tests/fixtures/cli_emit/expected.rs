@@ -271,6 +271,10 @@ pub mod cli_v1_report_service_temporal {
             self.inner.workflow_id()
         }
 
+        pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
+            self.inner
+        }
+
         /// The execution's run id, if known. `None` for handles created
         /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);
         /// `Some(...)` for handles returned by the start path.
@@ -391,6 +395,10 @@ pub mod cli_v1_report_service_temporal {
 
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
+        }
+
+        pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
+            self.inner
         }
 
         /// The execution's run id, if known. `None` for handles created

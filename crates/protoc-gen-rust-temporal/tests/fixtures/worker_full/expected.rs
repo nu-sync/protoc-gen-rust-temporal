@@ -260,6 +260,10 @@ pub mod workerfull_v1_orchestration_service_temporal {
             self.inner.workflow_id()
         }
 
+        pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
+            self.inner
+        }
+
         /// The execution's run id, if known. `None` for handles created
         /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);
         /// `Some(...)` for handles returned by the start path.
