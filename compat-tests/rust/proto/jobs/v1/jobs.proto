@@ -32,3 +32,30 @@ message JobBatch {
 message JobList {
   repeated JobInput items = 1;
 }
+
+// Oneof fixture: exercises both scalar and nested-message arms across
+// languages. Each fixture sets exactly one arm, matching protojson's oneof
+// input shape.
+message JobChoice {
+  oneof target {
+    string name = 1;
+    JobInput input = 2;
+  }
+}
+
+// Enum fixture: the zero value should elide from proto3 wire bytes, while a
+// non-zero value should encode explicitly.
+enum JobKind {
+  JOB_KIND_UNSPECIFIED = 0;
+  JOB_KIND_BATCH = 1;
+}
+
+message JobEnum {
+  JobKind kind = 1;
+}
+
+// Map fixture: use a single-entry fixture so Go map iteration order cannot
+// make byte output nondeterministic.
+message JobMap {
+  map<string, JobInput> inputs = 1;
+}

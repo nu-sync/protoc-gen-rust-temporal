@@ -6,7 +6,7 @@ the annotations describe *what* methods exist; this document describes *how* the
 data on the wire is encoded.
 
 **Status:** v1, audited against `cludden/protoc-gen-go-temporal v1.22.1`
-on 2026-05-12 — every fixture in `compat-tests/fixtures/` produced a
+on 2026-05-13 — every fixture in `compat-tests/fixtures/` produced a
 byte-identical Payload from both arms (see "Compatibility audit" below).
 
 This file is the authoritative copy. The sibling
@@ -78,9 +78,9 @@ that determines cross-language interop.
 
 ## Compatibility audit
 
-**Result: passed (2026-05-12)** against
+**Result: passed (2026-05-13)** against
 `github.com/cludden/protoc-gen-go-temporal@v1.22.1` and
-`go.temporal.io/sdk@v1.43.0`. Audit landed on top of repo SHA `c5457ef`.
+`go.temporal.io/sdk@v1.43.0`.
 
 The harness lives in [`compat-tests/`](compat-tests/README.md). Each fixture
 encodes the same proto message twice:
@@ -97,15 +97,19 @@ encodes the same proto message twice:
 
 Fixtures covered:
 
-| Fixture                       | Shape                                          |
-|-------------------------------|------------------------------------------------|
-| `job_input.input.json`        | scalar string field                            |
-| `empty_input.input.json`      | `google.protobuf.Empty`                        |
-| `job_batch.input.json`        | nested message + scalar + int32                |
-| `job_list.input.json`         | repeated message (including an empty element)  |
+| Fixture                        | Shape                                          |
+|--------------------------------|------------------------------------------------|
+| `job_input.input.json`         | scalar string field                            |
+| `empty_input.input.json`       | `google.protobuf.Empty`                        |
+| `job_batch.input.json`         | nested message + scalar + int32                |
+| `job_list.input.json`          | repeated message (including an empty element)  |
+| `job_choice_name.input.json`   | oneof scalar arm                               |
+| `job_choice_input.input.json`  | oneof nested-message arm                       |
+| `job_enum_zero.input.json`     | proto3 enum zero/default value                 |
+| `job_enum_batch.input.json`    | proto3 enum non-zero value                     |
+| `job_map.input.json`           | single-entry map field                         |
 
-All four pairs diff empty. Fast-follow fixtures (oneof, enum, map) are
-tracked in `compat-tests/README.md`.
+All fixture pairs diff empty.
 
 The `compat-audit` CI job re-runs both arms on every PR and fails on any
 non-empty diff, so this result is regression-protected — not a one-shot

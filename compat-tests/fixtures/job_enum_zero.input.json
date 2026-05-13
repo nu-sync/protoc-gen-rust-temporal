@@ -1,0 +1,6 @@
+{
+  "message_type": "jobs.v1.JobEnum",
+  "fields": {
+    "kind": "JOB_KIND_UNSPECIFIED"
+  }
+}
