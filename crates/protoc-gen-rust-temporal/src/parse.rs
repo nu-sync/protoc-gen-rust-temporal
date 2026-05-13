@@ -20,7 +20,8 @@ use prost_reflect::{
 
 use crate::model::{
     ActivityModel, IdConflictPolicy, IdReusePolicy, IdTemplateSegment, ProtoType, QueryModel,
-    QueryRef, ServiceModel, SignalModel, SignalRef, UpdateModel, UpdateRef, WorkflowModel,
+    QueryRef, RetryPolicySpec, ServiceModel, SignalModel, SignalRef, UpdateModel, UpdateRef,
+    WorkflowModel,
 };
 use crate::temporal::api::enums::v1::WorkflowIdConflictPolicy as ProtoConflictPolicy;
 use crate::temporal::v1::{
@@ -344,6 +345,7 @@ fn workflow_from(
         id_expression,
         id_reuse_policy: id_reuse_policy_from_proto(opts.id_reuse_policy),
         id_conflict_policy: id_conflict_policy_from_proto(opts.workflow_id_conflict_policy),
+        retry_policy: opts.retry_policy.map(retry_policy_from_proto),
         execution_timeout: opts.execution_timeout.and_then(duration_from_proto),
         run_timeout: opts.run_timeout.and_then(duration_from_proto),
         task_timeout: opts.task_timeout.and_then(duration_from_proto),
@@ -473,9 +475,6 @@ fn reject_unsupported_workflow_options(
     rpc: &str,
 ) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
-    if opts.retry_policy.is_some() {
-        unsupported.push("retry_policy");
-    }
     if !opts.search_attributes.is_empty() {
         unsupported.push("search_attributes");
     }
@@ -732,6 +731,16 @@ fn id_conflict_policy_from_proto(raw: i32) -> Option<IdConflictPolicy> {
         ProtoConflictPolicy::Fail => Some(IdConflictPolicy::Fail),
         ProtoConflictPolicy::UseExisting => Some(IdConflictPolicy::UseExisting),
         ProtoConflictPolicy::TerminateExisting => Some(IdConflictPolicy::TerminateExisting),
+    }
+}
+
+fn retry_policy_from_proto(p: crate::temporal::v1::RetryPolicy) -> RetryPolicySpec {
+    RetryPolicySpec {
+        initial_interval: p.initial_interval.and_then(duration_from_proto),
+        backoff_coefficient_bits: p.backoff_coefficient.to_bits(),
+        max_interval: p.max_interval.and_then(duration_from_proto),
+        max_attempts: p.max_attempts,
+        non_retryable_error_types: p.non_retryable_error_types,
     }
 }
 

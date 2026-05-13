@@ -16,6 +16,7 @@ categories = ["asynchronous"]
 anyhow = { workspace = true }
 clap = { workspace = true, optional = true }
 prost = { workspace = true }
+prost-wkt-types = { workspace = true }
 temporal-proto-runtime = { path = "../temporal-proto-runtime", version = "0.1", features = ["sdk"] }
 temporalio-client = { workspace = true }
 temporalio-common = { workspace = true }

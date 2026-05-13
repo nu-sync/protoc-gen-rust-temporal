@@ -160,6 +160,63 @@ impl From<WorkflowIdConflictPolicy> for sdk_enums::WorkflowIdConflictPolicy {
     }
 }
 
+/// Retry policy for a workflow start request. Mirrors cludden's
+/// `RetryPolicy`; maps to `temporalio_common::protos::temporal::api::common::v1::RetryPolicy`
+/// (the API uses `maximum_*` naming while cludden's schema uses `max_*` —
+/// we follow cludden's, matching the proto annotation users actually write).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RetryPolicy {
+    pub initial_interval: Option<Duration>,
+    /// Stored as the underlying bits so `Eq` works; access via
+    /// [`Self::backoff_coefficient`].
+    backoff_coefficient_bits: u64,
+    pub max_interval: Option<Duration>,
+    pub max_attempts: i32,
+    pub non_retryable_error_types: Vec<String>,
+}
+
+impl RetryPolicy {
+    /// Empty policy — server picks defaults.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The exponential backoff multiplier. `0.0` means "unset".
+    pub fn backoff_coefficient(&self) -> f64 {
+        f64::from_bits(self.backoff_coefficient_bits)
+    }
+
+    /// Set the exponential backoff multiplier.
+    pub fn set_backoff_coefficient(&mut self, value: f64) {
+        self.backoff_coefficient_bits = value.to_bits();
+    }
+
+    /// Builder-style setter for the backoff coefficient.
+    #[must_use]
+    pub fn with_backoff_coefficient(mut self, value: f64) -> Self {
+        self.set_backoff_coefficient(value);
+        self
+    }
+}
+
+impl From<RetryPolicy> for temporalio_common::protos::temporal::api::common::v1::RetryPolicy {
+    fn from(value: RetryPolicy) -> Self {
+        Self {
+            initial_interval: value.initial_interval.map(duration_to_proto),
+            backoff_coefficient: value.backoff_coefficient(),
+            maximum_interval: value.max_interval.map(duration_to_proto),
+            maximum_attempts: value.max_attempts,
+            non_retryable_error_types: value.non_retryable_error_types,
+        }
+    }
+}
+
+fn duration_to_proto(d: Duration) -> prost_wkt_types::Duration {
+    let seconds = i64::try_from(d.as_secs()).unwrap_or(i64::MAX);
+    let nanos = i32::try_from(d.subsec_nanos()).unwrap_or(0);
+    prost_wkt_types::Duration { seconds, nanos }
+}
+
 /// Update stage to wait for before the update call returns. The Rust facade
 /// always returns the update's output, so the call site still blocks on
 /// completion; `WaitPolicy` controls the *stage acknowledgement* level the
@@ -305,6 +362,7 @@ pub async fn start_workflow_proto<I>(
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
     enable_eager_workflow_start: bool,
+    retry_policy: Option<RetryPolicy>,
 ) -> Result<WorkflowHandle>
 where
     I: TemporalProtoMessage,
@@ -315,6 +373,7 @@ where
         .maybe_execution_timeout(execution_timeout)
         .maybe_run_timeout(run_timeout)
         .maybe_task_timeout(task_timeout)
+        .maybe_retry_policy(retry_policy.map(Into::into))
         .enable_eager_workflow_start(enable_eager_workflow_start);
     // bon builders use typestate — every conditional setter has its own
     // `Set*` marker, so the call chain must terminate in a single
@@ -357,12 +416,14 @@ pub async fn start_workflow_proto_empty(
     run_timeout: Option<Duration>,
     task_timeout: Option<Duration>,
     enable_eager_workflow_start: bool,
+    retry_policy: Option<RetryPolicy>,
 ) -> Result<WorkflowHandle> {
     let raw = RawValue::new(vec![encode_empty_payload()]);
     let base = WorkflowStartOptions::new(task_queue.to_string(), workflow_id.to_string())
         .maybe_execution_timeout(execution_timeout)
         .maybe_run_timeout(run_timeout)
         .maybe_task_timeout(task_timeout)
+        .maybe_retry_policy(retry_policy.map(Into::into))
         .enable_eager_workflow_start(enable_eager_workflow_start);
     let options = match (id_reuse_policy, id_conflict_policy) {
         (Some(reuse), Some(conflict)) => base
@@ -1127,6 +1188,35 @@ mod tests {
 
     impl TemporalProtoMessage for Sample {
         const MESSAGE_TYPE: &'static str = "test.v1.Sample";
+    }
+
+    #[test]
+    fn retry_policy_converts_to_sdk_shape() {
+        let mut p = RetryPolicy::new();
+        p.initial_interval = Some(Duration::from_secs(1));
+        p.max_interval = Some(Duration::from_secs(60));
+        p.max_attempts = 5;
+        p.non_retryable_error_types = vec!["X".to_string(), "Y".to_string()];
+        p.set_backoff_coefficient(2.0);
+
+        let sdk: temporalio_common::protos::temporal::api::common::v1::RetryPolicy = p.into();
+        assert_eq!(sdk.maximum_attempts, 5);
+        assert!((sdk.backoff_coefficient - 2.0).abs() < f64::EPSILON);
+        assert_eq!(
+            sdk.initial_interval,
+            Some(prost_wkt_types::Duration {
+                seconds: 1,
+                nanos: 0
+            })
+        );
+        assert_eq!(
+            sdk.maximum_interval,
+            Some(prost_wkt_types::Duration {
+                seconds: 60,
+                nanos: 0
+            })
+        );
+        assert_eq!(sdk.non_retryable_error_types, vec!["X", "Y"]);
     }
 
     // Regression guard for the wire-format contract: every empty-input

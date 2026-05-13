@@ -69,6 +69,9 @@ pub struct WorkflowModel {
     /// Proto-declared default policy when the start request collides with a
     /// running workflow id. `None` lets the server pick its default.
     pub id_conflict_policy: Option<IdConflictPolicy>,
+    /// Proto-declared default retry policy for the workflow. `None` means
+    /// the proto omits the field and the server picks defaults.
+    pub retry_policy: Option<RetryPolicySpec>,
     pub execution_timeout: Option<Duration>,
     pub run_timeout: Option<Duration>,
     pub task_timeout: Option<Duration>,
@@ -218,6 +221,25 @@ impl IdReusePolicy {
             Self::RejectDuplicate => "RejectDuplicate",
             Self::TerminateIfRunning => "TerminateIfRunning",
         }
+    }
+}
+
+/// Compiled form of `(temporal.v1.workflow).retry_policy`. Holds the
+/// fields the render layer needs to emit a `temporal_runtime::RetryPolicy`
+/// literal at the start path's default-fold step. `backoff_coefficient`
+/// is stored as raw bits so the `Eq` derive holds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetryPolicySpec {
+    pub initial_interval: Option<Duration>,
+    pub backoff_coefficient_bits: u64,
+    pub max_interval: Option<Duration>,
+    pub max_attempts: i32,
+    pub non_retryable_error_types: Vec<String>,
+}
+
+impl RetryPolicySpec {
+    pub fn backoff_coefficient(&self) -> f64 {
+        f64::from_bits(self.backoff_coefficient_bits)
     }
 }
 

@@ -972,18 +972,28 @@ fn signal_returning_non_empty_fails_validation() {
 }
 
 #[test]
-fn workflow_with_retry_policy_is_rejected() {
+fn workflow_retry_policy_flows_into_start_options() {
+    // R5: `retry_policy` graduates from rejected to supported. The proto's
+    // RetryPolicy lands on the model, then re-emerges as a
+    // `temporal_runtime::RetryPolicy` literal that the start path folds
+    // into `WorkflowStartOptions.retry_policy`.
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
         syntax = "proto3";
-        package guard.v1;
+        package retry.v1;
         import "temporal/v1/temporal.proto";
 
         service Svc {
           rpc Run(In) returns (Out) {
             option (temporal.v1.workflow) = {
               task_queue: "tq"
-              retry_policy: { max_attempts: 3 }
+              retry_policy: {
+                initial_interval:    { seconds: 1 }
+                backoff_coefficient: 2.0
+                max_interval:        { seconds: 60 }
+                max_attempts:        5
+                non_retryable_error_types: ["ValidationError", "PermanentFailure"]
+              }
             };
           }
         }
@@ -991,12 +1001,57 @@ fn workflow_with_retry_policy_is_rejected() {
         message Out {}
         "#,
     );
-    let err = parse::parse(&pool, &files_to_generate)
-        .unwrap_err()
-        .to_string();
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let svc = &services[0];
+    let spec = svc.workflows[0]
+        .retry_policy
+        .as_ref()
+        .expect("model carries the proto-declared retry policy");
+    assert_eq!(spec.max_attempts, 5);
+    assert!((spec.backoff_coefficient() - 2.0).abs() < f64::EPSILON);
+    assert_eq!(
+        spec.non_retryable_error_types,
+        vec![
+            "ValidationError".to_string(),
+            "PermanentFailure".to_string(),
+        ],
+    );
+
+    let source = render::render(svc, &Default::default());
     assert!(
-        err.contains("retry_policy") && err.contains("does not yet honour"),
-        "expected unsupported-field diagnostic mentioning retry_policy, got: {err}"
+        source.contains("pub retry_policy: Option<temporal_runtime::RetryPolicy>,"),
+        "StartOptions must expose the retry-policy field: {source}"
+    );
+    assert!(
+        source.contains("let retry_policy = opts.retry_policy.or_else(|| Some({"),
+        "start path must fold the proto-declared default in: {source}"
+    );
+    assert!(
+        source.contains("rp.max_attempts = 5;"),
+        "literal should set the max_attempts the proto declared: {source}"
+    );
+    assert!(
+        source.contains("rp.set_backoff_coefficient(2.0)"),
+        "literal should set the backoff coefficient: {source}"
+    );
+    assert!(
+        source.contains("\"ValidationError\".to_string(), \"PermanentFailure\".to_string()"),
+        "literal should carry the non_retryable_error_types list: {source}"
+    );
+    assert!(
+        source.contains("retry_policy,"),
+        "resolved value must be forwarded to the bridge call: {source}"
+    );
+}
+
+#[test]
+fn workflow_without_retry_policy_resolves_to_none() {
+    let services = parse_and_validate("minimal_workflow");
+    assert!(services[0].workflows[0].retry_policy.is_none());
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("let retry_policy = opts.retry_policy;"),
+        "start path must rebind opts directly when no default is declared: {source}"
     );
 }
 

@@ -283,6 +283,18 @@ pub mod temporal_runtime {
         TerminateExisting,
     }
 
+    #[derive(Debug, Clone, PartialEq, Eq, Default)]
+    pub struct RetryPolicy {
+        pub initial_interval: Option<std::time::Duration>,
+        pub max_interval: Option<std::time::Duration>,
+        pub max_attempts: i32,
+        pub non_retryable_error_types: Vec<String>,
+    }
+    impl RetryPolicy {
+        pub fn new() -> Self { Self::default() }
+        pub fn set_backoff_coefficient(&mut self, _value: f64) {}
+    }
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WaitPolicy {
         Admitted,
@@ -316,6 +328,7 @@ pub mod temporal_runtime {
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
         _enable_eager_workflow_start: bool,
+        _retry_policy: Option<RetryPolicy>,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }
@@ -331,6 +344,7 @@ pub mod temporal_runtime {
         _run_timeout: Option<std::time::Duration>,
         _task_timeout: Option<std::time::Duration>,
         _enable_eager_workflow_start: bool,
+        _retry_policy: Option<RetryPolicy>,
     ) -> anyhow::Result<WorkflowHandle> {
         Ok(WorkflowHandle)
     }

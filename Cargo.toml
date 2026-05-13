@@ -27,6 +27,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 prost = "0.13"
 prost-types = "0.13"
+prost-wkt-types = "0.7"
 prost-reflect = "0.14"
 prost-build = "0.13"
 heck = "0.5"

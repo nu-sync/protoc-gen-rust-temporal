@@ -423,6 +423,7 @@ fn render_start_body(
     let _ = writeln!(out, "{ind}    run_timeout,");
     let _ = writeln!(out, "{ind}    task_timeout,");
     let _ = writeln!(out, "{ind}    enable_eager_workflow_start,");
+    let _ = writeln!(out, "{ind}    retry_policy,");
     let _ = writeln!(out, "{ind}).await?;");
 }
 
@@ -477,6 +478,61 @@ fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
         out,
         "{ind}let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or({eager_default});",
     );
+    // Retry policy mirrors the timeout pattern: stays `Option<…>`, falls
+    // through to a baked-in proto default when the caller leaves it `None`.
+    match wf.retry_policy.as_ref() {
+        Some(spec) => {
+            let literal = retry_policy_literal(spec);
+            let _ = writeln!(
+                out,
+                "{ind}let retry_policy = opts.retry_policy.or_else(|| Some({literal}));",
+            );
+        }
+        None => {
+            let _ = writeln!(out, "{ind}let retry_policy = opts.retry_policy;");
+        }
+    }
+}
+
+/// Emit a `temporal_runtime::RetryPolicy { … }` literal that reproduces the
+/// proto-declared default. The bridge struct keeps `backoff_coefficient` behind
+/// a private bits-field for `Eq`, so the coefficient lands via the
+/// `with_backoff_coefficient` builder setter rather than a struct-init field.
+fn retry_policy_literal(spec: &crate::model::RetryPolicySpec) -> String {
+    let mut s = String::from("{ let mut rp = temporal_runtime::RetryPolicy::new(); ");
+    if let Some(d) = spec.initial_interval {
+        s.push_str(&format!(
+            "rp.initial_interval = Some(Duration::new({}, {})); ",
+            d.as_secs(),
+            d.subsec_nanos()
+        ));
+    }
+    if let Some(d) = spec.max_interval {
+        s.push_str(&format!(
+            "rp.max_interval = Some(Duration::new({}, {})); ",
+            d.as_secs(),
+            d.subsec_nanos()
+        ));
+    }
+    if spec.max_attempts != 0 {
+        s.push_str(&format!("rp.max_attempts = {}; ", spec.max_attempts));
+    }
+    if !spec.non_retryable_error_types.is_empty() {
+        s.push_str("rp.non_retryable_error_types = vec![");
+        for (i, e) in spec.non_retryable_error_types.iter().enumerate() {
+            if i > 0 {
+                s.push_str(", ");
+            }
+            s.push_str(&format!("\"{}\".to_string()", e.escape_default()));
+        }
+        s.push_str("]; ");
+    }
+    let coefficient = spec.backoff_coefficient();
+    if coefficient != 0.0 {
+        s.push_str(&format!("rp.set_backoff_coefficient({coefficient:?}); "));
+    }
+    s.push_str("rp }");
+    s
 }
 
 fn render_start_options(out: &mut String, wf: &WorkflowModel) {
@@ -502,6 +558,12 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(
         out,
         "        pub enable_eager_workflow_start: Option<bool>,"
+    );
+    // `WorkflowOptions.retry_policy` folds in here; `None` lets the server
+    // pick its own defaults.
+    let _ = writeln!(
+        out,
+        "        pub retry_policy: Option<temporal_runtime::RetryPolicy>,"
     );
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);

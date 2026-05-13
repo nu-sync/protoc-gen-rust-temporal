@@ -63,6 +63,7 @@ pub mod jobs_v1_job_service_temporal {
             let run_timeout = opts.run_timeout;
             let task_timeout = opts.task_timeout;
             let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
+            let retry_policy = opts.retry_policy;
             let inner = temporal_runtime::start_workflow_proto(
                 &self.client,
                 RUN_JOB_WORKFLOW_NAME,
@@ -75,6 +76,7 @@ pub mod jobs_v1_job_service_temporal {
                 run_timeout,
                 task_timeout,
                 enable_eager_workflow_start,
+                retry_policy,
             ).await?;
             Ok(RunJobHandle { inner })
         }
@@ -98,6 +100,7 @@ pub mod jobs_v1_job_service_temporal {
         pub run_timeout: Option<Duration>,
         pub task_timeout: Option<Duration>,
         pub enable_eager_workflow_start: Option<bool>,
+        pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
     impl RunJobStartOptions {

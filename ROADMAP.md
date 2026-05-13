@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (third R5 option): `WorkflowOptions.retry_policy` shipped
+  end-to-end. New facade struct `temporal_runtime::RetryPolicy` (with private
+  bits-encoded backoff_coefficient so `Eq` still derives) converts to
+  `temporalio_common::…::common::v1::RetryPolicy`. The start path emits a
+  `temporal_runtime::RetryPolicy { … }` literal carrying the proto-declared
+  default; callers can override via `<Workflow>StartOptions::retry_policy`.
+  Old "retry_policy is rejected" test replaced with positive coverage of all
+  five RetryPolicy fields; new bridge unit test pins the SDK conversion.
+  Adds `prost-wkt-types` workspace dep (matches temporalio-common 0.7).
 - 2026-05-13 (second R5 option): `WorkflowOptions.workflow_id_conflict_policy`
   shipped end-to-end. New facade enum `temporal_runtime::WorkflowIdConflictPolicy`
   maps to `temporalio-common::WorkflowIdConflictPolicy` (`Fail` / `UseExisting`
@@ -347,7 +356,7 @@ toward majority parity.
 | Worker handler surface | Emits contracts and registration helpers, not handler adapters. | R2 |
 | Activity calls from workflows | Not generated. | R3 |
 | Client cancel/terminate/top-level operations | Not generated. | R4 |
-| Workflow retry/search/versioning options | Most still rejected; `enable_eager_start` shipped 2026-05-13. | R5 |
+| Workflow retry/search/versioning options | `enable_eager_start`, `workflow_id_conflict_policy`, `retry_policy` shipped 2026-05-13; search attrs (need R7 Bloblang), parent_close_policy / wait_for_cancellation (child-workflow only), versioning_behavior (worker-side) still pending. | R5 |
 | Activity runtime options | Mostly not emitted. | R5 |
 | Update ids/default wait stage | Not fully emitted. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
