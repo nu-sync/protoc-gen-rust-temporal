@@ -100,6 +100,10 @@ Progress:
   `workflows=true`. Fixtures `workflow_aliases` and `worker_workflow_aliases`
   cover both branches; existing goldens unaffected when no aliases are
   declared. See `docs/RUNTIME-API.md`.
+- 2026-05-13: every `reject_unsupported_*` branch in `parse.rs` is locked in
+  by a table-driven `unsupported_field_support_status_table` test. Closes the
+  R1 ask to add a test for each unsupported-field diagnostic. New rejection
+  rules must add a row to that table so silent drops cannot regress.
 
 Deliverables:
 

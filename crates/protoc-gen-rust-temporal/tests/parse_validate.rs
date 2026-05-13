@@ -1100,6 +1100,239 @@ fn activity_with_timeouts_is_rejected() {
     );
 }
 
+/// Table-driven coverage of every `reject_unsupported_*` branch in
+/// `parse.rs`. When you add a new rejection rule, drop a row here naming
+/// the field and an isolating proto snippet. The roadmap (R1) requires that
+/// every unsupported-field diagnostic fire under test so silent drops can
+/// never regress.
+#[test]
+fn unsupported_field_support_status_table() {
+    // (case label, proto snippet, expected substring in the error).
+    // The case label is only used in failure messages. The proto snippet
+    // is wrapped into a full input.proto before compilation. The expected
+    // substring is the field name surfaced by the diagnostic — the wrapping
+    // `does not yet honour` phrase is asserted once at the end.
+    struct Case {
+        label: &'static str,
+        snippet: &'static str,
+        expect_field: &'static str,
+    }
+
+    // Each snippet declares its own service to keep cases independent.
+    // Workflows always set task_queue so the case fails on the rejection
+    // we're targeting, not on the missing-task-queue validator.
+    let cases: &[Case] = &[
+        Case {
+            label: "WorkflowOptions.typed_search_attributes",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    typed_search_attributes: "root = {}"
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "typed_search_attributes",
+        },
+        Case {
+            label: "WorkflowOptions.parent_close_policy",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    parent_close_policy: PARENT_CLOSE_POLICY_ABANDON
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "parent_close_policy",
+        },
+        Case {
+            label: "WorkflowOptions.workflow_id_conflict_policy",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "workflow_id_conflict_policy",
+        },
+        Case {
+            label: "WorkflowOptions.versioning_behavior",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    versioning_behavior: VERSIONING_BEHAVIOR_PINNED
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "versioning_behavior",
+        },
+        Case {
+            label: "UpdateOptions.wait_for_stage",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    update: [{ ref: "Patch" }]
+                  };
+                }
+                rpc Patch(In) returns (Out) {
+                  option (temporal.v1.update) = { wait_for_stage: WAIT_POLICY_COMPLETED };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "wait_for_stage",
+        },
+        Case {
+            label: "WorkflowOptions.Update[].xns",
+            snippet: r#"
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    update: [{ ref: "Patch", xns: {} }]
+                  };
+                }
+                rpc Patch(In) returns (Out) {
+                  option (temporal.v1.update) = {};
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "xns",
+        },
+        Case {
+            label: "WorkflowOptions.Signal[].cli",
+            snippet: r#"
+              import "google/protobuf/empty.proto";
+              service Svc {
+                rpc Run(In) returns (Out) {
+                  option (temporal.v1.workflow) = {
+                    task_queue: "tq"
+                    signal: [{ ref: "Cancel", cli: { name: "cancel" } }]
+                  };
+                }
+                rpc Cancel(In) returns (google.protobuf.Empty) {
+                  option (temporal.v1.signal) = {};
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "cli",
+        },
+        Case {
+            label: "ActivityOptions.schedule_to_close_timeout",
+            snippet: r#"
+              service Svc {
+                rpc Work(In) returns (Out) {
+                  option (temporal.v1.activity) = {
+                    schedule_to_close_timeout: { seconds: 60 }
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "schedule_to_close_timeout",
+        },
+        Case {
+            label: "ActivityOptions.schedule_to_start_timeout",
+            snippet: r#"
+              service Svc {
+                rpc Work(In) returns (Out) {
+                  option (temporal.v1.activity) = {
+                    schedule_to_start_timeout: { seconds: 30 }
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "schedule_to_start_timeout",
+        },
+        Case {
+            label: "ActivityOptions.heartbeat_timeout",
+            snippet: r#"
+              service Svc {
+                rpc Work(In) returns (Out) {
+                  option (temporal.v1.activity) = {
+                    heartbeat_timeout: { seconds: 5 }
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "heartbeat_timeout",
+        },
+        Case {
+            label: "ActivityOptions.wait_for_cancellation",
+            snippet: r#"
+              service Svc {
+                rpc Work(In) returns (Out) {
+                  option (temporal.v1.activity) = {
+                    wait_for_cancellation: true
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "wait_for_cancellation",
+        },
+        Case {
+            label: "ActivityOptions.retry_policy",
+            snippet: r#"
+              service Svc {
+                rpc Work(In) returns (Out) {
+                  option (temporal.v1.activity) = {
+                    retry_policy: { max_attempts: 5 }
+                  };
+                }
+              }
+              message In {} message Out {}
+            "#,
+            expect_field: "retry_policy",
+        },
+    ];
+
+    for case in cases {
+        let source = format!(
+            "syntax = \"proto3\";\npackage support_status.v1;\nimport \"temporal/v1/temporal.proto\";\n{}",
+            case.snippet,
+        );
+        let (pool, files_to_generate, _tmp) = compile_fixture_inline(&source);
+        let err = match parse::parse(&pool, &files_to_generate) {
+            Ok(_) => panic!("{}: expected parse to fail, but it succeeded", case.label),
+            Err(e) => e.to_string(),
+        };
+        assert!(
+            err.contains(case.expect_field),
+            "{}: diagnostic must name `{}`, got: {err}",
+            case.label,
+            case.expect_field,
+        );
+        assert!(
+            err.contains("does not yet honour"),
+            "{}: diagnostic must use the standard 'does not yet honour' phrasing, got: {err}",
+            case.label,
+        );
+    }
+}
+
 #[test]
 fn workflow_schema_defaults_apply_at_start() {
     // full_workflow declares id_reuse_policy + 3 timeouts on the proto;
