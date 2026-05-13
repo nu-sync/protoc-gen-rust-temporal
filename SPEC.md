@@ -273,10 +273,15 @@ Each phase ends with green CI and a tagged release.
   dev server, Go client -> migrated Rust worker, and migrated Rust client -> Go
   worker all passed.
 
-**Phase 6 — Update + signal-with-start emit polish**
-- Beyond the PoC's surface area. Update support requires `WaitPolicy` plumbing. Signal-with-start and update-with-start require emitting free functions alongside the client struct.
+**Phase 6 — Update + signal-with-start emit polish** (completed 2026-05-12)
+- The generated handle surface includes typed update methods with explicit
+  `temporal_runtime::WaitPolicy` plumbing for non-Empty and Empty request /
+  response combinations.
+- Signal-with-start and update-with-start emit free functions alongside the
+  client struct. Runtime requirements are pinned in `docs/RUNTIME-API.md`, and
+  golden fixtures cover the generated call sites.
 
-**Phase 7 — Worker emit** (scoped 2026-05-13)
+**Phase 7 — Worker emit** (completed 2026-05-13)
 - Opt-in flags: `activities=true` and `workflows=true`.
 - Activity emit: per-service `<Service>Activities` trait, per-activity
   `<METHOD>_ACTIVITY_NAME` constants, and
@@ -297,6 +302,9 @@ Each phase ends with green CI and a tagged release.
 - Every worker-facing generated reference goes through
   `crate::temporal_runtime`; the default bridge exposes the needed symbols
   behind its `worker` feature.
+- The job-queue Phase 5 migration now consumes this worker emit through the
+  generated `RunJobDefinition`, `JobServiceActivities`,
+  `register_run_job_workflow`, and `register_job_service_activities` glue.
 
 **Phase 8 — Test client** (gated by SDK support)
 - Probe result: `docs/sdk-shape-worker.md` found no
@@ -309,8 +317,10 @@ Each phase ends with green CI and a tagged release.
 ## Open questions
 
 1. **Does cludden's Go runtime wire-format match ours?** Resolved in Phase 3; not blocking earlier phases.
-2. **MSRV target?** PoC builds on stable; pin a concrete minimum (likely 1.78 or 1.80) once the new repo is bootstrapped.
-3. **`temporal-proto-runtime` helper crate: ship it or inline?** Pro for shipping: removes ~50 LOC of boilerplate from every consumer. Con: one more crate to version. Decide in Phase 2.
+2. **MSRV target?** Resolved: workspace `rust-version` is pinned to 1.88.
+3. **`temporal-proto-runtime` helper crate: ship it or inline?** Resolved:
+   shipped as the `temporal-proto-runtime` crate, with SDK serialization impls
+   behind its `sdk` feature.
 4. **Should activity-tagged methods emit *anything*?** Resolved in Phase 7:
    validate-only by default; `activities=true` emits the typed trait, name
    constants, and thin registration helper.

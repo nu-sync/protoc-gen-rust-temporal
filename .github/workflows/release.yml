@@ -110,13 +110,17 @@ jobs:
           version: "27.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
-      # Publish the runtime first; the plugin crate doesn't depend on it, but
-      # consumers will pull both and `cargo publish` won't accept a plugin
-      # release that references an unpublished dep in the future.
+      # Publish helper crates first. The plugin binary does not depend on the
+      # bridge directly, but the README recommends it as the default consumer
+      # wiring, so a release tag must leave all advertised crates available.
       - name: cargo publish temporal-proto-runtime
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish -p temporal-proto-runtime --allow-dirty
+      - name: cargo publish temporal-proto-runtime-bridge
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p temporal-proto-runtime-bridge --allow-dirty
       - name: cargo publish protoc-gen-rust-temporal
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
