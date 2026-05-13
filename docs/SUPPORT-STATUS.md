@@ -149,8 +149,12 @@ see the no-op explicitly.
 
 ## Patch (`Patch`, `Patch.Version`, `Patch.Mode`)
 
-The wrapper message is read for rejection purposes only; full patch
-versioning is R8.
+**Out of scope.** cludden's `Patch` annotation stages fix-version
+migrations for the Go plugin's inline Bloblang expression evaluation
+pattern. The Rust plugin compiles templates at codegen time and has no
+inline-eval pattern to stage. The `patches` proto fields on both
+`ServiceOptions` and `WorkflowOptions` are rejected at parse so users
+see the no-op explicitly. See ROADMAP "R8 — Explicitly out of scope".
 
 ## Out-of-scope features
 
@@ -167,3 +171,6 @@ not block "majority parity" against the Rust client/worker surface.
 - **Go-specific naming knobs** (PascalCase/camelCase overrides, package
   paths, etc.). The proto-driven defaults this plugin already emits cover
   the same ground for Rust consumers.
+- **Patch / protopatch handling.** The Rust plugin compiles templates at
+  codegen time, so there's no inline-eval pattern to stage migrations for.
+  `patches` proto fields are rejected at parse.

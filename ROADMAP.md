@@ -73,7 +73,7 @@ sections below define the order in which those gaps should close.
 | R5 | Runtime option coverage | Makes proto options behave consistently across Go and Rust. |
 | R6 | CLI execution surface | Turns today's parser scaffold into a useful generated command runner. |
 | R7 | Bloblang-backed templates | Supports Go-style workflow/update ids and search attributes. |
-| R8 | Advanced subsystems | Codec server, test clients, patch handling, and other lower-frequency Go features. (XNS, Nexus, generated docs, and Go-specific naming knobs are explicitly out of scope — see R8 below.) |
+| R8 | Advanced subsystems | Codec server and test clients — both blocked on upstream SDK 0.4 gaps. (XNS, Nexus, generated docs, Go-specific naming knobs, and Patch/protopatch handling are explicitly out of scope — see R8 below.) |
 
 ## R0 - Documentation Alignment
 
@@ -478,13 +478,18 @@ Done when:
 ## R8 - Advanced and Lower-Frequency Go Features
 
 These features matter for eventual majority parity but are lower priority than
-worker/activity/client coverage.
+worker/activity/client coverage. Both remaining candidates are **blocked on
+upstream Rust SDK gaps** (see `docs/sdk-shape-worker.md`) — neither has a
+clean Rust shape until those gaps close.
 
-Candidates:
+Candidates (blocked):
 
-- Codec server generation.
-- Generated test clients or mocks, gated by Rust SDK support.
-- Patch/protopatch handling.
+- **Codec server generation.** No Rust SDK surface to target; the codec-server
+  pattern is a separate Go service today.
+- **Generated test clients or mocks.** `temporalio-sdk` 0.4 does not expose a
+  `TestWorkflowEnvironment` equivalent. Blocked until the upstream SDK
+  publishes a stable test environment, or until this project explicitly
+  accepts owning a separate test-harness facade.
 
 Done when:
 
@@ -515,6 +520,12 @@ worker/activity/client surface. These do not block "majority parity."
   PascalCase/camelCase overrides, package paths, etc. Rust idioms and the
   proto-driven defaults this plugin already emits cover the same ground;
   these flags would not have a Rust equivalent worth maintaining.
+- **Patch / protopatch handling.** cludden's `Patch` annotation
+  (`PV_64` + `PVM_*` modes) controls how the Go plugin stages fix-version
+  migrations for inline Bloblang expression evaluation. The Rust plugin
+  compiles templates at codegen time, so the inline-eval pattern doesn't
+  exist and there's no equivalent staging concern. The `patches` proto
+  field is rejected at parse so users see the no-op explicitly.
 
 ## Current Unsupported Items
 
@@ -534,8 +545,8 @@ toward majority parity.
 | Update ids/default wait stage | All shipped 2026-05-13: `UpdateOptions.id` → `<update>_by_template`; `wait_for_stage` + deprecated `wait_policy` → `Option<WaitPolicy>` with proto-default fold. | R5 |
 | CLI command execution | Parser scaffold only. | R6 |
 | Bloblang | Only simple `{{ .Field }}` workflow id templates are supported. | R7 |
-| Codec server / test clients / patch handling | Not generated. | R8 |
-| XNS / Nexus / generated docs / Go-specific naming knobs | Out of scope — see R8 "Explicitly out of scope". | — |
+| Codec server / test clients | Not generated; blocked on upstream SDK 0.4 gaps. | R8 |
+| XNS / Nexus / generated docs / Go-specific naming knobs / Patch handling | Out of scope — see R8 "Explicitly out of scope". | — |
 
 ## Verification Gate
 
