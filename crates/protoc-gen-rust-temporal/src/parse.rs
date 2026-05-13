@@ -542,10 +542,23 @@ fn workflow_from(
         attached_signals: opts
             .signal
             .into_iter()
-            .map(|s| SignalRef {
-                rpc_method: s.r#ref,
-                start: s.start,
-                cross_service: None,
+            .map(|s| {
+                let (cli_name, cli_aliases, cli_usage) = match s.cli.as_ref() {
+                    Some(c) => (
+                        (!c.name.is_empty()).then(|| c.name.clone()),
+                        c.aliases.clone(),
+                        (!c.usage.is_empty()).then(|| c.usage.clone()),
+                    ),
+                    None => (None, Vec::new(), None),
+                };
+                SignalRef {
+                    rpc_method: s.r#ref,
+                    start: s.start,
+                    cross_service: None,
+                    cli_name,
+                    cli_aliases,
+                    cli_usage,
+                }
             })
             .collect(),
         attached_queries: opts
@@ -791,9 +804,6 @@ fn reject_unsupported_workflow_signal_ref(
 ) -> Result<()> {
     for r in refs {
         let mut unsupported: Vec<&'static str> = Vec::new();
-        if r.cli.is_some() {
-            unsupported.push("cli");
-        }
         if r.xns.is_some() {
             unsupported.push("xns");
         }

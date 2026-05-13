@@ -2690,6 +2690,46 @@ fn render_cli_run_impl(out: &mut String, svc: &ServiceModel) {
 /// `verb` is `"start"` or `"attach"`; it's prepended to the override so
 /// the user-facing names stay disambiguated between the two variants
 /// generated per workflow.
+/// Pick the first `WorkflowOptions.signal[N].cli` override that any
+/// workflow on the service declares for `signal_rpc`. The CLI emit is
+/// service-scoped (one `Signal<Name>` variant per signal regardless of
+/// how many workflows ref it), so when multiple workflows declare
+/// conflicting overrides for the same signal we deterministically
+/// pick the first by `svc.workflows` order. Same-shape overrides
+/// (name + aliases + usage) all flow from the same picked ref.
+fn signal_ref_cli_attrs(svc: &crate::model::ServiceModel, signal_rpc: &str) -> String {
+    let Some(sref) = svc
+        .workflows
+        .iter()
+        .flat_map(|wf| &wf.attached_signals)
+        .find(|sref| {
+            sref.rpc_method == signal_rpc
+                && (sref.cli_name.is_some()
+                    || !sref.cli_aliases.is_empty()
+                    || sref.cli_usage.is_some())
+        })
+    else {
+        return String::new();
+    };
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(name) = sref.cli_name.as_ref() {
+        parts.push(format!("name = \"signal-{}\"", name.escape_default()));
+    }
+    if !sref.cli_aliases.is_empty() {
+        let aliases = sref
+            .cli_aliases
+            .iter()
+            .map(|a| format!("\"signal-{}\"", a.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!("alias = [{aliases}]"));
+    }
+    if let Some(usage) = sref.cli_usage.as_ref() {
+        parts.push(format!("about = \"{}\"", usage.escape_default()));
+    }
+    parts.join(", ")
+}
+
 fn cli_command_attrs(verb: &str, wf: &crate::model::WorkflowModel) -> String {
     let mut parts: Vec<String> = Vec::new();
     if let Some(name) = wf.cli_name.as_ref() {
@@ -2814,13 +2854,20 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     // becomes a `Signal<Name>(Signal<Name>Args)` variant that calls
     // into the existing `client.<signal>(workflow_id, input)` method.
     // Empty-input signals skip the `--input-file` flag entirely.
+    // Per-`WorkflowOptions.signal[N].cli` overrides on any workflow
+    // ref attach to the signal's subcommand; the first such override
+    // encountered (deterministic by workflow order) wins.
     for sig in &svc.signals {
         let sig_pascal = sig.rpc_method.to_pascal_case();
+        let signal_attrs = signal_ref_cli_attrs(svc, &sig.rpc_method);
         let _ = writeln!(
             out,
             "        /// Send the `{}` signal to a workflow by id.",
             sig.registered_name
         );
+        if !signal_attrs.is_empty() {
+            let _ = writeln!(out, "        #[command({signal_attrs})]");
+        }
         let _ = writeln!(out, "        Signal{sig_pascal}(Signal{sig_pascal}Args),");
     }
     // R6 — per-query CLI subcommands. Each `(temporal.v1.query)` rpc

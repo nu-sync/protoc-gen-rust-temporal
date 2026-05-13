@@ -138,6 +138,19 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R6 — `WorkflowOptions.signal[N].cli` per-ref overrides honoured):
+  the nested `cli` field on signal refs moves from rejected to
+  supported. `SignalRef` gains `cli_name` / `cli_aliases` /
+  `cli_usage`; render's `signal_ref_cli_attrs` helper picks the first
+  workflow ref carrying overrides for a given signal (service-scoped
+  CLI emit means multiple workflows can't disagree usefully) and
+  threads them into the `Signal<Name>` clap variant as
+  `#[command(name = "signal-<name>", alias = [...], about = …)]`.
+  The Signal[].cli diagnostic-coverage case in
+  `unsupported_field_support_status_table` is gone since the field is
+  no longer rejected; one new positive test pins the override emit.
+  No bridge signature change; no fixture goldens touched (no fixture
+  uses signal-ref cli overrides).
 - 2026-05-13 (R1 — cross-service with-start free fns emit):
   `render_with_start_functions` previously dropped cross-service
   refs silently when looking up the SignalModel / UpdateModel from

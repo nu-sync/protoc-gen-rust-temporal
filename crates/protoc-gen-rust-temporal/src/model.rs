@@ -152,6 +152,13 @@ pub struct SignalRef {
     /// rpc on a *different* service. `None` for same-service refs (the
     /// existing same-service signal lookup in `render.rs` covers those).
     pub cross_service: Option<CrossServiceTarget>,
+    /// Per-`WorkflowOptions.signal[N].cli.name` override. `None` keeps
+    /// clap's kebab-case `signal-<name>` default.
+    pub cli_name: Option<String>,
+    /// Per-`WorkflowOptions.signal[N].cli.aliases` override.
+    pub cli_aliases: Vec<String>,
+    /// Per-`WorkflowOptions.signal[N].cli.usage` override.
+    pub cli_usage: Option<String>,
 }
 
 #[derive(Debug, Clone)]

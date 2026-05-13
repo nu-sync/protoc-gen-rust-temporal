@@ -67,9 +67,9 @@ Separate extension from `(temporal.v1.service)`; configures the top-level
 
 | Field | Status | Notes |
 |---|---|---|
-| `ref` | supported | Must name a sibling rpc carrying `(temporal.v1.signal)`. |
-| `start` | supported | Triggers emission of `<signal>_with_start`. |
-| `cli` | rejected | R6. |
+| `ref` | supported | Must name a sibling rpc carrying `(temporal.v1.signal)`, or a fully-qualified cross-service ref. |
+| `start` | supported | Triggers emission of `<signal>_with_start` (same-service and cross-service). |
+| `cli` | supported | Per-ref `{name, aliases, usage}` flow into the `Signal<Name>` clap subcommand's `#[command(name = "signal-<name>", alias = [...], about = …)]`. Service-scoped CLI emit means the first workflow ref carrying overrides for a given signal wins. |
 | `xns` | rejected | R8. |
 
 ### WorkflowOptions.Query[] (nested)
