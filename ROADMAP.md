@@ -138,6 +138,15 @@ Progress:
   `start_workflow_proto` / `start_workflow_proto_empty` grew a trailing bool;
   the runtime-API doc bumps the signature to 0.1.2. Two new tests pin the
   positive path and the false baseline; example regenerated.
+- 2026-05-13 (R4 — per-activity `<RPC>_ACTIVITY_TASK_QUEUE` consts):
+  every activity that declares `(temporal.v1.activity).task_queue`
+  now emits a `pub const <RPC>_ACTIVITY_TASK_QUEUE: &str = …`. Mirrors
+  the per-workflow `<RPC>_TASK_QUEUE` const shape. Activities that
+  omit the task_queue field produce no const, so existing fixtures
+  stay clean (no fixture declares an activity task_queue). One new
+  positive parse_validate test pins both the emitted-when-declared
+  and omitted-otherwise behaviours. No bridge signature change; no
+  fixture goldens touched.
 - 2026-05-13 (R4 — `<Service>Client` identity consts: `PACKAGE` / `SERVICE_NAME` / `FULLY_QUALIFIED_SERVICE_NAME`):
   three more `&'static str` consts on the generated client impl,
   carrying the proto namespace identity (e.g. `PACKAGE = "jobs.v1"`,

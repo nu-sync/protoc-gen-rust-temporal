@@ -268,6 +268,24 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
             "    pub const {out_const}: &str = \"{}\";",
             act.output_type.full_name
         );
+        // Per-activity task_queue const, parallel of the per-workflow
+        // `<RPC>_TASK_QUEUE`. Only emits when the proto declares one
+        // (via the activity's `default_options.task_queue`).
+        if let Some(tq) = act
+            .default_options
+            .as_ref()
+            .and_then(|s| s.task_queue.as_deref())
+        {
+            let tq_const = format!(
+                "{}_ACTIVITY_TASK_QUEUE",
+                act.rpc_method.to_shouty_snake_case()
+            );
+            let _ = writeln!(
+                out,
+                "    pub const {tq_const}: &str = \"{}\";",
+                tq.escape_default()
+            );
+        }
     }
     if !svc.signals.is_empty()
         || !svc.queries.is_empty()

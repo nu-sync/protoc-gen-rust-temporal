@@ -1620,6 +1620,48 @@ fn cli_emit_renders_cancel_and_terminate_subcommands() {
 }
 
 #[test]
+fn activity_task_queue_const_emits_when_declared() {
+    // R4 — `<RPC>_ACTIVITY_TASK_QUEUE: &str` emits per activity that
+    // declares `(temporal.v1.activity).task_queue`. Activities that
+    // omit it produce no const (mirrors the workflow-side behaviour
+    // where `<RPC>_TASK_QUEUE` only emits when the workflow or
+    // service declares one).
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package atq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc DoWorkA(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              task_queue: "specialised-queue"
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+          rpc DoWorkB(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const DO_WORK_A_ACTIVITY_TASK_QUEUE: &str = \"specialised-queue\";"),
+        "activity task_queue const missing when declared: {source}"
+    );
+    assert!(
+        !source.contains("DO_WORK_B_ACTIVITY_TASK_QUEUE"),
+        "activity task_queue const must NOT emit when not declared: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_service_identity_consts() {
     // R4 — `<Service>Client` carries `PACKAGE`, `SERVICE_NAME`, and
     // `FULLY_QUALIFIED_SERVICE_NAME` consts so tooling that needs the
