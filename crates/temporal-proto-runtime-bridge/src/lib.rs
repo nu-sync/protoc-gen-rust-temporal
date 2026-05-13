@@ -173,14 +173,30 @@ fn encode_proto_payload<T: TemporalProtoMessage>(msg: &T) -> Payload {
     }
 }
 
-/// Convenience: decode a single `binary/protobuf` payload back into a prost
-/// message. Metadata mismatch is *not* checked here — the wire-format invariant
-/// is asserted by `temporal-proto-runtime`'s `TemporalDeserializable` impl;
-/// this helper is only reached after the SDK has already validated metadata.
-fn decode_proto_payload<T: TemporalProtoMessage>(
-    payload: &Payload,
-) -> std::result::Result<T, prost::DecodeError> {
-    T::decode(payload.data.as_slice())
+/// Decode a single `binary/protobuf` payload back into a prost message,
+/// enforcing the `WIRE-FORMAT.md` triple. Generated client code calls this
+/// directly — it does NOT go through the SDK's `TemporalDeserializable`
+/// path (which would validate metadata for us), because the SDK returns
+/// raw `Payloads` for the workflow/query/update result helpers we use here.
+/// Skipping the check would let a misconfigured worker hand back arbitrary
+/// bytes that decode as garbage instead of failing loudly.
+fn decode_proto_payload<T: TemporalProtoMessage>(payload: &Payload) -> Result<T> {
+    let encoding = payload.metadata.get("encoding").map(Vec::as_slice);
+    if encoding != Some(ENCODING.as_bytes()) {
+        anyhow::bail!(
+            "payload encoding mismatch: expected {ENCODING:?}, got {:?}",
+            encoding.map(String::from_utf8_lossy),
+        );
+    }
+    let msg_type = payload.metadata.get("messageType").map(Vec::as_slice);
+    if msg_type != Some(T::MESSAGE_TYPE.as_bytes()) {
+        anyhow::bail!(
+            "payload messageType mismatch: expected {:?}, got {:?}",
+            T::MESSAGE_TYPE,
+            msg_type.map(String::from_utf8_lossy),
+        );
+    }
+    T::decode(payload.data.as_slice()).context("decode payload bytes")
 }
 
 /// Build the `(binary/protobuf, google.protobuf.Empty, data=[])` payload
@@ -348,12 +364,46 @@ where
 }
 
 /// Wait variant for workflows that return `google.protobuf.Empty`.
+/// Validates the returned payload carries the `(binary/protobuf,
+/// google.protobuf.Empty, data=[])` triple — same wire-format invariant as
+/// the typed path, applied to the empty case so a worker that returns a
+/// non-empty result can't silently round-trip as success.
 pub async fn wait_result_unit(handle: &WorkflowHandle) -> Result<()> {
-    handle
+    let raw = handle
         .untyped()
         .get_result(WorkflowGetResultOptions::builder().build())
         .await
         .context("await workflow result")?;
+    let payload = raw
+        .payloads
+        .first()
+        .context("workflow returned no payloads")?;
+    validate_empty_payload(payload).context("validate workflow output")
+}
+
+/// Enforce the `(binary/protobuf, google.protobuf.Empty, data=[])` triple
+/// that `WIRE-FORMAT.md` mandates for any `google.protobuf.Empty` payload.
+fn validate_empty_payload(payload: &Payload) -> Result<()> {
+    let encoding = payload.metadata.get("encoding").map(Vec::as_slice);
+    if encoding != Some(ENCODING.as_bytes()) {
+        anyhow::bail!(
+            "empty payload encoding mismatch: expected {ENCODING:?}, got {:?}",
+            encoding.map(String::from_utf8_lossy),
+        );
+    }
+    let msg_type = payload.metadata.get("messageType").map(Vec::as_slice);
+    if msg_type != Some(EMPTY_MESSAGE_TYPE.as_bytes()) {
+        anyhow::bail!(
+            "empty payload messageType mismatch: expected {EMPTY_MESSAGE_TYPE:?}, got {:?}",
+            msg_type.map(String::from_utf8_lossy),
+        );
+    }
+    if !payload.data.is_empty() {
+        anyhow::bail!(
+            "empty payload carried {} byte(s) of data — google.protobuf.Empty has no fields",
+            payload.data.len(),
+        );
+    }
     Ok(())
 }
 
@@ -822,6 +872,89 @@ mod tests {
         );
         let decoded: Sample = decode_proto_payload(&payload).expect("decode");
         assert_eq!(decoded, original);
+    }
+
+    // Regression guards for the bridge's wire-format decode contract. The
+    // SDK hands us raw `Payloads` for workflow/query/update results — it
+    // does NOT run them through `TemporalDeserializable`, so the metadata
+    // check has to live in the bridge or it doesn't run at all.
+    #[test]
+    fn decode_rejects_wrong_encoding() {
+        let mut payload = encode_proto_payload(&Sample { name: "x".into() });
+        payload
+            .metadata
+            .insert("encoding".to_string(), b"json/plain".to_vec());
+        let err = decode_proto_payload::<Sample>(&payload)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("encoding mismatch"),
+            "expected encoding-mismatch diagnostic, got: {err}"
+        );
+    }
+
+    #[test]
+    fn decode_rejects_wrong_message_type() {
+        let mut payload = encode_proto_payload(&Sample { name: "x".into() });
+        payload
+            .metadata
+            .insert("messageType".to_string(), b"other.v1.Wrong".to_vec());
+        let err = decode_proto_payload::<Sample>(&payload)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("messageType mismatch"),
+            "expected messageType-mismatch diagnostic, got: {err}"
+        );
+    }
+
+    #[test]
+    fn decode_rejects_missing_metadata() {
+        let payload = Payload {
+            metadata: std::collections::HashMap::new(),
+            data: prost::Message::encode_to_vec(&Sample { name: "x".into() }),
+            external_payloads: vec![],
+        };
+        let err = decode_proto_payload::<Sample>(&payload)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("encoding mismatch"),
+            "expected diagnostic when metadata is missing, got: {err}"
+        );
+    }
+
+    // Regression guards for `wait_result_unit`'s payload validation. A
+    // worker that returns a non-empty payload from a workflow declared to
+    // return Empty must fail the wait, not silently round-trip as success.
+    #[test]
+    fn validate_empty_accepts_canonical_triple() {
+        let payload = encode_empty_payload();
+        validate_empty_payload(&payload).expect("canonical Empty triple must validate");
+    }
+
+    #[test]
+    fn validate_empty_rejects_non_empty_data() {
+        let mut payload = encode_empty_payload();
+        payload.data = vec![0x01];
+        let err = validate_empty_payload(&payload).unwrap_err().to_string();
+        assert!(
+            err.contains("byte"),
+            "expected non-empty-data diagnostic, got: {err}"
+        );
+    }
+
+    #[test]
+    fn validate_empty_rejects_typed_message_type() {
+        let mut payload = encode_empty_payload();
+        payload
+            .metadata
+            .insert("messageType".to_string(), b"test.v1.Sample".to_vec());
+        let err = validate_empty_payload(&payload).unwrap_err().to_string();
+        assert!(
+            err.contains("messageType mismatch"),
+            "expected messageType-mismatch diagnostic, got: {err}"
+        );
     }
 
     #[test]

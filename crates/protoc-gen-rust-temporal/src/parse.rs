@@ -259,6 +259,7 @@ fn workflow_from(
 ) -> Result<WorkflowModel> {
     let rpc_method = method.name().to_string();
     reject_unsupported_workflow_options(&opts, service_name, &rpc_method)?;
+    reject_unsupported_workflow_update_ref(&opts.update, service_name, &rpc_method)?;
     let registered_name = if opts.name.is_empty() {
         default_registered_name(package, service_name, &rpc_method)
     } else {
@@ -447,6 +448,10 @@ fn reject_unsupported_workflow_options(
 /// and `wait_for_stage` (default `WaitPolicy` for the update) are runtime-
 /// affecting but not threaded through the v1 emit. Error out so users don't
 /// ship updates that silently default to `Completed` waits or random ids.
+///
+/// `wait_policy` is the deprecated predecessor of `wait_for_stage`. cludden's
+/// Go plugin still honours it on legacy protos; ignoring it here would let a
+/// user port a Go service over and silently lose their default policy.
 fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &str) -> Result<()> {
     let mut unsupported: Vec<&'static str> = Vec::new();
     if !opts.id.is_empty() {
@@ -455,6 +460,10 @@ fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &
     if opts.wait_for_stage != 0 {
         unsupported.push("wait_for_stage");
     }
+    #[allow(deprecated)] // intentional: see doc comment.
+    if opts.wait_policy != 0 {
+        unsupported.push("wait_policy (deprecated)");
+    }
     if unsupported.is_empty() {
         return Ok(());
     }
@@ -462,6 +471,26 @@ fn reject_unsupported_update_options(opts: &UpdateOptions, service: &str, rpc: &
         "{service}.{rpc}: (temporal.v1.update) sets runtime-affecting field(s) {} that the v1 Rust client emit does not yet honour. Remove the field(s) or pin to a generator release that supports them.",
         unsupported.join(", "),
     ))
+}
+
+/// Per-update fields nested inside `WorkflowOptions.update[]` that the v1
+/// emit drops. The bridge's `update-with-start` path hardcodes
+/// `WorkflowIdConflictPolicy::UseExisting`, so a proto-level override would
+/// be silently ignored — refuse the proto rather than ship the wrong policy.
+fn reject_unsupported_workflow_update_ref(
+    refs: &[crate::temporal::v1::workflow_options::Update],
+    service: &str,
+    rpc: &str,
+) -> Result<()> {
+    for r in refs {
+        if r.workflow_id_conflict_policy != 0 {
+            return Err(anyhow!(
+                "{service}.{rpc}: (temporal.v1.workflow).update[ref={}] sets workflow_id_conflict_policy, which the v1 Rust client emit does not yet honour (update-with-start hardcodes UseExisting). Remove the field or pin to a generator release that supports it.",
+                r.r#ref,
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// In v1 the plugin only emits a name-const + trait surface for activities
@@ -551,6 +580,11 @@ fn duration_from_proto(d: prost_types::Duration) -> Option<Duration> {
 /// whitespace inside the braces). More complex Go-template syntax
 /// (conditionals, functions, ranges) returns an error so users see the
 /// limitation up front rather than at runtime.
+///
+/// Bloblang expressions (`${! ... }`) — used by cludden's Go plugin for
+/// search-attribute mappings — are rejected here. They look like literal
+/// text to the `{{...}}` scanner, which would otherwise let them through
+/// as a static workflow ID and silently collide every execution.
 fn parse_id_template(
     template: &str,
     input: &prost_reflect::MessageDescriptor,
@@ -559,7 +593,9 @@ fn parse_id_template(
     let mut rest = template;
     while let Some(open) = rest.find("{{") {
         if open > 0 {
-            out.push(IdTemplateSegment::Literal(rest[..open].to_string()));
+            let literal = &rest[..open];
+            reject_bloblang(literal, template)?;
+            out.push(IdTemplateSegment::Literal(literal.to_string()));
         }
         let after_open = &rest[open + 2..];
         let close = after_open
@@ -600,7 +636,24 @@ fn parse_id_template(
         rest = &after_open[close + 2..];
     }
     if !rest.is_empty() {
+        reject_bloblang(rest, template)?;
         out.push(IdTemplateSegment::Literal(rest.to_string()));
     }
     Ok(out)
+}
+
+/// Bloblang `${...}` and `${! ...}` expressions are an unrelated templating
+/// dialect cludden's Go plugin uses for search-attribute mappings. The id
+/// template scanner only knows `{{...}}`, so a Bloblang expression slips
+/// through as a literal — which would compile clean and ship, then collide
+/// every workflow under the same literal ID at runtime. Refuse them up-front
+/// so users see the limitation at codegen time.
+fn reject_bloblang(literal: &str, template: &str) -> Result<()> {
+    if literal.contains("${") {
+        anyhow::bail!(
+            "id template {template:?} contains a Bloblang expression (`${{...}}`); \
+             only Go-template `{{{{ .Field }}}}` references are supported in workflow ids"
+        );
+    }
+    Ok(())
 }

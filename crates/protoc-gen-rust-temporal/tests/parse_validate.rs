@@ -736,6 +736,109 @@ fn update_with_id_template_is_rejected() {
 }
 
 #[test]
+fn update_with_deprecated_wait_policy_is_rejected() {
+    // The deprecated `wait_policy` field on UpdateOptions still appears on
+    // legacy protos ported from cludden's Go plugin. Silently ignoring it
+    // would let a user lose their default WaitPolicy on the Rust client.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Patch" }]
+            };
+          }
+          rpc Patch(In) returns (Out) {
+            option (temporal.v1.update) = { wait_policy: WAIT_POLICY_ACCEPTED };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("wait_policy"),
+        "expected deprecated-wait_policy diagnostic, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_update_ref_with_conflict_policy_is_rejected() {
+    // The bridge's update-with-start path hardcodes UseExisting; a per-
+    // update conflict_policy override on WorkflowOptions.update[] would
+    // be silently dropped. Refuse the proto rather than ship the wrong
+    // policy.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [{ ref: "Patch" workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_FAIL }]
+            };
+          }
+          rpc Patch(In) returns (Out) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("workflow_id_conflict_policy") && err.contains("Patch"),
+        "expected nested-update conflict_policy diagnostic, got: {err}"
+    );
+}
+
+#[test]
+fn workflow_id_with_bloblang_expression_is_rejected() {
+    // Bloblang `${! ... }` is cludden's search-attribute templating dialect
+    // and looks like literal text to the `{{...}}` scanner. Without an
+    // explicit reject, every workflow under such an annotation would ship
+    // with the same literal ID and collide on every execution.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package guard.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              id: "user-${! name.or(\"anon\") }"
+            };
+          }
+        }
+        message In { string name = 1; }
+        message Out {}
+        "#,
+    );
+    let err = parse::parse(&pool, &files_to_generate).unwrap_err();
+    let full = format!("{err:#}");
+    assert!(
+        full.contains("Bloblang"),
+        "expected Bloblang-rejection diagnostic, got: {full}"
+    );
+}
+
+#[test]
 fn activity_with_timeouts_is_rejected() {
     let (pool, files_to_generate, _tmp) = compile_fixture_inline(
         r#"
