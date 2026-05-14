@@ -908,6 +908,40 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[{joined}];"
         );
     }
+    // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
+    // handlers. Inverse of `lookup_handler_kind`: iterates once with
+    // both dimensions instead of probing per-name. Same kind labels
+    // and same declaration order as the per-kind aggregates. Useful
+    // for routing tables that need to dispatch on (kind, name)
+    // together. Skip-emit when the service has zero handlers
+    // (matches ALL_HANDLER_NAMES skip-guard).
+    if !all_names.is_empty() {
+        let mut by_kind: Vec<(&'static str, &str)> = Vec::new();
+        for n in &wf_names {
+            by_kind.push(("workflow", n));
+        }
+        for n in &sig_names {
+            by_kind.push(("signal", n));
+        }
+        for n in &q_names {
+            by_kind.push(("query", n));
+        }
+        for n in &u_names {
+            by_kind.push(("update", n));
+        }
+        for n in &act_names {
+            by_kind.push(("activity", n));
+        }
+        let joined = by_kind
+            .iter()
+            .map(|(k, n)| format!("(\"{}\", \"{}\")", k, n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[{joined}];"
+        );
+    }
     // `lookup_handler_kind(name) -> Option<&'static str>` — generic
     // dispatch helper that scans the per-kind name aggregates and
     // returns "workflow" / "signal" / "query" / "update" / "activity"

@@ -3747,6 +3747,29 @@ fn client_lookup_handler_kind_emits_only_present_kind_probes() {
 }
 
 #[test]
+fn client_exposes_registered_names_by_kind_pairs_const() {
+    // R6 ergonomics — `<Service>Client::REGISTERED_NAMES_BY_KIND`
+    // is a `&'static [(&'static str, &'static str)]` of `(kind, name)`
+    // pairs across all handlers. Inverse of `lookup_handler_kind`:
+    // iterates once with both dimensions instead of probing per-name.
+    // Same kind labels (`"workflow"` / `"signal"` / `"query"` /
+    // `"update"` / `"activity"`) and same declaration order as the
+    // per-kind aggregates. Useful for routing tables that need to
+    // dispatch on (kind, name) together.
+    //
+    // `minimal_workflow` declares one of each kind, so the const
+    // contains all five pairs in canonical order.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[(\"workflow\", \"jobs.v1.JobService.RunJob\"), (\"signal\", \"jobs.v1.JobService.CancelJob\"), (\"query\", \"jobs.v1.JobService.GetStatus\"), (\"update\", \"jobs.v1.JobService.Reconfigure\"), (\"activity\", \"jobs.v1.JobService.ProcessChunk\")];"
+        ),
+        "REGISTERED_NAMES_BY_KIND must list all five (kind, name) pairs in canonical order: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflow_task_queue_table_lookup_const() {
     // R6 ergonomics — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
     // is a const lookup table mapping each workflow's registered

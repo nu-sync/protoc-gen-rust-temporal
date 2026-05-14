@@ -99,6 +99,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const SIGNAL_COUNT: usize = Self::SIGNAL_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["multi", "multi-beta"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi"), ("multi.v1.MultiService.Beta", "multi-beta")];
+        pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "multi.v1.MultiService.Alpha"), ("workflow", "multi.v1.MultiService.Beta"), ("signal", "multi.v1.MultiService.Ping")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

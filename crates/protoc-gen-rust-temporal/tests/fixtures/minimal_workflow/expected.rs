@@ -116,6 +116,7 @@ pub mod jobs_v1_job_service_temporal {
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["jobs"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.RunJob", "jobs")];
+        pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "jobs.v1.JobService.RunJob"), ("signal", "jobs.v1.JobService.CancelJob"), ("query", "jobs.v1.JobService.GetStatus"), ("update", "jobs.v1.JobService.Reconfigure"), ("activity", "jobs.v1.JobService.ProcessChunk")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

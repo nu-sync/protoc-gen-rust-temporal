@@ -802,6 +802,27 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::REGISTERED_NAMES_BY_KIND`
+  `(kind, name)` pairs const): every `<Service>Client` whose service
+  has at least one handler now exposes
+  `pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)]`
+  — the inverse of `lookup_handler_kind`. Iterates once with both
+  dimensions instead of probing per-name. Same kind labels
+  (`"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`)
+  and same declaration order as the per-kind aggregates. Useful for
+  routing tables that need to dispatch on (kind, name) together:
+  ```
+  for (kind, name) in MyClient::REGISTERED_NAMES_BY_KIND {
+      router.register(kind, name, /* handler */);
+  }
+  ```
+  Skip-emit when the service has zero handlers (matches
+  ALL_HANDLER_NAMES skip-guard). One new positive parse_validate
+  test (`client_exposes_registered_names_by_kind_pairs_const`) pins
+  the full pair list on `minimal_workflow` (which declares one of
+  each kind in canonical order). 16 fixture goldens reblessed (every
+  Client gains the const). 261 parse_validate tests green;
+  workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
   workflow→queue lookup const): every `<Service>Client` whose
   service has at least one workflow with an effective task queue now

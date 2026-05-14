@@ -94,6 +94,7 @@ pub mod cli_v1_report_service_temporal {
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["reports"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "reports"), ("cli.v1.ReportService.Aggregate", "reports")];
+        pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "cli.v1.ReportService.Generate"), ("workflow", "cli.v1.ReportService.Aggregate")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
