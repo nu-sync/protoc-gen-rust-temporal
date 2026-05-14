@@ -802,6 +802,25 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::random_workflow_id_with_prefix(prefix)`):
+  prefixed UUID-id helper, sibling of the existing
+  `random_workflow_id()` static. Returns a UUID-based workflow id
+  with `prefix` prepended:
+  ```
+  MyClient::random_workflow_id_with_prefix("test-")
+  ⇒ "test-9f3e..."
+  ```
+  Useful for namespacing random ids by environment / tenant / test
+  name so dashboards can group them without parsing UUIDs. Takes
+  `impl ::std::fmt::Display` so callers can pass `&str`, `String`,
+  or any other Display implementor (test ids, integers for shard
+  numbers, etc.). Body forwards to `Self::random_workflow_id()`
+  via `format!`. One new positive parse_validate test
+  (`client_exposes_random_workflow_id_with_prefix_helper`) pins
+  the fn signature and the format-call body. 16 fixture goldens
+  reblessed (every Client gains the helper). 250 parse_validate
+  tests green — milestone — workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::<wf>_handles<I, S>(ids)` bulk-
   attach helper): every workflow on the Client now also exposes a
   bulk variant of the existing `<wf>_handle(id)` attach method.

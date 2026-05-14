@@ -98,6 +98,11 @@ pub mod act_v1_worker_only_service_temporal {
         pub fn random_workflow_id() -> String {
             temporal_runtime::random_workflow_id()
         }
+        /// Random UUID-based workflow id with `prefix` prepended.
+        /// Sugar for `format!("{prefix}{}", Self::random_workflow_id())`.
+        pub fn random_workflow_id_with_prefix(prefix: impl ::std::fmt::Display) -> String {
+            ::std::format!("{}{}", prefix, Self::random_workflow_id())
+        }
 
         pub fn into_inner(self) -> temporal_runtime::TemporalClient {
             self.client

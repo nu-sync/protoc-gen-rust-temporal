@@ -1074,6 +1074,32 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "        pub fn random_workflow_id() -> String {{");
     let _ = writeln!(out, "            temporal_runtime::random_workflow_id()");
     let _ = writeln!(out, "        }}");
+    // Prefixed variant — sugar over `format!("{prefix}{}",
+    // random_workflow_id())`. Useful for namespacing random ids by
+    // environment / tenant / test name so dashboards can group them
+    // without parsing UUIDs:
+    //     `MyClient::random_workflow_id_with_prefix("test-")`
+    //   ⇒ `"test-9f3e..."`
+    // Takes `impl ::std::fmt::Display` so callers can pass &str,
+    // String, or any other Display implementor (test ids, integers
+    // for shard numbers, etc.).
+    let _ = writeln!(
+        out,
+        "        /// Random UUID-based workflow id with `prefix` prepended."
+    );
+    let _ = writeln!(
+        out,
+        "        /// Sugar for `format!(\"{{prefix}}{{}}\", Self::random_workflow_id())`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn random_workflow_id_with_prefix(prefix: impl ::std::fmt::Display) -> String {{"
+    );
+    let _ = writeln!(
+        out,
+        "            ::std::format!(\"{{}}{{}}\", prefix, Self::random_workflow_id())"
+    );
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
     // Consuming accessor — lets callers transfer ownership of the
     // underlying `TemporalClient` for sharing across multiple

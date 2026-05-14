@@ -3387,6 +3387,29 @@ fn client_exposes_handler_count_const_derived_from_aggregate() {
 }
 
 #[test]
+fn client_exposes_random_workflow_id_with_prefix_helper() {
+    // R6 ergonomics — `<Service>Client::random_workflow_id_with_prefix(prefix)`
+    // returns a UUID-based workflow id with `prefix` prepended.
+    // Useful for namespacing random ids by environment / tenant /
+    // test name so dashboards can group them without parsing UUIDs.
+    // Takes `impl Display` so callers can pass &str, String, or any
+    // other Display implementor (test ids, integers for shard
+    // numbers, etc.).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub fn random_workflow_id_with_prefix(prefix: impl ::std::fmt::Display) -> String {"
+        ),
+        "missing random_workflow_id_with_prefix fn signature: {source}"
+    );
+    assert!(
+        source.contains("::std::format!(\"{}{}\", prefix, Self::random_workflow_id())"),
+        "body must format prefix + Self::random_workflow_id(): {source}"
+    );
+}
+
+#[test]
 fn client_exposes_bulk_workflow_handles_helper() {
     // R6 ergonomics — `<Service>Client::<wf>_handles<I, S>(ids)`
     // bulk-attach helper. Constructs `Vec<<Wf>Handle>` from any
