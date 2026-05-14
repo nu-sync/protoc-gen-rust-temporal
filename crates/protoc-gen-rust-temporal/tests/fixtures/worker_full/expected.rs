@@ -519,9 +519,9 @@ pub mod workerfull_v1_orchestration_service_temporal {
 
 
     // ── Activities ────────────────────────────────────────────
-    // Phase 2 (activities=true): typed trait + name consts. Wire to
-    // your worker via temporalio-sdk's #[activities] macro;
-    // see temporal-proto-runtime-bridge README for the adapter pattern.
+    // Phase 2 (activities=true): typed trait + name consts. Register
+    // implementations with register_<service>_activities; no parallel
+    // temporalio-sdk #[activities] adapter is required.
 
     pub const LOAD_ACTIVITY_NAME: &str = "workerfull.v1.OrchestrationService.Load";
 

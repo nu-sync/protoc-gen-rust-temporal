@@ -802,6 +802,27 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — fix example `jobs-proto` build-script marker
+  + restore stub-runtime parity for activity adapter): the
+  `jobs-proto` build script checked for a marker at
+  `src/gen/jobs.v1.rs`, but `buf.gen.yaml` actually emits into a
+  nested `<package>/<version>/` layout, so the marker never existed
+  and the script re-ran `buf generate` on every cargo invocation —
+  silently clobbering checked-in good output with whatever stale
+  `protoc-gen-rust-temporal` happened to be on PATH. Marker switched
+  to `src/gen/jobs/v1/jobs_temporal.rs` (the file `lib.rs`
+  `include!`s, so its presence proves a successful generation).
+  New regression test
+  (`build_marker::build_script_marker_path_exists_in_generated_tree`)
+  pins the marker-path-exists invariant to catch future drift.
+  Bundled with the stub-runtime update needed to keep
+  `generated_surface_compile.rs` aligned with the bridge's
+  `register_activity_fn` + `ActivityError(anyhow::Error)` surface
+  (replaces the older `ActivityImplementer` trait stub) and three
+  fixture goldens reblessed (activity-emit comment refresh).
+  All 239 parse_validate + 9 protoc_invoke + 1 generated-surface +
+  26 bridge tests green; full workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::FIELD_NAMES` static const):
   every `<Wf>StartOptions` struct now exposes
   `pub const FIELD_NAMES: &'static [&'static str]` listing all nine

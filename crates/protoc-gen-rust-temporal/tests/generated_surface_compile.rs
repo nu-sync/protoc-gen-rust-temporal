@@ -574,8 +574,18 @@ pub mod temporal_runtime {
         #[derive(Debug, Default)]
         pub struct Worker;
 
-        pub trait ActivityImplementer {}
         pub trait WorkflowImplementer {}
+
+        #[derive(Debug)]
+        pub struct ActivityError(anyhow::Error);
+        impl<E> From<E> for ActivityError
+        where
+            E: Into<anyhow::Error>,
+        {
+            fn from(error: E) -> Self {
+                Self(error.into())
+            }
+        }
 
         /// Stub of the SDK's ActivityDefinition trait so the generated
         /// per-activity marker structs + impls type-check against the
@@ -775,9 +785,14 @@ pub mod temporal_runtime {
         }
 
         impl Worker {
-            pub fn register_activities<I>(&mut self, _impl: I) -> &mut Self
+            pub fn register_activity_fn<AD, F, Fut>(&mut self, _handler: F) -> &mut Self
             where
-                I: ActivityImplementer,
+                AD: ActivityDefinition,
+                F: Fn(super::ActivityContext, AD::Input) -> Fut + Send + Sync + 'static,
+                Fut: ::std::future::Future<
+                        Output = ::std::result::Result<AD::Output, ActivityError>,
+                    > + Send
+                    + 'static,
             {
                 self
             }

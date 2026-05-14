@@ -126,9 +126,9 @@ pub mod workeract_v1_activity_worker_service_temporal {
 
 
     // ── Activities ────────────────────────────────────────────
-    // Phase 2 (activities=true): typed trait + name consts. Wire to
-    // your worker via temporalio-sdk's #[activities] macro;
-    // see temporal-proto-runtime-bridge README for the adapter pattern.
+    // Phase 2 (activities=true): typed trait + name consts. Register
+    // implementations with register_<service>_activities; no parallel
+    // temporalio-sdk #[activities] adapter is required.
 
     pub const FETCH_ACTIVITY_NAME: &str = "workeract.v1.ActivityWorkerService.Fetch";
     pub const PING_ACTIVITY_NAME: &str = "workeract.v1.ActivityWorkerService.Ping";

@@ -16,7 +16,16 @@ fn main() {
     println!("cargo:rerun-if-changed=../../proto/buf.gen.yaml");
 
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let gen_marker = manifest_dir.join("src/gen/jobs.v1.rs");
+    // Use the actual generated path that `lib.rs` `include!`s rather
+    // than a phantom flat path. The buf.gen.yaml emits into a nested
+    // `<package>/<version>/` layout (see `src/gen/jobs/v1/`), so a
+    // marker at `src/gen/jobs.v1.rs` would never exist — making the
+    // build script regenerate on every cargo invocation against
+    // whatever stale `protoc-gen-rust-temporal` happens to sit on
+    // PATH and silently clobber checked-in output. `jobs_temporal.rs`
+    // is the file this crate actually consumes; its presence proves a
+    // successful generation.
+    let gen_marker = manifest_dir.join("src/gen/jobs/v1/jobs_temporal.rs");
 
     if gen_marker.exists() {
         return;

@@ -473,9 +473,9 @@ pub mod acts_v1_chunk_service_temporal {
 
 
     // ── Activities ────────────────────────────────────────────
-    // Phase 2 (activities=true): typed trait + name consts. Wire to
-    // your worker via temporalio-sdk's #[activities] macro;
-    // see temporal-proto-runtime-bridge README for the adapter pattern.
+    // Phase 2 (activities=true): typed trait + name consts. Register
+    // implementations with register_<service>_activities; no parallel
+    // temporalio-sdk #[activities] adapter is required.
 
     pub const PROCESS_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Process";
     pub const HEARTBEAT_ACTIVITY_NAME: &str = "acts.v1.ChunkService.Heartbeat";
