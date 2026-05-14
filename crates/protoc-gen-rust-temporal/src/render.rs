@@ -915,6 +915,25 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
+    // `AsRef<TemporalClient>` — rounds out the conversion-trait
+    // surface alongside `From<TemporalClient>` and the
+    // `inner` / `into_inner` / `clone_inner` accessors. Lets generic
+    // bridge-consuming code spell:
+    //     fn use_client(c: impl AsRef<temporal_runtime::TemporalClient>) { ... }
+    // and accept either the typed wrapper or the raw bridge client
+    // without callers picking the right accessor.
+    let _ = writeln!(
+        out,
+        "    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for {client_struct} {{"
+    );
+    let _ = writeln!(
+        out,
+        "        fn as_ref(&self) -> &temporal_runtime::TemporalClient {{"
+    );
+    let _ = writeln!(out, "            &self.client");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
     // Continue the inherent impl block where the rest of the
     // client methods (per-workflow client surface) live.
     let _ = writeln!(out, "    impl {client_struct} {{");
@@ -2076,6 +2095,23 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
         "        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {{"
     );
     let _ = writeln!(out, "            Self::from_inner(inner)");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+    // `AsRef<WorkflowHandle>` — parallel of the Client ship. Lets
+    // generic bridge-consuming code (e.g. polling loops, signal
+    // adapters) accept either the typed wrapper or the raw bridge
+    // handle without callers picking the right accessor:
+    //     fn await_done(h: impl AsRef<temporal_runtime::WorkflowHandle>) { ... }
+    let _ = writeln!(
+        out,
+        "    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for {handle_struct} {{"
+    );
+    let _ = writeln!(
+        out,
+        "        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {{"
+    );
+    let _ = writeln!(out, "            &self.inner");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);

@@ -125,6 +125,12 @@ pub mod multi_v1_multi_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for MultiServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl MultiServiceClient {
         /// Start a new `multi.v1.MultiService.Alpha` workflow.
         pub async fn alpha(
@@ -330,6 +336,12 @@ pub mod multi_v1_multi_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for AlphaHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for AlphaHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 
@@ -548,6 +560,12 @@ pub mod multi_v1_multi_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for BetaHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for BetaHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

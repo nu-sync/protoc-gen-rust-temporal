@@ -121,6 +121,12 @@ pub mod cli_v1_report_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for ReportServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl ReportServiceClient {
         /// Start a new `cli.v1.ReportService.Generate` workflow.
         pub async fn generate(
@@ -329,6 +335,12 @@ pub mod cli_v1_report_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for GenerateHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
+        }
+    }
+
     impl GenerateHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
@@ -527,6 +539,12 @@ pub mod cli_v1_report_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for InternalHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for InternalHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

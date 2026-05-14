@@ -93,6 +93,12 @@ pub mod act_v1_worker_only_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for WorkerOnlyServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl WorkerOnlyServiceClient {
     }
 

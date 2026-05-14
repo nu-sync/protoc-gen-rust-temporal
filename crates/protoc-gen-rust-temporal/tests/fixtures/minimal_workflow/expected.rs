@@ -139,6 +139,12 @@ pub mod jobs_v1_job_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for JobServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl JobServiceClient {
         /// Start a new `jobs.v1.JobService.RunJob` workflow.
         pub async fn run_job(
@@ -320,6 +326,12 @@ pub mod jobs_v1_job_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunJobHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunJobHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

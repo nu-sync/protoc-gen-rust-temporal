@@ -100,6 +100,12 @@ pub mod workeract_v1_activity_worker_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for ActivityWorkerServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl ActivityWorkerServiceClient {
     }
 

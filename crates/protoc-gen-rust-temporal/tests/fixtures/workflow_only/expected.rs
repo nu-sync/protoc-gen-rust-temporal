@@ -101,6 +101,12 @@ pub mod solo_v1_solo_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for SoloServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl SoloServiceClient {
         /// Start a new `solo.v1.SoloService.DoWork` workflow.
         pub async fn do_work(
@@ -279,6 +285,12 @@ pub mod solo_v1_solo_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for DoWorkHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for DoWorkHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

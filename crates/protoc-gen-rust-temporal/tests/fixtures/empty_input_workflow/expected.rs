@@ -94,6 +94,12 @@ pub mod empty_v1_nop_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for NopServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl NopServiceClient {
         /// Start a new `empty.v1.NopService.Tick` workflow.
         pub async fn tick(
@@ -253,6 +259,12 @@ pub mod empty_v1_nop_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for TickHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for TickHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

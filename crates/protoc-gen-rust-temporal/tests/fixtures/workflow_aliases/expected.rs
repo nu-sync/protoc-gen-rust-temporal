@@ -102,6 +102,12 @@ pub mod aliases_v1_alias_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for AliasServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl AliasServiceClient {
         /// Start a new `aliases.v1.AliasService.Run` workflow.
         pub async fn run(
@@ -264,6 +270,12 @@ pub mod aliases_v1_alias_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

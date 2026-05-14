@@ -4304,6 +4304,49 @@ fn client_exposes_service_level_name_aggregates() {
 }
 
 #[test]
+fn client_and_handle_implement_as_ref_for_bridge_types() {
+    // R6 ergonomics — `<Service>Client` and `<Wf>Handle` both impl
+    // `AsRef<bridge type>`, rounding out the conversion-trait surface
+    // alongside `From<bridge>` and the `inner` / `into_inner` /
+    // `clone_inner` accessors. Lets generic bridge-consuming code
+    // spell:
+    //     fn use_client(c: impl AsRef<temporal_runtime::TemporalClient>) { ... }
+    //     fn await_done(h: impl AsRef<temporal_runtime::WorkflowHandle>) { ... }
+    // and accept either the typed wrapper or the raw bridge type
+    // without callers picking the right named accessor.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    // Client impl.
+    assert!(
+        source.contains(
+            "impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for JobServiceClient {"
+        ),
+        "Client AsRef<TemporalClient> impl must emit: {source}"
+    );
+    assert!(
+        source.contains("fn as_ref(&self) -> &temporal_runtime::TemporalClient {"),
+        "Client as_ref signature must emit: {source}"
+    );
+    // Handle impl — every workflow Handle. minimal_workflow's RunJob
+    // is the canonical instance.
+    assert!(
+        source.contains(
+            "impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunJobHandle {"
+        ),
+        "Handle AsRef<WorkflowHandle> impl must emit: {source}"
+    );
+    assert!(
+        source.contains("fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {"),
+        "Handle as_ref signature must emit: {source}"
+    );
+    // Body forwards to the relevant inner field.
+    assert!(
+        source.contains("            &self.client") && source.contains("            &self.inner"),
+        "AsRef bodies must borrow the inner field directly: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_service_default_task_queue_const_when_declared() {
     // R6 ergonomics — when a service declares a default task queue at
     // `(temporal.v1.service).task_queue`, the generated `<Service>Client`

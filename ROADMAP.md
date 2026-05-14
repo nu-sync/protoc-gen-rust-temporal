@@ -743,6 +743,28 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `AsRef<bridge>` impls on `<Service>Client` and
+  `<Wf>Handle`): rounds out the conversion-trait surface alongside
+  `From<bridge>` and the `inner` / `into_inner` / `clone_inner`
+  accessors. Both the `Client` and `Handle` wrappers now impl
+  `AsRef<temporal_runtime::TemporalClient>` and
+  `AsRef<temporal_runtime::WorkflowHandle>` respectively. Lets generic
+  bridge-consuming code spell:
+  ```
+  fn use_client(c: impl AsRef<temporal_runtime::TemporalClient>)  { ... }
+  fn await_done(h: impl AsRef<temporal_runtime::WorkflowHandle>) { ... }
+  ```
+  and accept either the typed wrapper or the raw bridge type without
+  callers picking the right named accessor. Closes a small but real
+  ergonomic gap — third-party libraries that consume Temporal handles
+  generically (polling loops, signal adapters, custom retry
+  middleware) can now take wrapper or bridge interchangeably. One
+  new positive parse_validate test
+  (`client_and_handle_implement_as_ref_for_bridge_types`) pins both
+  impls and the `&self.client` / `&self.inner` body shapes. 16
+  fixture goldens reblessed (every Client + every Handle gain the
+  AsRef impl). 225 parse_validate tests green. No bridge signature
+  change.
 - 2026-05-13 (R6 — `Command::reason(&self) -> Option<&str>` reason
   accessor): fifth Command introspection accessor, joining
   handler_name / verb / workflow_id / wait. Exposes the `--reason`

@@ -142,6 +142,12 @@ pub mod full_v1_full_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for FullServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl FullServiceClient {
         /// Start a new `full.v1.FullService.Run` workflow.
         pub async fn run(
@@ -367,6 +373,12 @@ pub mod full_v1_full_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

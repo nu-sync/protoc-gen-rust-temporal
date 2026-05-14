@@ -102,6 +102,12 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for WorkerWorkflowServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl WorkerWorkflowServiceClient {
         /// Start a new `workerwf.v1.WorkerWorkflowService.Run` workflow.
         pub async fn run(
@@ -263,6 +269,12 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 

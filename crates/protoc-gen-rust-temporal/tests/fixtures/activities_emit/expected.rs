@@ -126,6 +126,12 @@ pub mod acts_v1_chunk_service_temporal {
         }
     }
 
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for ChunkServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
     impl ChunkServiceClient {
         /// Start a new `acts.v1.ChunkService.RunBatch` workflow.
         pub async fn run_batch(
@@ -288,6 +294,12 @@ pub mod acts_v1_chunk_service_temporal {
     impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunBatchHandle {
         fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunBatchHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
         }
     }
 
