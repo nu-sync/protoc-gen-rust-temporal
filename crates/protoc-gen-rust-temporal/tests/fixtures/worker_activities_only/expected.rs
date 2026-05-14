@@ -130,6 +130,11 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const INPUT_TYPE: &'static str = self::FETCH_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::FETCH_ACTIVITY_OUTPUT_TYPE;
     }
+    impl ::std::fmt::Display for FetchActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn execute_fetch<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: FetchInput,
@@ -155,6 +160,11 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const NAME: &'static str = self::PING_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::PING_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::PING_ACTIVITY_OUTPUT_TYPE;
+    }
+    impl ::std::fmt::Display for PingActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn execute_ping<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

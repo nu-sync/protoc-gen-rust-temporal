@@ -421,6 +421,11 @@ pub mod acts_v1_chunk_service_temporal {
         pub const INPUT_TYPE: &'static str = self::PROCESS_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::PROCESS_ACTIVITY_OUTPUT_TYPE;
     }
+    impl ::std::fmt::Display for ProcessActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn execute_process<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: ChunkInput,
@@ -446,6 +451,11 @@ pub mod acts_v1_chunk_service_temporal {
         pub const NAME: &'static str = self::HEARTBEAT_ACTIVITY_NAME;
         pub const INPUT_TYPE: &'static str = self::HEARTBEAT_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::HEARTBEAT_ACTIVITY_OUTPUT_TYPE;
+    }
+    impl ::std::fmt::Display for HeartbeatActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn execute_heartbeat<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

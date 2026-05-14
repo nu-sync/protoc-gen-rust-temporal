@@ -463,6 +463,11 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const INPUT_TYPE: &'static str = self::LOAD_ACTIVITY_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::LOAD_ACTIVITY_OUTPUT_TYPE;
     }
+    impl ::std::fmt::Display for LoadActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn execute_load<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: LoadInput,
@@ -545,6 +550,11 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
     }
+    impl ::std::fmt::Display for RunWorkflow {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: RunInput,
@@ -575,6 +585,11 @@ pub mod workerfull_v1_orchestration_service_temporal {
     impl CancelSignal {
         pub const NAME: &'static str = self::CANCEL_SIGNAL_NAME;
         pub const INPUT_TYPE: &'static str = self::CANCEL_SIGNAL_INPUT_TYPE;
+    }
+    impl ::std::fmt::Display for CancelSignal {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn signal_cancel_external<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

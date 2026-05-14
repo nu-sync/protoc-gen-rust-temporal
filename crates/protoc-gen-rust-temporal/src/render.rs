@@ -3268,6 +3268,22 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
             );
         }
         let _ = writeln!(out, "    }}");
+        // `Display` impl prints the registered activity NAME so log
+        // statements like `info!("started {{}}", MyActivity)` produce
+        // `"my.svc.MyActivity"` instead of `"MyActivity"` (Debug
+        // derive). Useful for tracing-style structured logs that
+        // pass markers directly without manually spelling
+        // `MyActivity::NAME`. The marker is a unit struct so Display
+        // has nothing else to print — the registered name is the
+        // canonical user-visible identity.
+        let _ = writeln!(out, "    impl ::std::fmt::Display for {marker_struct} {{");
+        let _ = writeln!(
+            out,
+            "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+        );
+        let _ = writeln!(out, "            f.write_str(Self::NAME)");
+        let _ = writeln!(out, "        }}");
+        let _ = writeln!(out, "    }}");
 
         render_activity_helper(out, act, /* local: */ false, &marker_struct);
         if let Some(spec) = act.default_options.as_ref() {
@@ -3421,6 +3437,18 @@ fn render_external_signal_helpers(out: &mut String, svc: &ServiceModel) {
             out,
             "        pub const INPUT_TYPE: &'static str = self::{in_const};"
         );
+        let _ = writeln!(out, "    }}");
+        // `Display` impl prints the registered SIGNAL NAME — parallel
+        // of the activity-marker ship. Lets log statements like
+        // `info!("dispatched {{}}", MySignal)` show the cross-language
+        // identifier instead of the bare Rust struct name.
+        let _ = writeln!(out, "    impl ::std::fmt::Display for {signal_marker} {{");
+        let _ = writeln!(
+            out,
+            "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+        );
+        let _ = writeln!(out, "            f.write_str(Self::NAME)");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
 
         let helper_fn = format!("signal_{}_external", sig.rpc_method.to_snake_case());
@@ -3632,6 +3660,19 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
                 "        pub const WORKFLOW_ALIASES: &'static [&'static str] = self::{aliases_const};"
             );
         }
+        let _ = writeln!(out, "    }}");
+        // `Display` impl prints the registered WORKFLOW NAME — parallel
+        // of the activity- and signal-marker ships. Lets log statements
+        // like `info!("started child {{}}", MyWorkflow)` show the
+        // cross-language identifier instead of the bare Rust struct
+        // name.
+        let _ = writeln!(out, "    impl ::std::fmt::Display for {marker_struct} {{");
+        let _ = writeln!(
+            out,
+            "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+        );
+        let _ = writeln!(out, "            f.write_str(Self::NAME)");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
 
         // R5 — `<workflow>_default_child_options() -> ChildWorkflowOptions`

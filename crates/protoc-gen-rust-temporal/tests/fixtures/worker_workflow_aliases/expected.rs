@@ -413,6 +413,11 @@ pub mod aliases_v1_alias_service_temporal {
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
         pub const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;
     }
+    impl ::std::fmt::Display for RunWorkflow {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: RunInput,

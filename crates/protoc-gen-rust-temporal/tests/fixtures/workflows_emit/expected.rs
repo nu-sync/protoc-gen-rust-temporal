@@ -503,6 +503,11 @@ pub mod wf_v1_order_service_temporal {
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
         pub const ID_TEMPLATE: &'static str = self::RUN_WORKFLOW_ID_TEMPLATE;
     }
+    impl ::std::fmt::Display for RunWorkflow {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: OrderInput,
@@ -533,6 +538,11 @@ pub mod wf_v1_order_service_temporal {
     impl CancelSignal {
         pub const NAME: &'static str = self::CANCEL_SIGNAL_NAME;
         pub const INPUT_TYPE: &'static str = self::CANCEL_SIGNAL_INPUT_TYPE;
+    }
+    impl ::std::fmt::Display for CancelSignal {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn signal_cancel_external<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

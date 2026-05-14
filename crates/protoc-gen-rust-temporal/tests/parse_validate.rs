@@ -4304,6 +4304,39 @@ fn client_exposes_service_level_name_aggregates() {
 }
 
 #[test]
+fn marker_structs_implement_display_printing_registered_name() {
+    // R6 ergonomics — every marker struct (activity, child-workflow,
+    // signal) gets a `Display` impl that prints the registered NAME
+    // const. Lets log lines like `info!("started {}", MyActivity)`
+    // show the cross-language identifier ("my.svc.MyActivity") instead
+    // of the bare Rust struct name from Debug derive ("MyActivity").
+    // The marker is a unit struct so Display has nothing else to
+    // print — the registered name is the canonical user-visible
+    // identity.
+    //
+    // `worker_full` exercises all three marker kinds: an activity
+    // (`Load`), a child-workflow marker (`Run`), and a signal marker
+    // (`Cancel`).
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    for marker in ["LoadActivity", "RunWorkflow", "CancelSignal"] {
+        let header = format!("impl ::std::fmt::Display for {marker} {{");
+        assert!(
+            source.contains(&header),
+            "missing Display impl on {marker}: {source}"
+        );
+    }
+    // Body shape — all three impls funnel through `f.write_str(Self::NAME)`,
+    // re-using each marker's existing inherent NAME const.
+    let body_count = source.matches("f.write_str(Self::NAME)").count();
+    assert!(
+        body_count >= 3,
+        "expected at least three Display bodies forwarding to Self::NAME, found {body_count}: {source}"
+    );
+}
+
+#[test]
 fn handle_implements_partial_eq_eq_and_hash_via_workflow_run_id() {
     // R6 ergonomics — `<Wf>Handle` impls `PartialEq` / `Eq` / `Hash`
     // by `(workflow_id, run_id)` structural equality. Lets handles

@@ -410,6 +410,11 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
     }
+    impl ::std::fmt::Display for RunWorkflow {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
+    }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
         input: WorkInput,

@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Display` impl on activity / signal /
+  child-workflow markers): every marker struct (zero-sized typed
+  identifier for an activity / signal / child workflow) now impls
+  `Display` printing the registered cross-language NAME via
+  `f.write_str(Self::NAME)`. Lets log statements like
+  `info!("started {{}}", MyActivity)` produce
+  `"my.svc.MyActivity"` instead of `"MyActivity"` (which is what
+  the existing Debug derive prints — the bare Rust struct name).
+  Re-uses each marker's existing inherent `NAME` const so no extra
+  string literal lands in the binary. The marker is a unit struct so
+  Display has nothing else to print — the registered name is the
+  canonical user-visible identity. One new positive parse_validate
+  test (`marker_structs_implement_display_printing_registered_name`)
+  uses the `worker_full` fixture to exercise all three marker kinds
+  in one shot — pinning the `impl Display for FooActivity {`,
+  `impl Display for FooWorkflow {`, and `impl Display for FooSignal {`
+  emit headers plus checking the body shape appears at least three
+  times. 16 fixture goldens reblessed (every fixture with at least
+  one marker — activities-only / workflows-only / both). 227
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle` impls `PartialEq` / `Eq` / `Hash`
   by `(workflow_id, run_id)` structural equality): lets typed
   workflow handles serve as `HashMap` keys or `HashSet` members
