@@ -802,6 +802,18 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::UPDATE_INPUT_TYPES` /
+  `UPDATE_OUTPUT_TYPES` lookup tables): update-side parity of the
+  workflow / query lookup tables. Maps each update's registered name
+  to its input / output proto type FQN. Updates can have non-Empty
+  input AND output, so both directions emit. Useful for update payload
+  codecs. Skip-emit when no updates declared. One new positive
+  parse_validate test
+  (`client_exposes_update_input_output_type_lookup_consts`) pins the
+  Reconfigure → ReconfigureInput / ReconfigureOutput mapping on
+  `minimal_workflow`. 16 fixture goldens reblessed (every Client with
+  at least one update gains the two consts). 267 parse_validate
+  tests green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::QUERY_INPUT_TYPES` /
   `QUERY_OUTPUT_TYPES` lookup tables): query-side parity of the
   workflow / signal lookup tables. Maps each query's registered name

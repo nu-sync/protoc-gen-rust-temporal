@@ -1041,6 +1041,44 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const QUERY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
         );
     }
+    // `UPDATE_INPUT_TYPES` / `UPDATE_OUTPUT_TYPES` — parity with the
+    // workflow / query lookup tables for update payload codecs.
+    // Updates can have non-Empty input AND output, so both directions
+    // emit. Skip-emit when no updates declared.
+    if !svc.updates.is_empty() {
+        let joined_in = svc
+            .updates
+            .iter()
+            .map(|u| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    u.registered_name.escape_default(),
+                    u.input_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const UPDATE_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_in}];"
+        );
+        let joined_out = svc
+            .updates
+            .iter()
+            .map(|u| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    u.registered_name.escape_default(),
+                    u.output_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
+        );
+    }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with
     // both dimensions instead of probing per-name. Same kind labels

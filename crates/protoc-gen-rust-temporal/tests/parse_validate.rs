@@ -3807,6 +3807,32 @@ fn client_exposes_registered_names_by_kind_pairs_const() {
 }
 
 #[test]
+fn client_exposes_update_input_output_type_lookup_consts() {
+    // R6 ergonomics — `<Service>Client::UPDATE_INPUT_TYPES` /
+    // `UPDATE_OUTPUT_TYPES` are the update-side parity of the workflow
+    // / query lookup tables. Updates can have non-Empty input AND
+    // output, so both directions emit. Useful for update payload
+    // codecs.
+    //
+    // `minimal_workflow` declares
+    // `Reconfigure(ReconfigureInput) -> ReconfigureOutput`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const UPDATE_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.Reconfigure\", \"jobs.v1.ReconfigureInput\")];"
+        ),
+        "UPDATE_INPUT_TYPES must map Reconfigure → ReconfigureInput: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.Reconfigure\", \"jobs.v1.ReconfigureOutput\")];"
+        ),
+        "UPDATE_OUTPUT_TYPES must map Reconfigure → ReconfigureOutput: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_query_input_output_type_lookup_consts() {
     // R6 ergonomics — `<Service>Client::QUERY_INPUT_TYPES` /
     // `QUERY_OUTPUT_TYPES` are the query-side parity of
