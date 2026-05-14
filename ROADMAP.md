@@ -802,6 +802,26 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_ID_TEMPLATE`
+  classifier const): every `<Service>Client` whose service has at
+  least one workflow declaring an `id` template now exposes
+  `pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str]`
+  listing those workflows' registered names. Useful for tooling that
+  distinguishes:
+  - workflows whose ids are synthesized from input fields (no
+    caller-supplied id needed — `id: "{{ .Field }}"`);
+  - workflows that require an explicit override or accept the
+    runtime-generated UUID (no `id:` declaration).
+  Skip-emit when no workflow declares an id template (the common
+  case). Two new positive parse_validate tests:
+  `client_exposes_workflows_with_id_template_const` exercises a
+  multi-workflow service where one declares an id and one doesn't
+  (only the one with id appears);
+  `client_omits_workflows_with_id_template_when_none_declare` pins
+  the skip-guard. 7 fixture goldens reblessed (every fixture whose
+  workflow declares an id template gains the const). 277
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::with_random_workflow_id_prefix(prefix)`):
   prefixed-random sibling of `with_random_workflow_id`. Sets
   `workflow_id` to `<prefix><uuid>` via the bridge's

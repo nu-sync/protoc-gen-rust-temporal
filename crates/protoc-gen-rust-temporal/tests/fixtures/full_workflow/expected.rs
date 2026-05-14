@@ -121,6 +121,7 @@ pub mod full_v1_full_service_temporal {
         pub const TASK_QUEUES: &'static [&'static str] = &["full"];
         pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full")];
+        pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &["full.v1.FullService.Run"];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full.v1.RunInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full.v1.RunOutput")];
         pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Cancel", "full.v1.CancelInput"), ("full.v1.FullService.Bootstrap", "full.v1.BootstrapInput")];

@@ -4115,6 +4115,39 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
+fn client_exposes_workflows_with_id_template_const() {
+    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_ID_TEMPLATE`
+    // lists registered names of workflows that declare an `id`
+    // template. Useful for tooling that distinguishes workflows
+    // whose ids are synthesized from input fields from workflows
+    // that need an explicit override.
+    //
+    // `multiple_workflows` declares two workflows: Alpha (with
+    // id template) and Beta (without). Only Alpha should appear.
+    let services = parse_and_validate("multiple_workflows");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &[\"multi.v1.MultiService.Alpha\"];"
+        ),
+        "WORKFLOWS_WITH_ID_TEMPLATE must list Alpha (has id template) but not Beta: {source}"
+    );
+}
+
+#[test]
+fn client_omits_workflows_with_id_template_when_none_declare() {
+    // Skip-emit guard: when no workflow declares an id template,
+    // the const must not emit. `workflow_only` declares one
+    // workflow without an `id:` line.
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOWS_WITH_ID_TEMPLATE"),
+        "const must omit when no workflow declares an id template: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflow_task_queue_table_lookup_const() {
     // R6 ergonomics — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
     // is a const lookup table mapping each workflow's registered

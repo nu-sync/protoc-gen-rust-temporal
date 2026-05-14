@@ -102,6 +102,7 @@ pub mod acts_v1_chunk_service_temporal {
         pub const TASK_QUEUES: &'static [&'static str] = &["chunks"];
         pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "chunks")];
+        pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &["acts.v1.ChunkService.RunBatch"];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "acts.v1.BatchInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "acts.v1.BatchOutput")];
         pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.Process", "acts.v1.ChunkInput"), ("acts.v1.ChunkService.Heartbeat", "google.protobuf.Empty")];

@@ -950,6 +950,31 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[{joined}];"
         );
     }
+    // `WORKFLOWS_WITH_ID_TEMPLATE` — registered names of workflows
+    // that declare an `id` template (e.g. `id: "{{ .Field }}"`).
+    // Useful for tooling that distinguishes workflows whose ids are
+    // synthesized from input fields (no caller-supplied id needed)
+    // from workflows that require an explicit override or accept the
+    // runtime-generated UUID. Skip-emit when no workflow declares an
+    // id template (the common case) — an empty const would be
+    // surface noise.
+    let wf_with_id: Vec<&str> = svc
+        .workflows
+        .iter()
+        .filter(|wf| wf.id_template_source.is_some())
+        .map(|wf| wf.registered_name.as_str())
+        .collect();
+    if !wf_with_id.is_empty() {
+        let joined = wf_with_id
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
     // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
     // own task queue to that queue. Activities without an explicit

@@ -113,6 +113,7 @@ pub mod wf_v1_order_service_temporal {
         pub const TASK_QUEUES: &'static [&'static str] = &["orders"];
         pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Run", "orders")];
+        pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &["wf.v1.OrderService.Run"];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Run", "wf.v1.OrderInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Run", "wf.v1.OrderOutput")];
         pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Cancel", "wf.v1.CancelInput")];
