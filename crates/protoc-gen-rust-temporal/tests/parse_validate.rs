@@ -4031,6 +4031,67 @@ fn client_exposes_workflow_input_output_type_lookup_consts() {
 }
 
 #[test]
+fn client_exposes_activity_task_queue_table_when_declared() {
+    // R6 ergonomics — `<Service>Client::ACTIVITY_TASK_QUEUE_TABLE` is
+    // the activity-side parity of WORKFLOW_TASK_QUEUE_TABLE. Maps
+    // each activity that declares its own task queue to that queue.
+    // Activities without an explicit queue inherit the workflow's
+    // queue at dispatch — no entry here (so the table only lists
+    // activities with overrides). Useful for activity-pool routing.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package atq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "default-tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {};
+          }
+          rpc Heavy(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 60 }
+              task_queue: "heavy-tq"
+            };
+          }
+          rpc Light(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 5 }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    // `Heavy` declares its own queue → entry. `Light` doesn't → no
+    // entry. The table contains exactly one pair.
+    assert!(
+        source.contains(
+            "pub const ACTIVITY_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[(\"atq.v1.Svc.Heavy\", \"heavy-tq\")];"
+        ),
+        "ACTIVITY_TASK_QUEUE_TABLE must contain only the activity with declared queue: {source}"
+    );
+}
+
+#[test]
+fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
+    // Skip-emit guard: when no activity declares its own queue, the
+    // const must not emit (an empty `&[]` const would be surface
+    // noise). `minimal_workflow`'s ProcessChunk activity has no
+    // declared task queue, so the const is omitted there.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("ACTIVITY_TASK_QUEUE_TABLE"),
+        "table must omit when no activity declares its own queue: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflow_task_queue_table_lookup_const() {
     // R6 ergonomics — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
     // is a const lookup table mapping each workflow's registered

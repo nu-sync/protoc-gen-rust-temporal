@@ -802,6 +802,26 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::ACTIVITY_TASK_QUEUE_TABLE`
+  activity-side parity): mirrors WORKFLOW_TASK_QUEUE_TABLE for
+  activities. Maps each activity that declares its own task queue
+  to that queue. Activities without an explicit queue inherit the
+  workflow's queue at dispatch — no entry here, so the table only
+  lists activities with overrides. Useful for activity-pool routing
+  tooling that needs to assign activity workers to specific queues
+  (e.g., a "heavy" pool with high CPU vs a "light" pool with cheap
+  workers). Skip-emit when no activity declares its own queue (an
+  empty `&[]` const would be surface noise — the inheritance case
+  is the common default). Two new positive parse_validate tests:
+  `client_exposes_activity_task_queue_table_when_declared` uses
+  inline proto with two activities (one with override, one
+  inheriting) to verify only the override-bearing one appears;
+  `client_omits_activity_task_queue_table_when_no_activity_declares_queue`
+  pins the skip-guard for `minimal_workflow` (whose ProcessChunk
+  activity has no declared queue). 273 parse_validate tests green;
+  workspace clippy clean. No fixture goldens reblessed (no existing
+  fixture has an activity with a declared task queue). No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::MESSAGE_TYPE_COUNT` const):
   derived at compile time from `Self::ALL_MESSAGE_TYPES.len()`. Pairs
   with HANDLER_COUNT for codec-coverage sanity assertions:

@@ -939,6 +939,35 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[{joined}];"
         );
     }
+    // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
+    // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
+    // own task queue to that queue. Activities without an explicit
+    // queue inherit the workflow's queue at dispatch — no entry here
+    // (so the table only lists activities with overrides). Useful
+    // for activity-pool routing tooling that needs to assign activity
+    // workers to specific queues. Skip-emit when no activity has a
+    // declared queue.
+    let mut act_tq_pairs: Vec<(&str, &str)> = Vec::new();
+    for act in &svc.activities {
+        if let Some(tq) = act
+            .default_options
+            .as_ref()
+            .and_then(|s| s.task_queue.as_deref())
+        {
+            act_tq_pairs.push((act.registered_name.as_str(), tq));
+        }
+    }
+    if !act_tq_pairs.is_empty() {
+        let joined = act_tq_pairs
+            .iter()
+            .map(|(n, q)| format!("(\"{}\", \"{}\")", n.escape_default(), q.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const ACTIVITY_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[{joined}];"
+        );
+    }
     // `WORKFLOW_INPUT_TYPES` / `WORKFLOW_OUTPUT_TYPES` — pairs of
     // (registered workflow name, proto type FQN) for tooling that
     // needs to map workflow_name → input/output type without per-rpc
