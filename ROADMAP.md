@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — module-level `CLUDDEN_SCHEMA_DIGEST` const exposes
+  the BSR commit used at codegen time): every generated module now
+  carries `pub const CLUDDEN_SCHEMA_DIGEST: &str = "..."`, the
+  cludden BSR module path + commit hex (e.g.
+  `buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607`).
+  Captured at plugin build time via a `cargo:rustc-env=` directive in
+  `build.rs` that exposes the existing `CLUDDEN_BSR_COMMIT` constant
+  to the rest of the crate. Render then bakes it into every emitted
+  module via `env!("CLUDDEN_SCHEMA_COMMIT")`. Lets cross-language
+  reproducibility audits detect drift (Rust / TS / Go arms generated
+  from different schema commits will report different digests) and
+  surfaces the exact schema version in support tickets without
+  inspecting the plugin binary's build metadata. The full BSR module
+  path is preserved verbatim so tooling can dispatch directly to
+  `buf` if needed. One new positive parse_validate test
+  (`module_level_cludden_schema_digest_const_emits_with_bsr_prefix`)
+  pins the const's prefix shape (without anchoring on the exact hex,
+  which re-pins legitimately change). 16 fixture goldens reblessed
+  (every fixture carries the new const). 233 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::lookup_handler_kind(name)`
   generic dispatch helper): every `<Service>Client` now exposes
   `pub fn lookup_handler_kind(name: &str) -> Option<&'static str>`

@@ -32,6 +32,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
     pub const SERVICE_NAME: &str = "ActivityWorkerService";
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "workeract.v1.ActivityWorkerService";
     pub const SOURCE_FILE: &str = "input.proto";
+    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const FETCH_ACTIVITY_INPUT_TYPE: &str = "workeract.v1.FetchInput";
     pub const FETCH_ACTIVITY_OUTPUT_TYPE: &str = "workeract.v1.FetchOutput";
     pub const PING_ACTIVITY_INPUT_TYPE: &str = "google.protobuf.Empty";

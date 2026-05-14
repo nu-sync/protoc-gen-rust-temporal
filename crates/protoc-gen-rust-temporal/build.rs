@@ -67,5 +67,13 @@ fn main() -> Result<()> {
         &[temporal_proto.to_str().unwrap()],
         &[proto_root.to_str().unwrap(), enums_dir.to_str().unwrap()],
     )?;
+
+    // Expose the schema commit identifier to the rest of the crate as a
+    // compile-time env var. Render uses it to bake a
+    // `CLUDDEN_SCHEMA_DIGEST` const into every generated module so
+    // consumer code (cross-language reproducibility audits, support
+    // diagnostics) can spot when Rust / TS / Go arms of the same proto
+    // were generated from different schema commits.
+    println!("cargo:rustc-env=CLUDDEN_SCHEMA_COMMIT={CLUDDEN_BSR_COMMIT}");
     Ok(())
 }

@@ -38,6 +38,7 @@ pub mod cli_v1_report_service_temporal {
     pub const SERVICE_NAME: &str = "ReportService";
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "cli.v1.ReportService";
     pub const SOURCE_FILE: &str = "input.proto";
+    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const GENERATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Generate";
     pub const GENERATE_INPUT_TYPE: &str = "cli.v1.GenerateInput";
     pub const GENERATE_OUTPUT_TYPE: &str = "cli.v1.GenerateOutput";

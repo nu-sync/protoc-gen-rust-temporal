@@ -233,6 +233,21 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
         "    pub const SOURCE_FILE: &str = \"{}\";",
         svc.source_file.escape_default()
     );
+    // BSR commit of cludden's annotation schema this code was
+    // generated against. Captured at plugin build time via a
+    // build-script `cargo:rustc-env=` directive. Lets consumer code
+    // detect cross-language drift (Rust / TS / Go arms generated from
+    // different schema commits will report different digests) and
+    // surfaces the exact schema version in support tickets without
+    // needing to inspect the plugin binary's build metadata. The full
+    // BSR module path is preserved verbatim
+    // (`buf.build/cludden/protoc-gen-go-temporal:<digest>`) so tooling
+    // can resolve it directly with `buf` if needed.
+    let _ = writeln!(
+        out,
+        "    pub const CLUDDEN_SCHEMA_DIGEST: &str = \"{}\";",
+        env!("CLUDDEN_SCHEMA_COMMIT").escape_default()
+    );
     for wf in &svc.workflows {
         let const_name = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
         let _ = writeln!(

@@ -4481,6 +4481,34 @@ fn marker_structs_implement_display_printing_registered_name() {
 }
 
 #[test]
+fn module_level_cludden_schema_digest_const_emits_with_bsr_prefix() {
+    // R6 ergonomics — every generated `<service>_temporal` module now
+    // carries `pub const CLUDDEN_SCHEMA_DIGEST: &str = "..."`, the
+    // BSR commit identifier of cludden's annotation schema captured at
+    // plugin build time. Lets cross-language reproducibility audits
+    // detect drift (Rust / TS / Go arms generated from different
+    // schema commits will report different digests) and surfaces the
+    // exact schema version in support tickets without inspecting the
+    // plugin binary's build metadata. The full BSR module path is
+    // preserved verbatim so tooling can resolve it directly with `buf`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const CLUDDEN_SCHEMA_DIGEST: &str = \""),
+        "missing CLUDDEN_SCHEMA_DIGEST const: {source}"
+    );
+    // Value must carry the full BSR-style prefix so tooling can
+    // dispatch to `buf` directly. We don't pin the exact hex (re-pins
+    // change it) but we DO pin the prefix shape.
+    assert!(
+        source.contains(
+            "pub const CLUDDEN_SCHEMA_DIGEST: &str = \"buf.build/cludden/protoc-gen-go-temporal:"
+        ),
+        "CLUDDEN_SCHEMA_DIGEST must carry the full `buf.build/...:` BSR prefix: {source}"
+    );
+}
+
+#[test]
 fn module_level_identity_consts_mirror_client_consts() {
     // R6 ergonomics — `PACKAGE` / `SERVICE_NAME` /
     // `FULLY_QUALIFIED_SERVICE_NAME` / `SOURCE_FILE` consts are now

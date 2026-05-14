@@ -38,6 +38,7 @@ pub mod multi_v1_multi_service_temporal {
     pub const SERVICE_NAME: &str = "MultiService";
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "multi.v1.MultiService";
     pub const SOURCE_FILE: &str = "input.proto";
+    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const ALPHA_WORKFLOW_NAME: &str = "multi.v1.MultiService.Alpha";
     pub const ALPHA_INPUT_TYPE: &str = "multi.v1.AlphaInput";
     pub const ALPHA_OUTPUT_TYPE: &str = "multi.v1.AlphaOutput";

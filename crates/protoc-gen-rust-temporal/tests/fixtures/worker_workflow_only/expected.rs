@@ -32,6 +32,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
     pub const SERVICE_NAME: &str = "WorkerWorkflowService";
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "workerwf.v1.WorkerWorkflowService";
     pub const SOURCE_FILE: &str = "input.proto";
+    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const RUN_WORKFLOW_NAME: &str = "workerwf.v1.WorkerWorkflowService.Run";
     pub const RUN_INPUT_TYPE: &str = "workerwf.v1.WorkInput";
     pub const RUN_OUTPUT_TYPE: &str = "workerwf.v1.WorkOutput";

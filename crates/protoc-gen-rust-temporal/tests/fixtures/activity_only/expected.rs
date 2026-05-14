@@ -25,6 +25,7 @@ pub mod act_v1_worker_only_service_temporal {
     pub const SERVICE_NAME: &str = "WorkerOnlyService";
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "act.v1.WorkerOnlyService";
     pub const SOURCE_FILE: &str = "input.proto";
+    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const PROCESS_CHUNK_ACTIVITY_INPUT_TYPE: &str = "act.v1.ChunkInput";
     pub const PROCESS_CHUNK_ACTIVITY_OUTPUT_TYPE: &str = "act.v1.ChunkOutput";
     pub const CLEANUP_ACTIVITY_INPUT_TYPE: &str = "act.v1.CleanupInput";
