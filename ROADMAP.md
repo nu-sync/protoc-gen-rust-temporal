@@ -743,6 +743,21 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::clear(&mut self)` mutating
+  reset): every `<Wf>StartOptions` struct now exposes
+  `pub fn clear(&mut self)` that self-replaces with `Self::default()`.
+  Sibling of `is_empty()` (predicate, true after clear) and
+  `Default::default()` (constructor, allocates a fresh value). Lets
+  callers spell `opts.clear()` in long-lived option-builder loops
+  without knowing the struct's full type to write
+  `*opts = MyTypeName::default()` (which forces the type into scope
+  even when the binding was inferred). Useful for: pooled options
+  structs reused across calls; dynamic config layering where a reset
+  point is a clean "drop all overrides" signal. One new positive
+  parse_validate test (`start_options_exposes_clear_mutating_reset`)
+  pins the fn signature and the `*self = Self::default();` body. 16
+  fixture goldens reblessed (every StartOptions gains the method).
+  235 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — module-level `WIRE_FORMAT_VERSION` const pins the
   `(encoding, messageType, data)` Payload triple version): every
   generated `<service>_temporal` module now carries

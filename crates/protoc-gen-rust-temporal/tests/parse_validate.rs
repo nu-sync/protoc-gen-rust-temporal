@@ -2721,6 +2721,27 @@ fn start_options_exposes_is_empty_predicate() {
 }
 
 #[test]
+fn start_options_exposes_clear_mutating_reset() {
+    // R6 ergonomics — `<Wf>StartOptions::clear(&mut self)` is the
+    // mutating sibling of `is_empty()` (predicate) and
+    // `Default::default()` (constructor). Lets callers spell
+    // `opts.clear()` in long-lived option-builder loops without
+    // knowing the struct's full type to write
+    // `*opts = MyTypeName::default()`. Body is the canonical
+    // self-replace via `Self::default()`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn clear(&mut self) {"),
+        "missing clear fn signature: {source}"
+    );
+    assert!(
+        source.contains("*self = Self::default();"),
+        "clear body must canonical-reset via Self::default(): {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_set_field_names_introspector() {
     // R6 ergonomics — `<Wf>StartOptions::set_field_names(&self) ->
     // Vec<&'static str>` returns the names of fields with `Some`

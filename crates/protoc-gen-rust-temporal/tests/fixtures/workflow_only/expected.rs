@@ -261,6 +261,10 @@ pub mod solo_v1_solo_service_temporal {
                 && self.enable_eager_workflow_start.is_none()
                 && self.retry_policy.is_none()
         }
+        /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
+        pub fn clear(&mut self) {
+            *self = Self::default();
+        }
         /// Names of fields with `Some` values, in declaration order. Empty iff [`Self::is_empty`].
         pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {
             let mut out = ::std::vec::Vec::new();

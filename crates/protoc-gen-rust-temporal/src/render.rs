@@ -2072,6 +2072,20 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "                && self.retry_policy.is_none()");
     let _ = writeln!(out, "        }}");
+    // `clear` — mutating reset to all-None state. Sibling of
+    // `is_empty()` (predicate) and `Default::default()` (constructor).
+    // Lets callers spell `opts.clear()` in long-lived option-builder
+    // loops without knowing the struct's full type to write
+    // `*opts = MyTypeName::default()`. Useful for: pooled options
+    // structs reused across calls; dynamic config layering where a
+    // reset point is a clean "drop all overrides" signal.
+    let _ = writeln!(
+        out,
+        "        /// Reset every field to `None`. Equivalent to `*self = Self::default()`."
+    );
+    let _ = writeln!(out, "        pub fn clear(&mut self) {{");
+    let _ = writeln!(out, "            *self = Self::default();");
+    let _ = writeln!(out, "        }}");
     // `set_field_names` — names of fields with `Some` values, in
     // declaration order. Useful for diagnostic logs ("user customized:
     // workflow_id, task_queue") and config-validation tests that want
