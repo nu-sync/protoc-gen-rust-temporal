@@ -283,6 +283,20 @@ pub mod wf_v1_order_service_temporal {
                 && self.enable_eager_workflow_start.is_none()
                 && self.retry_policy.is_none()
         }
+        /// Names of fields with `Some` values, in declaration order. Empty iff [`Self::is_empty`].
+        pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {
+            let mut out = ::std::vec::Vec::new();
+            if self.workflow_id.is_some() { out.push("workflow_id"); }
+            if self.task_queue.is_some() { out.push("task_queue"); }
+            if self.id_reuse_policy.is_some() { out.push("id_reuse_policy"); }
+            if self.id_conflict_policy.is_some() { out.push("id_conflict_policy"); }
+            if self.execution_timeout.is_some() { out.push("execution_timeout"); }
+            if self.run_timeout.is_some() { out.push("run_timeout"); }
+            if self.task_timeout.is_some() { out.push("task_timeout"); }
+            if self.enable_eager_workflow_start.is_some() { out.push("enable_eager_workflow_start"); }
+            if self.retry_policy.is_some() { out.push("retry_policy"); }
+            out
+        }
     }
 
     #[derive(Clone)]

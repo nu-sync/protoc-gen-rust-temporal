@@ -2721,6 +2721,50 @@ fn start_options_exposes_is_empty_predicate() {
 }
 
 #[test]
+fn start_options_exposes_set_field_names_introspector() {
+    // R6 ergonomics — `<Wf>StartOptions::set_field_names(&self) ->
+    // Vec<&'static str>` returns the names of fields with `Some`
+    // values, in declaration order. Useful for diagnostic logs
+    // ("user customized: workflow_id, task_queue") and
+    // config-validation tests. Pairs with `is_empty` (true ⇔ this
+    // returns an empty Vec).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {"),
+        "missing set_field_names fn signature: {source}"
+    );
+    // Body initializes a Vec then conditionally pushes each field's
+    // name when the field is Some. All nine fields must be covered
+    // in declaration order.
+    assert!(
+        source.contains("let mut out = ::std::vec::Vec::new();"),
+        "set_field_names must allocate a fresh Vec: {source}"
+    );
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let line = format!("if self.{field}.is_some() {{ out.push(\"{field}\"); }}");
+        assert!(
+            source.contains(&line),
+            "set_field_names body missing push for `{field}`: {source}"
+        );
+    }
+    assert!(
+        source.contains("            out\n"),
+        "set_field_names must return the accumulated Vec: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_merge_method() {
     // R6 ergonomics — `<Wf>StartOptions::merge(other)` layers two
     // option structs together with `other`'s `Some`-fields winning.

@@ -743,6 +743,21 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::set_field_names()` introspector):
+  every `<Wf>StartOptions` struct now exposes
+  `pub fn set_field_names(&self) -> Vec<&'static str>` returning the
+  names of fields with `Some` values, in declaration order. Useful
+  for diagnostic logs ("user customized: workflow_id, task_queue")
+  and config-validation tests that assert exactly which fields a
+  setup populated. Pairs with `is_empty` (true ⇔ this returns an
+  empty Vec). Returned `Vec` because the field count is small (9)
+  and bounded; callers that need an iterator can `.iter()` the
+  result. One new positive parse_validate test
+  (`start_options_exposes_set_field_names_introspector`) pins the
+  fn signature, the Vec init, the conditional push for each of all
+  nine fields in declaration order, and the trailing `out` return.
+  16 fixture goldens reblessed (every StartOptions gains the method).
+  229 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle` impls `PartialOrd` / `Ord` lex by
   `(workflow_id, run_id)`): completes the comparison-trait suite on
   the typed Handle, pairing with the prior turn's PartialEq/Eq/Hash

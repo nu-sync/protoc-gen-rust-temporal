@@ -1953,6 +1953,40 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "                && self.retry_policy.is_none()");
     let _ = writeln!(out, "        }}");
+    // `set_field_names` — names of fields with `Some` values, in
+    // declaration order. Useful for diagnostic logs ("user customized:
+    // workflow_id, task_queue") and config-validation tests that want
+    // to assert exactly which fields a setup populated. Pairs with
+    // `is_empty` (true ⇔ this returns an empty Vec). Returned Vec
+    // because the field count is small and bounded; callers that need
+    // an iterator can call `.iter()` on the result.
+    let _ = writeln!(
+        out,
+        "        /// Names of fields with `Some` values, in declaration order. Empty iff [`Self::is_empty`]."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {{"
+    );
+    let _ = writeln!(out, "            let mut out = ::std::vec::Vec::new();");
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let _ = writeln!(
+            out,
+            "            if self.{field}.is_some() {{ out.push(\"{field}\"); }}"
+        );
+    }
+    let _ = writeln!(out, "            out");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 }
