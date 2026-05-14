@@ -4404,6 +4404,30 @@ fn handle_exposes_client_passthrough() {
 }
 
 #[test]
+fn handle_exposes_unified_stop_dispatch() {
+    // R6 ergonomics — `<Wf>Handle::stop(&self, reason, force)` is the
+    // unified cancel/terminate dispatch. `force = false` calls
+    // `cancel_workflow` (cooperative); `force = true` calls
+    // `terminate_workflow` (hard kill). Saves the per-call-site
+    // `if force { terminate } else { cancel }` ladder common in CLI
+    // tools and dashboards that expose a single `--force` flag for
+    // escalation.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub async fn stop(&self, reason: &str, force: bool) -> Result<()> {"),
+        "missing stop fn signature: {source}"
+    );
+    // Body forwards to the per-mode method.
+    assert!(
+        source.contains("            if force {")
+            && source.contains("                self.terminate_workflow(reason).await")
+            && source.contains("                self.cancel_workflow(reason).await"),
+        "stop body must dispatch to terminate (force=true) or cancel (force=false): {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_same_workflow_as_helper() {
     // R6 ergonomics — `<Wf>Handle::same_workflow_as(&other)`
     // compares two handles by workflow_id only (ignoring run_id).

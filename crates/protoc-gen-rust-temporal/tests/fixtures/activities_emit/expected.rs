@@ -550,6 +550,16 @@ pub mod acts_v1_chunk_service_temporal {
         pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
             temporal_runtime::terminate_workflow(&self.inner, reason).await
         }
+        /// Cooperative-or-hard stop dispatch: `force = false` calls [`Self::cancel_workflow`],
+        /// `force = true` calls [`Self::terminate_workflow`]. Saves the per-call-site
+        /// `if force { terminate } else { cancel }` ladder.
+        pub async fn stop(&self, reason: &str, force: bool) -> Result<()> {
+            if force {
+                self.terminate_workflow(reason).await
+            } else {
+                self.cancel_workflow(reason).await
+            }
+        }
 
     }
 

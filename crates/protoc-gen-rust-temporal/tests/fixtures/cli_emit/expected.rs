@@ -607,6 +607,16 @@ pub mod cli_v1_report_service_temporal {
         pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
             temporal_runtime::terminate_workflow(&self.inner, reason).await
         }
+        /// Cooperative-or-hard stop dispatch: `force = false` calls [`Self::cancel_workflow`],
+        /// `force = true` calls [`Self::terminate_workflow`]. Saves the per-call-site
+        /// `if force { terminate } else { cancel }` ladder.
+        pub async fn stop(&self, reason: &str, force: bool) -> Result<()> {
+            if force {
+                self.terminate_workflow(reason).await
+            } else {
+                self.cancel_workflow(reason).await
+            }
+        }
 
     }
 
@@ -930,6 +940,16 @@ pub mod cli_v1_report_service_temporal {
         /// Terminate the workflow — hard kill, no cancel handler runs.
         pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
             temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+        /// Cooperative-or-hard stop dispatch: `force = false` calls [`Self::cancel_workflow`],
+        /// `force = true` calls [`Self::terminate_workflow`]. Saves the per-call-site
+        /// `if force { terminate } else { cancel }` ladder.
+        pub async fn stop(&self, reason: &str, force: bool) -> Result<()> {
+            if force {
+                self.terminate_workflow(reason).await
+            } else {
+                self.cancel_workflow(reason).await
+            }
         }
 
     }

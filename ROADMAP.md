@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::stop(reason, force)` unified
+  cancel/terminate dispatch): every `<Wf>Handle` now exposes
+  `pub async fn stop(&self, reason: &str, force: bool) -> Result<()>`
+  that forwards to `cancel_workflow` (force=false, cooperative) or
+  `terminate_workflow` (force=true, hard kill). Saves the per-call-
+  site `if force { terminate } else { cancel }` ladder common in CLI
+  tools and dashboards that expose a single `--force` flag for
+  escalation. Both branches preserve the same `reason` argument
+  semantics — recorded in event history either way. Body forwards to
+  the existing per-mode methods (no bridge changes). One new
+  positive parse_validate test
+  (`handle_exposes_unified_stop_dispatch`) pins the fn signature and
+  the dispatch ladder. 16 fixture goldens reblessed (every Handle
+  gains the method). 254 parse_validate tests green; workspace
+  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::workflow_id_or_random(self)`
   conditional sibling): every `<Wf>StartOptions` struct now exposes
   `pub fn workflow_id_or_random(mut self) -> Self` that sets

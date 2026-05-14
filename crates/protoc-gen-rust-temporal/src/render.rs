@@ -2987,6 +2987,33 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
         "            temporal_runtime::terminate_workflow(&self.inner, reason).await"
     );
     let _ = writeln!(out, "        }}");
+    // Unified stop dispatch — saves a per-call-site `if force {
+    // terminate } else { cancel }` ladder. Useful for CLI tools and
+    // dashboards that escalate from cooperative cancel to hard
+    // terminate based on a single boolean flag (typically `--force`
+    // on the CLI).
+    let _ = writeln!(
+        out,
+        "        /// Cooperative-or-hard stop dispatch: `force = false` calls [`Self::cancel_workflow`],"
+    );
+    let _ = writeln!(
+        out,
+        "        /// `force = true` calls [`Self::terminate_workflow`]. Saves the per-call-site"
+    );
+    let _ = writeln!(
+        out,
+        "        /// `if force {{ terminate }} else {{ cancel }}` ladder."
+    );
+    let _ = writeln!(
+        out,
+        "        pub async fn stop(&self, reason: &str, force: bool) -> Result<()> {{"
+    );
+    let _ = writeln!(out, "            if force {{");
+    let _ = writeln!(out, "                self.terminate_workflow(reason).await");
+    let _ = writeln!(out, "            }} else {{");
+    let _ = writeln!(out, "                self.cancel_workflow(reason).await");
+    let _ = writeln!(out, "            }}");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
 
     for sref in &wf.attached_signals {
