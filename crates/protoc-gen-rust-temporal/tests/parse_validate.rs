@@ -3622,6 +3622,69 @@ fn client_exposes_service_level_name_aggregates() {
 }
 
 #[test]
+fn client_exposes_service_default_task_queue_const_when_declared() {
+    // R6 ergonomics — when a service declares a default task queue at
+    // `(temporal.v1.service).task_queue`, the generated `<Service>Client`
+    // exposes it as a `pub const DEFAULT_TASK_QUEUE: &'static str` so
+    // worker setup can spell `Worker::new(MyClient::DEFAULT_TASK_QUEUE)`
+    // without picking an arbitrary workflow rpc to read it from.
+    // Distinct from each per-workflow `<RPC>_TASK_QUEUE` const, which
+    // is the *effective* resolved queue (workflow override OR this
+    // service-level fallback).
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package svc_tq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "service-default-tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const DEFAULT_TASK_QUEUE: &'static str = \"service-default-tq\";"),
+        "DEFAULT_TASK_QUEUE const must emit when the service declares one: {source}"
+    );
+}
+
+#[test]
+fn client_omits_default_task_queue_const_when_service_lacks_one() {
+    // Mirror skip-guard: when no service-level task queue is declared
+    // (each workflow carries its own), the const must NOT emit. Empty
+    // string would be a footgun (`Worker::new("")` looks legal until
+    // it isn't), so silence is the only correct answer.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package no_svc_tq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "wf-only-tq" };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("pub const DEFAULT_TASK_QUEUE"),
+        "DEFAULT_TASK_QUEUE const must not emit when service lacks default: {source}"
+    );
+}
+
+#[test]
 fn workflow_only_service_emits_all_handler_names_with_just_workflows() {
     // The aggregate `ALL_HANDLER_NAMES` is the union of every per-kind
     // aggregate. When a service declares only workflows (no signals /

@@ -81,6 +81,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const SERVICE_NAME: &'static str = "MultiService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "multi.v1.MultiService";
         pub const SOURCE_FILE: &'static str = "input.proto";
+        pub const DEFAULT_TASK_QUEUE: &'static str = "multi";
         pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Alpha", "multi.v1.MultiService.Beta"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Ping"];

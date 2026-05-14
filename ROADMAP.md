@@ -743,6 +743,24 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::DEFAULT_TASK_QUEUE` const):
+  when a service declares a default task queue at the service-level
+  `(temporal.v1.service).task_queue` annotation, the generated
+  `<Service>Client` now exposes it as
+  `pub const DEFAULT_TASK_QUEUE: &'static str`. Lets worker setup
+  spell `Worker::new(MyServiceClient::DEFAULT_TASK_QUEUE)` without
+  picking an arbitrary workflow rpc to read the resolved queue from
+  (the per-rpc `<RPC>_TASK_QUEUE` consts are the *effective* queue
+  including this fallback — they don't tell you whether the queue
+  came from the service or a per-workflow override). Skip-emit when
+  the service annotation lacks a queue: an empty-string baked into
+  the const would be a footgun (`Worker::new("")` looks legal until
+  it isn't), so silence is the only correct answer. Two new positive
+  parse_validate tests (one for each branch of the emit guard). Four
+  fixture goldens reblessed (the four whose service declares a
+  default queue: `minimal_workflow`, `multiple_workflows`,
+  `worker_full`, `worker_workflow_only`). 208 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::ALL_HANDLER_NAMES` aggregate-of-
   aggregates const): every generated `<Service>Client` whose service
   declares at least one handler now exposes

@@ -627,6 +627,20 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         "        pub const SOURCE_FILE: &'static str = \"{}\";",
         svc.source_file.escape_default()
     );
+    // Service-level default task queue from `(temporal.v1.service).task_queue`.
+    // Distinct from each workflow's `<RPC>_TASK_QUEUE` const (which is the
+    // effective resolved queue including this fallback). Exposed so worker
+    // setup can spell `Worker::new(MyServiceClient::DEFAULT_TASK_QUEUE)`
+    // without picking an arbitrary workflow rpc to read it from. Skip-emit
+    // when the service annotation omits it — there's no sensible fallback,
+    // and a None-baked-as-empty-string would mislead.
+    if let Some(tq) = svc.default_task_queue.as_deref() {
+        let _ = writeln!(
+            out,
+            "        pub const DEFAULT_TASK_QUEUE: &'static str = \"{}\";",
+            tq.escape_default()
+        );
+    }
     // Plugin version embedded at codegen time. Lets tooling identify
     // which `protoc-gen-rust-temporal` release produced the file —
     // useful when debugging "code doesn't compile, must be a generator
