@@ -73,6 +73,8 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const HANDLER_SUMMARY: &'static str = "2 activities";
+        pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.FetchInput"), ("workeract.v1.ActivityWorkerService.Ping", "google.protobuf.Empty")];
+        pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.FetchOutput"), ("workeract.v1.ActivityWorkerService.Ping", "google.protobuf.Empty")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("activity", "workeract.v1.ActivityWorkerService.Fetch"), ("activity", "workeract.v1.ActivityWorkerService.Ping")];
 
         /// Look up which handler kind a registered name belongs to.

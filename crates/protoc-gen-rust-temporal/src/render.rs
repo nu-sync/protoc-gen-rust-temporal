@@ -1079,6 +1079,47 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
         );
     }
+    // `ACTIVITY_INPUT_TYPES` / `ACTIVITY_OUTPUT_TYPES` — completes
+    // the per-kind input/output type table set across all five
+    // handler kinds (workflow, signal-input-only, query, update,
+    // activity). Useful for activity payload codecs that need to
+    // deserialize requests AND serialize responses by activity name.
+    // Activities can have non-Empty input AND output. Skip-emit when
+    // no activities declared.
+    if !svc.activities.is_empty() {
+        let joined_in = svc
+            .activities
+            .iter()
+            .map(|a| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    a.registered_name.escape_default(),
+                    a.input_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_in}];"
+        );
+        let joined_out = svc
+            .activities
+            .iter()
+            .map(|a| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    a.registered_name.escape_default(),
+                    a.output_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
+        );
+    }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with
     // both dimensions instead of probing per-name. Same kind labels

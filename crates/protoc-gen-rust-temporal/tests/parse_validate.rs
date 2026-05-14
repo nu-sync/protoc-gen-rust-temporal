@@ -3807,6 +3807,33 @@ fn client_exposes_registered_names_by_kind_pairs_const() {
 }
 
 #[test]
+fn client_exposes_activity_input_output_type_lookup_consts() {
+    // R6 ergonomics — `<Service>Client::ACTIVITY_INPUT_TYPES` /
+    // `ACTIVITY_OUTPUT_TYPES` complete the per-kind input/output
+    // type table set across all five handler kinds (workflow,
+    // signal-input-only, query, update, activity). Useful for
+    // activity payload codecs that need to deserialize requests AND
+    // serialize responses by activity name.
+    //
+    // `minimal_workflow` declares
+    // `ProcessChunk(ChunkInput) -> ChunkOutput`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.ProcessChunk\", \"jobs.v1.ChunkInput\")];"
+        ),
+        "ACTIVITY_INPUT_TYPES must map ProcessChunk → ChunkInput: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.ProcessChunk\", \"jobs.v1.ChunkOutput\")];"
+        ),
+        "ACTIVITY_OUTPUT_TYPES must map ProcessChunk → ChunkOutput: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_update_input_output_type_lookup_consts() {
     // R6 ergonomics — `<Service>Client::UPDATE_INPUT_TYPES` /
     // `UPDATE_OUTPUT_TYPES` are the update-side parity of the workflow
