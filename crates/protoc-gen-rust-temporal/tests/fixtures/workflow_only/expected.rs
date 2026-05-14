@@ -34,6 +34,7 @@ pub mod solo_v1_solo_service_temporal {
     pub const SOURCE_FILE: &str = "input.proto";
     pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const WIRE_FORMAT_VERSION: &str = "v1";
+    pub const PLUGIN_VERSION: &str = "protoc-gen-rust-temporal 0.1.1";
     pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService.DoWork";
     pub const DO_WORK_INPUT_TYPE: &str = "solo.v1.WorkInput";
     pub const DO_WORK_OUTPUT_TYPE: &str = "solo.v1.WorkOutput";

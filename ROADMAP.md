@@ -802,6 +802,27 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — module-level `PLUGIN_VERSION` const completes
+  the codegen-version triple at module scope): every generated
+  `<service>_temporal` module now carries
+  `pub const PLUGIN_VERSION: &str = "protoc-gen-rust-temporal X.Y.Z"`,
+  the module-level mirror of the existing per-Client
+  `GENERATED_BY_PLUGIN_VERSION` inherent const. Lets
+  `pub use module::*` glob imports surface the version without
+  dragging the Client into scope, and completes the codegen-version
+  triple at module scope alongside `CLUDDEN_SCHEMA_DIGEST` (schema
+  commit) and `WIRE_FORMAT_VERSION` (wire format pin). Useful for
+  bug reports — pasting `<module>::PLUGIN_VERSION` into the issue
+  template surfaces the exact build that produced the offending
+  code without needing to inspect the binary's build metadata.
+  Embedded at codegen via `env!("CARGO_PKG_VERSION")` so it tracks
+  the plugin's own Cargo version. One new positive parse_validate
+  test (`module_level_plugin_version_const_mirrors_client_const`)
+  pins both the prefix shape and verifies the Client inherent const
+  still emits alongside (no accidental replacement). 16 fixture
+  goldens reblessed (every fixture carries the new const). 242
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::has_field_set(&self, name)`
   reflective per-name predicate): completes the StartOptions
   introspection trio with FIELD_NAMES (schema), set_field_names

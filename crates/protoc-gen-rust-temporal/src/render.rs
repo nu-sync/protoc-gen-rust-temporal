@@ -255,6 +255,20 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
     // when a future v2 ever lands. WIRE-FORMAT.md is the source of
     // truth — keep this string in sync if that doc ever bumps.
     let _ = writeln!(out, "    pub const WIRE_FORMAT_VERSION: &str = \"v1\";");
+    // Plugin version that produced this file. Module-level mirror of
+    // the existing `<Service>Client::GENERATED_BY_PLUGIN_VERSION`
+    // inherent const. Lets `pub use module::*` glob imports surface
+    // the version without dragging the Client type into scope, and
+    // completes the codegen-version triple at module scope (alongside
+    // CLUDDEN_SCHEMA_DIGEST and WIRE_FORMAT_VERSION). Useful for
+    // bug reports — pasting `<module>::PLUGIN_VERSION` into the issue
+    // template surfaces the exact build that produced the offending
+    // code.
+    let _ = writeln!(
+        out,
+        "    pub const PLUGIN_VERSION: &str = \"protoc-gen-rust-temporal {}\";",
+        env!("CARGO_PKG_VERSION")
+    );
     for wf in &svc.workflows {
         let const_name = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
         let _ = writeln!(

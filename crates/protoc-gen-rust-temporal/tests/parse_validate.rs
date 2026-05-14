@@ -4767,6 +4767,34 @@ fn marker_structs_implement_display_printing_registered_name() {
 }
 
 #[test]
+fn module_level_plugin_version_const_mirrors_client_const() {
+    // R6 ergonomics — every generated `<service>_temporal` module
+    // now carries `pub const PLUGIN_VERSION: &str = "protoc-gen-rust-temporal X.Y.Z"`,
+    // a module-level mirror of the existing per-Client
+    // `GENERATED_BY_PLUGIN_VERSION` inherent const. Lets
+    // `pub use module::*` glob imports surface the version without
+    // dragging the Client into scope, and completes the codegen-
+    // version triple at module scope (alongside CLUDDEN_SCHEMA_DIGEST
+    // and WIRE_FORMAT_VERSION).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    // Module-level: prefix shape only (the X.Y.Z bumps with each
+    // plugin release).
+    assert!(
+        source.contains("pub const PLUGIN_VERSION: &str = \"protoc-gen-rust-temporal "),
+        "module-level PLUGIN_VERSION must carry the full prefix: {source}"
+    );
+    // Client inherent must still emit alongside (no accidental
+    // replacement).
+    assert!(
+        source.contains(
+            "pub const GENERATED_BY_PLUGIN_VERSION: &'static str = \"protoc-gen-rust-temporal "
+        ),
+        "Client GENERATED_BY_PLUGIN_VERSION must still emit alongside module-level: {source}"
+    );
+}
+
+#[test]
 fn module_level_wire_format_version_const_emits_v1_pin() {
     // R6 ergonomics — every generated `<service>_temporal` module now
     // carries `pub const WIRE_FORMAT_VERSION: &str = "v1"`, the

@@ -46,6 +46,7 @@ pub mod wf_v1_order_service_temporal {
     pub const SOURCE_FILE: &str = "input.proto";
     pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
     pub const WIRE_FORMAT_VERSION: &str = "v1";
+    pub const PLUGIN_VERSION: &str = "protoc-gen-rust-temporal 0.1.1";
     pub const RUN_WORKFLOW_NAME: &str = "wf.v1.OrderService.Run";
     pub const RUN_INPUT_TYPE: &str = "wf.v1.OrderInput";
     pub const RUN_OUTPUT_TYPE: &str = "wf.v1.OrderOutput";
