@@ -92,6 +92,7 @@ pub mod cli_v1_report_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["cli.v1.ReportService.Generate", "cli.v1.ReportService.Internal"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "2 workflows";
         pub const TASK_QUEUES: &'static [&'static str] = &["reports"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "reports"), ("cli.v1.ReportService.Internal", "reports")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "cli.v1.ReportService.Generate"), ("workflow", "cli.v1.ReportService.Internal")];

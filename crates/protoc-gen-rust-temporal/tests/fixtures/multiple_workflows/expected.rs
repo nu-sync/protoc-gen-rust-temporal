@@ -97,6 +97,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const SIGNAL_COUNT: usize = Self::SIGNAL_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "2 workflows, 1 signal";
         pub const TASK_QUEUES: &'static [&'static str] = &["multi", "multi-beta"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi"), ("multi.v1.MultiService.Beta", "multi-beta")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "multi.v1.MultiService.Alpha"), ("workflow", "multi.v1.MultiService.Beta"), ("signal", "multi.v1.MultiService.Ping")];

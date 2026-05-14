@@ -95,6 +95,7 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "1 workflow, 2 queries, 3 updates";
         pub const TASK_QUEUES: &'static [&'static str] = &["eoqu"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("eoqu.v1.EoquService.Run", "eoqu")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "eoqu.v1.EoquService.Run"), ("query", "eoqu.v1.EoquService.Ack"), ("query", "eoqu.v1.EoquService.AckEmpty"), ("update", "eoqu.v1.EoquService.Touch"), ("update", "eoqu.v1.EoquService.TouchEmpty"), ("update", "eoqu.v1.EoquService.TouchEmptyStart")];

@@ -98,6 +98,7 @@ pub mod acts_v1_chunk_service_temporal {
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "1 workflow, 2 activities";
         pub const TASK_QUEUES: &'static [&'static str] = &["chunks"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "chunks")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "acts.v1.ChunkService.RunBatch"), ("activity", "acts.v1.ChunkService.Process"), ("activity", "acts.v1.ChunkService.Heartbeat")];

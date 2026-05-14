@@ -110,6 +110,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "1 workflow, 1 signal, 1 query, 1 update, 1 activity";
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-full"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "worker-full")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "workerfull.v1.OrchestrationService.Run"), ("signal", "workerfull.v1.OrchestrationService.Cancel"), ("query", "workerfull.v1.OrchestrationService.Status"), ("update", "workerfull.v1.OrchestrationService.Confirm"), ("activity", "workerfull.v1.OrchestrationService.Load")];

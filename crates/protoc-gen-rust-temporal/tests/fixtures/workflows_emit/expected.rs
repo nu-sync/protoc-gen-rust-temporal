@@ -109,6 +109,7 @@ pub mod wf_v1_order_service_temporal {
         pub const SIGNAL_COUNT: usize = Self::SIGNAL_NAMES.len();
         pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "1 workflow, 1 signal, 1 query, 1 update";
         pub const TASK_QUEUES: &'static [&'static str] = &["orders"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Run", "orders")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "wf.v1.OrderService.Run"), ("signal", "wf.v1.OrderService.Cancel"), ("query", "wf.v1.OrderService.Status"), ("update", "wf.v1.OrderService.Confirm")];

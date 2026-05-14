@@ -65,6 +65,7 @@ pub mod act_v1_worker_only_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["act.v1.WorkerOnlyService.ProcessChunk", "act.v1.WorkerOnlyService.Cleanup"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "2 activities";
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("activity", "act.v1.WorkerOnlyService.ProcessChunk"), ("activity", "act.v1.WorkerOnlyService.Cleanup")];
 
         /// Look up which handler kind a registered name belongs to.

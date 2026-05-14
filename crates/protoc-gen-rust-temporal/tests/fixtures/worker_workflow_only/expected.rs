@@ -73,6 +73,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "1 workflow";
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-workflows"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("workerwf.v1.WorkerWorkflowService.Run", "worker-workflows")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "workerwf.v1.WorkerWorkflowService.Run")];

@@ -3457,6 +3457,43 @@ fn client_per_kind_count_consts_skip_absent_kinds() {
 }
 
 #[test]
+fn client_exposes_handler_summary_natural_language_const() {
+    // R6 ergonomics — `<Service>Client::HANDLER_SUMMARY: &'static str`
+    // is a pre-computed natural-language summary of the per-kind
+    // counts, with proper singular vs plural inflection. Useful for
+    // `--help` output, startup log lines, and diagnostic surfaces.
+    //
+    // `minimal_workflow` declares one of each kind ⇒ all five
+    // singulars listed.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const HANDLER_SUMMARY: &'static str = \"1 workflow, 1 signal, 1 query, 1 update, 1 activity\";"
+        ),
+        "minimal_workflow HANDLER_SUMMARY must list all five singular kinds: {source}"
+    );
+
+    // `multiple_workflows` declares 2 workflows + 1 signal ⇒ "2
+    // workflows" (plural) + "1 signal" (singular). No queries /
+    // updates / activities so those drop out.
+    let services = parse_and_validate("multiple_workflows");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const HANDLER_SUMMARY: &'static str = \"2 workflows, 1 signal\";"),
+        "multiple_workflows HANDLER_SUMMARY must use plural for 2 workflows + singular for 1 signal: {source}"
+    );
+
+    // `workflow_only` declares one workflow only ⇒ "1 workflow" alone.
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const HANDLER_SUMMARY: &'static str = \"1 workflow\";"),
+        "workflow_only HANDLER_SUMMARY must contain only the workflow count: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_handler_count_const_derived_from_aggregate() {
     // R6 ergonomics — `<Service>Client::HANDLER_COUNT: usize` is
     // derived at compile time from `Self::ALL_HANDLER_NAMES.len()`.

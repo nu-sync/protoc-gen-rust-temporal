@@ -851,6 +851,37 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             );
         }
     }
+    // `HANDLER_SUMMARY` — pre-computed one-line natural-language
+    // summary like "1 workflow, 1 signal, 1 query, 1 update, 1 activity".
+    // Singular vs plural is baked at codegen since the counts are
+    // const-known. Useful for `--help` output, startup log lines, and
+    // diagnostic surfaces that want a human-readable counts string
+    // without runtime formatting:
+    //     println!("loaded service: {}", MyClient::HANDLER_SUMMARY);
+    // Skip-emit when no kind is present (matches the per-kind guards
+    // above; the summary would be an empty string).
+    if !all_names.is_empty() {
+        let mut parts: Vec<String> = Vec::new();
+        let counts: [(usize, &'static str, &'static str); 5] = [
+            (wf_names.len(), "workflow", "workflows"),
+            (sig_names.len(), "signal", "signals"),
+            (q_names.len(), "query", "queries"),
+            (u_names.len(), "update", "updates"),
+            (act_names.len(), "activity", "activities"),
+        ];
+        for (n, singular, plural) in counts {
+            if n > 0 {
+                let unit = if n == 1 { singular } else { plural };
+                parts.push(format!("{n} {unit}"));
+            }
+        }
+        let summary = parts.join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const HANDLER_SUMMARY: &'static str = \"{}\";",
+            summary.escape_default()
+        );
+    }
     // TASK_QUEUES — distinct task queues used across the service's
     // workflows + activities, in declaration order. Lets worker setup
     // validate "I'm configured for every queue this service needs" via

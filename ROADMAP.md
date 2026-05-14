@@ -802,6 +802,34 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::HANDLER_SUMMARY` natural-language
+  counts const): every `<Service>Client` whose service has at least
+  one handler now exposes
+  `pub const HANDLER_SUMMARY: &'static str` containing a pre-computed
+  natural-language summary of the per-kind counts with proper
+  singular vs plural inflection (`workflow`/`workflows`,
+  `signal`/`signals`, `query`/`queries`, `update`/`updates`,
+  `activity`/`activities`). Examples:
+  - `minimal_workflow` (1 of each kind):
+    `"1 workflow, 1 signal, 1 query, 1 update, 1 activity"`
+  - `multiple_workflows` (2 wf + 1 sig):
+    `"2 workflows, 1 signal"`
+  - `workflow_only` (1 wf):
+    `"1 workflow"`
+  Useful for `--help` output, startup log lines, and diagnostic
+  surfaces that want a human-readable counts string without runtime
+  formatting:
+  ```
+  println!("loaded service: {}", MyClient::HANDLER_SUMMARY);
+  ```
+  Singular/plural inflection is baked at codegen since counts are
+  const-known. Skip-emit when no kind is present (matches
+  ALL_HANDLER_NAMES skip-guard). One new positive parse_validate
+  test (`client_exposes_handler_summary_natural_language_const`)
+  exercises three fixtures covering all-kinds-singular,
+  plural+singular mix, and single-kind-only. 16 fixture goldens
+  reblessed (every Client gains the const). 263 parse_validate tests
+  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::execution_pair() -> Option<(String, String)>`):
   every `<Wf>Handle` now exposes the structured-tuple sibling of
   `workflow_id_with_run()`. Returns `Some((workflow_id, run_id))`

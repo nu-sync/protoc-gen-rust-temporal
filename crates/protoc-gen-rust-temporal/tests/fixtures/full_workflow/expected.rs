@@ -117,6 +117,7 @@ pub mod full_v1_full_service_temporal {
         pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
+        pub const HANDLER_SUMMARY: &'static str = "1 workflow, 2 signals, 1 query, 1 update, 1 activity";
         pub const TASK_QUEUES: &'static [&'static str] = &["full"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "full.v1.FullService.Run"), ("signal", "full.v1.FullService.Cancel"), ("signal", "full.v1.FullService.Bootstrap"), ("query", "full.v1.FullService.Status"), ("update", "full.v1.FullService.Reconfigure"), ("activity", "full.v1.FullService.DoChunk")];
