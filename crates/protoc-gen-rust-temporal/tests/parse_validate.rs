@@ -2836,6 +2836,28 @@ fn start_options_exposes_field_names_static_const() {
 }
 
 #[test]
+fn start_options_exposes_with_random_workflow_id_chain() {
+    // R6 ergonomics — `<Wf>StartOptions::with_random_workflow_id(self)`
+    // sugar for setting `workflow_id` to a UUID via the bridge's
+    // `random_workflow_id()`. Saves the two-step
+    //     let id = MyClient::random_workflow_id();
+    //     opts.with_workflow_id(id)
+    // common in test setups and one-shot CLI tooling. Pairs with the
+    // existing `<Service>Client::random_workflow_id_with_prefix`
+    // ship.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn with_random_workflow_id(mut self) -> Self {"),
+        "missing with_random_workflow_id fn signature: {source}"
+    );
+    assert!(
+        source.contains("self.workflow_id = Some(temporal_runtime::random_workflow_id());"),
+        "body must call temporal_runtime::random_workflow_id() and assign: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_clear_mutating_reset() {
     // R6 ergonomics — `<Wf>StartOptions::clear(&mut self)` is the
     // mutating sibling of `is_empty()` (predicate) and

@@ -802,6 +802,26 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::with_random_workflow_id(self)`
+  chain method): every `<Wf>StartOptions` struct now exposes
+  `pub fn with_random_workflow_id(mut self) -> Self` that sets
+  `workflow_id` to a UUID via the bridge's `random_workflow_id()`.
+  Sugar for the two-step
+  ```
+  let id = MyClient::random_workflow_id();
+  opts.with_workflow_id(id)
+  ```
+  pattern common in test setups and one-shot CLI tooling. Pairs with
+  the existing `<Service>Client::random_workflow_id_with_prefix`
+  helper (one chains a UUID through the options builder, the other
+  generates a prefixed UUID via the typed Client static). Body calls
+  the bridge directly so consumers don't need the typed Client in
+  scope. One new positive parse_validate test
+  (`start_options_exposes_with_random_workflow_id_chain`) pins the
+  fn signature and the body's bridge call. 16 fixture goldens
+  reblessed (every StartOptions gains the method). 252
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `Display` impl on `<Wf>StartOptions` with set/total
   summary): every `<Wf>StartOptions` struct now also impls `Display`,
   printing a one-line summary distinct from the verbose multi-line

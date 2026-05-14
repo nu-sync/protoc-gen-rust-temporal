@@ -316,6 +316,11 @@ pub mod multi_v1_multi_service_temporal {
             self.workflow_id = Some(v.into());
             self
         }
+        /// Set `workflow_id` to a random UUID via the bridge's `random_workflow_id()`.
+        pub fn with_random_workflow_id(mut self) -> Self {
+            self.workflow_id = Some(temporal_runtime::random_workflow_id());
+            self
+        }
         pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.task_queue = Some(v.into());
             self
@@ -643,6 +648,11 @@ pub mod multi_v1_multi_service_temporal {
     impl BetaStartOptions {
         pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.workflow_id = Some(v.into());
+            self
+        }
+        /// Set `workflow_id` to a random UUID via the bridge's `random_workflow_id()`.
+        pub fn with_random_workflow_id(mut self) -> Self {
+            self.workflow_id = Some(temporal_runtime::random_workflow_id());
             self
         }
         pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {

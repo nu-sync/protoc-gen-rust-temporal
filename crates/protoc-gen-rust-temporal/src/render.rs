@@ -2137,6 +2137,28 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.workflow_id = Some(v.into());");
     let _ = writeln!(out, "            self");
     let _ = writeln!(out, "        }}");
+    // `with_random_workflow_id` — sugar for setting `workflow_id` to
+    // a UUID. Saves the two-step
+    //     let id = MyClient::random_workflow_id();
+    //     opts.with_workflow_id(id)
+    // common in test setups and one-shot CLI tooling. Body calls into
+    // the bridge's `random_workflow_id()` directly so consumers don't
+    // need the typed Client in scope. Pairs with the existing
+    // `<Service>Client::random_workflow_id_with_prefix` ship.
+    let _ = writeln!(
+        out,
+        "        /// Set `workflow_id` to a random UUID via the bridge's `random_workflow_id()`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn with_random_workflow_id(mut self) -> Self {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.workflow_id = Some(temporal_runtime::random_workflow_id());"
+    );
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(
         out,
         "        pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {{"
