@@ -2732,6 +2732,46 @@ fn start_options_exposes_is_empty_predicate() {
 }
 
 #[test]
+fn start_options_exposes_has_field_set_reflective_predicate() {
+    // R6 ergonomics — `<Wf>StartOptions::has_field_set(&self, name) ->
+    // bool` is a reflective per-name predicate. Returns true iff
+    // `name` matches one of the declared field names AND that field
+    // is `Some`. Unknown names return false (no panic). Pairs with
+    // `FIELD_NAMES` (schema) and `set_field_names` (per-instance
+    // subset) — useful for dynamic config-merge UIs that iterate
+    // FIELD_NAMES and probe per-name to render the current state.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn has_field_set(&self, name: &str) -> bool {"),
+        "missing has_field_set fn signature: {source}"
+    );
+    // Each known field must have an arm pulling `is_some()`.
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let arm = format!("\"{field}\" => self.{field}.is_some(),");
+        assert!(
+            source.contains(&arm),
+            "has_field_set body missing arm `{arm}`: {source}"
+        );
+    }
+    // Unknown-name fallthrough returns false.
+    assert!(
+        source.contains("                _ => false,"),
+        "has_field_set must fall through to false for unknown names: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_field_names_static_const() {
     // R6 ergonomics — `<Wf>StartOptions::FIELD_NAMES: &'static [&'static str]`
     // is the full schema of the nine field names in declaration order.

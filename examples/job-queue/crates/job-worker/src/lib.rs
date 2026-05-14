@@ -4,9 +4,9 @@
 //! subprocess execution is out of scope for v1 per SPEC.md. The demo proves
 //! the *contract surface* of the plugin-generated client, not job semantics.
 
-// Required by temporalio-macros' #[workflow_methods] / #[activities] expansions
-// — they call `.boxed_local()` / `.boxed()` from `futures_util::FutureExt`
-// without re-exporting the trait. See docs/sdk-shape.md §6 in the sibling repo.
+// Required by temporalio-macros' #[workflow_methods] expansion: it calls
+// `.boxed_local()` from `futures_util::FutureExt` without re-exporting the
+// trait. See docs/sdk-shape.md §6 in the sibling repo.
 #[allow(unused_imports)]
 use futures_util::FutureExt as _;
 
@@ -19,15 +19,13 @@ use jobs_proto::jobs::v1::{
     CancelJobInput, GetStatusInput, JobInput, JobOutput, JobStatusOutput, PrepareWorkspaceInput,
 };
 use jobs_proto::jobs_v1_job_service_temporal as temporal_contract;
-// The inner attrs (`init`, `run`, `signal`, `query`, `activity`) look unused
-// lexically because the outer `#[workflow_methods]` / `#[activities]` macros
-// consume them during expansion. The imports are still required so name
-// resolution at attribute lookup time finds them.
+// The inner attrs (`init`, `run`, `signal`, `query`) look unused lexically
+// because the outer `#[workflow_methods]` macro consumes them during expansion.
+// The imports are still required so name resolution at attribute lookup time
+// finds them.
 #[allow(unused_imports)]
-use temporalio_macros::{
-    activities, activity, init, query, run, signal, workflow, workflow_methods,
-};
-use temporalio_sdk::activities::{ActivityContext, ActivityError};
+use temporalio_macros::{init, query, run, signal, workflow, workflow_methods};
+use temporalio_sdk::activities::ActivityContext;
 use temporalio_sdk::{
     ActivityOptions, SyncWorkflowContext, Worker, WorkerOptions, WorkflowContext,
     WorkflowContextView, WorkflowResult,
@@ -50,39 +48,6 @@ pub fn register(worker: &mut Worker) -> &mut Worker {
 // ── activities ────────────────────────────────────────────────────────────
 
 pub struct JobActivities;
-
-#[activities]
-impl JobActivities {
-    /// "Prepare" stage — stubbed 1s sleep.
-    #[activity(name = temporal_contract::PREPARE_WORKSPACE_ACTIVITY_NAME)]
-    pub async fn prepare_workspace(
-        _ctx: ActivityContext,
-        input: TypedProtoMessage<PrepareWorkspaceInput>,
-    ) -> Result<(), ActivityError> {
-        prepare_workspace(input.into_inner().name)
-            .await
-            .map_err(ActivityError::from)
-    }
-
-    /// "Execute" stage — stubbed sleep capped to the caller-supplied timeout,
-    /// then returns canned output.
-    #[activity(name = temporal_contract::EXECUTE_COMMAND_ACTIVITY_NAME)]
-    pub async fn execute_command(
-        _ctx: ActivityContext,
-        input: TypedProtoMessage<JobInput>,
-    ) -> Result<TypedProtoMessage<JobOutput>, ActivityError> {
-        execute_command(input.into_inner())
-            .await
-            .map(TypedProtoMessage)
-            .map_err(ActivityError::from)
-    }
-
-    /// "Collect" stage — stubbed 1s sleep.
-    #[activity(name = temporal_contract::COLLECT_OUTPUT_ACTIVITY_NAME)]
-    pub async fn collect_output(_ctx: ActivityContext) -> Result<(), ActivityError> {
-        collect_output().await.map_err(ActivityError::from)
-    }
-}
 
 impl temporal_contract::JobServiceActivities for JobActivities {
     fn prepare_workspace(
@@ -176,9 +141,9 @@ impl RunJob {
             s.progress_pct = 10;
         });
         let name = ctx.state(|s| s.input.name.clone());
-        ctx.start_activity(
-            JobActivities::prepare_workspace,
-            TypedProtoMessage(PrepareWorkspaceInput { name }),
+        temporal_contract::execute_prepare_workspace(
+            ctx,
+            PrepareWorkspaceInput { name },
             ActivityOptions::start_to_close_timeout(Duration::from_secs(30)),
         )
         .await?;
@@ -192,14 +157,13 @@ impl RunJob {
             s.stage = Stage::Executing;
             s.progress_pct = 50;
         });
-        let input = TypedProtoMessage(ctx.state(|s| s.input.clone()));
-        let out: TypedProtoMessage<JobOutput> = ctx
-            .start_activity(
-                JobActivities::execute_command,
-                input,
-                ActivityOptions::start_to_close_timeout(Duration::from_secs(120)),
-            )
-            .await?;
+        let input = ctx.state(|s| s.input.clone());
+        let out = temporal_contract::execute_execute_command(
+            ctx,
+            input,
+            ActivityOptions::start_to_close_timeout(Duration::from_secs(120)),
+        )
+        .await?;
 
         if ctx.state(|s| s.cancelled) {
             return Ok(cancelled_output(ctx));
@@ -210,9 +174,8 @@ impl RunJob {
             s.stage = Stage::Collecting;
             s.progress_pct = 90;
         });
-        ctx.start_activity(
-            JobActivities::collect_output,
-            (),
+        temporal_contract::execute_collect_output(
+            ctx,
             ActivityOptions::start_to_close_timeout(Duration::from_secs(30)),
         )
         .await?;
@@ -221,7 +184,7 @@ impl RunJob {
             s.stage = Stage::Done;
             s.progress_pct = 100;
         });
-        Ok(out)
+        Ok(TypedProtoMessage(out))
     }
 
     #[signal(name = temporal_contract::CANCEL_JOB_SIGNAL_NAME)]

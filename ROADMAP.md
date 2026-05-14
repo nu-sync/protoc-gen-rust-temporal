@@ -802,6 +802,23 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::has_field_set(&self, name)`
+  reflective per-name predicate): completes the StartOptions
+  introspection trio with FIELD_NAMES (schema), set_field_names
+  (per-instance subset), and now has_field_set (per-name probe).
+  Returns true iff `name` matches one of the declared field names AND
+  that field is `Some`. Unknown names return false (no panic). Lets
+  dynamic config-merge UIs iterate FIELD_NAMES and probe per-name
+  to render the current state of each field — useful for building
+  diff displays ("3 of 9 fields are overridden") or
+  per-field-toggle UIs without enumerating each field at the call
+  site. One new positive parse_validate test
+  (`start_options_exposes_has_field_set_reflective_predicate`) pins
+  the fn signature, the per-field arm for every one of the nine
+  fields, AND the catch-all `_ => false` for unknown names. 16
+  fixture goldens reblessed (every StartOptions gains the method).
+  241 parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::merge_in(&mut self, other)`
   non-consuming merge sibling): every `<Wf>StartOptions` struct now
   exposes `pub fn merge_in(&mut self, other: Self)` that mutates self

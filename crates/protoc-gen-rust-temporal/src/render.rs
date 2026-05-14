@@ -2151,6 +2151,40 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
         let _ = writeln!(out, "            \"{field}\",");
     }
     let _ = writeln!(out, "        ];");
+    // `has_field_set` — reflective per-name predicate. Returns true
+    // iff `name` matches one of the declared field names AND that
+    // field is `Some`. Unknown names return false (no panic). Pairs
+    // with `FIELD_NAMES` (schema) and `set_field_names` (per-instance
+    // subset) — useful for dynamic config-merge UIs that iterate
+    // FIELD_NAMES and probe per-name to render the current state.
+    let _ = writeln!(
+        out,
+        "        /// Whether the named field is currently `Some`. Returns false for unknown names."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn has_field_set(&self, name: &str) -> bool {{"
+    );
+    let _ = writeln!(out, "            match name {{");
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let _ = writeln!(
+            out,
+            "                \"{field}\" => self.{field}.is_some(),"
+        );
+    }
+    let _ = writeln!(out, "                _ => false,");
+    let _ = writeln!(out, "            }}");
+    let _ = writeln!(out, "        }}");
     // `clear` — mutating reset to all-None state. Sibling of
     // `is_empty()` (predicate) and `Default::default()` (constructor).
     // Lets callers spell `opts.clear()` in long-lived option-builder

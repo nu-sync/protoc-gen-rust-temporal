@@ -297,6 +297,21 @@ pub mod acts_v1_chunk_service_temporal {
             "enable_eager_workflow_start",
             "retry_policy",
         ];
+        /// Whether the named field is currently `Some`. Returns false for unknown names.
+        pub fn has_field_set(&self, name: &str) -> bool {
+            match name {
+                "workflow_id" => self.workflow_id.is_some(),
+                "task_queue" => self.task_queue.is_some(),
+                "id_reuse_policy" => self.id_reuse_policy.is_some(),
+                "id_conflict_policy" => self.id_conflict_policy.is_some(),
+                "execution_timeout" => self.execution_timeout.is_some(),
+                "run_timeout" => self.run_timeout.is_some(),
+                "task_timeout" => self.task_timeout.is_some(),
+                "enable_eager_workflow_start" => self.enable_eager_workflow_start.is_some(),
+                "retry_policy" => self.retry_policy.is_some(),
+                _ => false,
+            }
+        }
         /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
         pub fn clear(&mut self) {
             *self = Self::default();

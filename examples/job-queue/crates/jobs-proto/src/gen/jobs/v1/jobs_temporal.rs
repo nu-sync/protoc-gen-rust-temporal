@@ -2,6 +2,19 @@
 // source: jobs/v1/jobs.proto
 
 #[allow(clippy::all, unused_imports, dead_code)]
+/// Generated Temporal client + worker surface for `jobs.v1.JobService`.
+///
+/// Construct a typed client with [`JobServiceClient::connect`] (or
+/// [`JobServiceClient::new`] from an existing `TemporalClient`).
+/// Each workflow rpc gets a typed start method, an attach helper, and a
+/// `<Workflow>Handle` wrapper exposing signal / query / update / cancel
+/// / terminate / result paths typed against the proto.
+///
+/// Identity consts (`PACKAGE`, `SERVICE_NAME`, `FULLY_QUALIFIED_SERVICE_NAME`,
+/// `SOURCE_FILE`, `GENERATED_BY_PLUGIN_VERSION`) on the client and per-rpc
+/// `<RPC>_*` name / type consts at module scope let tooling enumerate the wire
+/// surface without descriptor-pool
+/// round-trips.
 pub mod jobs_v1_job_service_temporal {
     use anyhow::Result;
     use std::time::Duration;
@@ -27,26 +40,130 @@ pub mod jobs_v1_job_service_temporal {
         const MESSAGE_TYPE: &'static str = "jobs.v1.PrepareWorkspaceInput";
     }
 
+    pub const PACKAGE: &str = "jobs.v1";
+    pub const SERVICE_NAME: &str = "JobService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "jobs.v1.JobService";
+    pub const SOURCE_FILE: &str = "jobs/v1/jobs.proto";
+    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
+    pub const WIRE_FORMAT_VERSION: &str = "v1";
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
+    pub const RUN_JOB_INPUT_TYPE: &str = "jobs.v1.JobInput";
+    pub const RUN_JOB_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";
     pub const RUN_JOB_TASK_QUEUE: &str = "jobs";
+    pub const RUN_JOB_WORKFLOW_ID_TEMPLATE: &str = "job-{{ .Name }}";
+    pub const RUN_JOB_ATTACHED_SIGNAL_NAMES: &'static [&'static str] = &["jobs.v1.JobService.CancelJob"];
+    pub const RUN_JOB_ATTACHED_QUERY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.GetStatus"];
+
+    pub const CANCEL_JOB_SIGNAL_INPUT_TYPE: &str = "jobs.v1.CancelJobInput";
+    pub const GET_STATUS_QUERY_INPUT_TYPE: &str = "jobs.v1.GetStatusInput";
+    pub const GET_STATUS_QUERY_OUTPUT_TYPE: &str = "jobs.v1.JobStatusOutput";
+    pub const PREPARE_WORKSPACE_ACTIVITY_INPUT_TYPE: &str = "jobs.v1.PrepareWorkspaceInput";
+    pub const PREPARE_WORKSPACE_ACTIVITY_OUTPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const EXECUTE_COMMAND_ACTIVITY_INPUT_TYPE: &str = "jobs.v1.JobInput";
+    pub const EXECUTE_COMMAND_ACTIVITY_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";
+    pub const COLLECT_OUTPUT_ACTIVITY_INPUT_TYPE: &str = "google.protobuf.Empty";
+    pub const COLLECT_OUTPUT_ACTIVITY_OUTPUT_TYPE: &str = "google.protobuf.Empty";
 
     fn run_job_id(input: &JobInput) -> String {
-        format!("job-{}", input.name)
+        let id = format!("job-{}", input.name);
+        assert!(!id.is_empty(), "workflow id template `job-{{}}` resolved to an empty string at runtime — check that every referenced input field has a non-empty value");
+        if let Some(bad) = id.chars().find(|c| c.is_control()) {
+            panic!("workflow id template `job-{{}}` resolved to a value containing control character {:?} at runtime — check the referenced input fields for embedded newlines / tabs", bad);
+        }
+        id
     }
 
+    #[derive(Clone)]
     pub struct JobServiceClient {
         client: temporal_runtime::TemporalClient,
     }
 
+    impl ::std::fmt::Debug for JobServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("JobServiceClient")
+                .field("package", &Self::PACKAGE)
+                .field("service", &Self::SERVICE_NAME)
+                .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
+                .finish_non_exhaustive()
+        }
+    }
+
+    impl ::std::fmt::Display for JobServiceClient {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)
+        }
+    }
+
     impl JobServiceClient {
+        pub const PACKAGE: &'static str = "jobs.v1";
+        pub const SERVICE_NAME: &'static str = "JobService";
+        pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "jobs.v1.JobService";
+        pub const SOURCE_FILE: &'static str = "jobs/v1/jobs.proto";
+        pub const DEFAULT_TASK_QUEUE: &'static str = "jobs";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
+        pub const WORKFLOW_NAMES: &'static [&'static str] = &["jobs.v1.JobService.RunJob"];
+        pub const SIGNAL_NAMES: &'static [&'static str] = &["jobs.v1.JobService.CancelJob"];
+        pub const QUERY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.GetStatus"];
+        pub const ACTIVITY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.PrepareWorkspace", "jobs.v1.JobService.ExecuteCommand", "jobs.v1.JobService.CollectOutput"];
+        pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["jobs.v1.JobService.RunJob", "jobs.v1.JobService.CancelJob", "jobs.v1.JobService.GetStatus", "jobs.v1.JobService.PrepareWorkspace", "jobs.v1.JobService.ExecuteCommand", "jobs.v1.JobService.CollectOutput"];
+        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const TASK_QUEUES: &'static [&'static str] = &["jobs"];
+
+        /// Look up which handler kind a registered name belongs to.
+        /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
+        /// or `None` if the name doesn't match any handler this service registers.
+        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {
+            if Self::WORKFLOW_NAMES.contains(&name) { return Some("workflow"); }
+            if Self::SIGNAL_NAMES.contains(&name) { return Some("signal"); }
+            if Self::QUERY_NAMES.contains(&name) { return Some("query"); }
+            if Self::ACTIVITY_NAMES.contains(&name) { return Some("activity"); }
+            None
+        }
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
+        }
+
+        pub async fn connect(url: &str, namespace: &str) -> Result<Self> {
+            let client = temporal_runtime::connect(url, namespace).await?;
+            Ok(Self::new(client))
         }
 
         pub fn inner(&self) -> &temporal_runtime::TemporalClient {
             &self.client
         }
 
+        pub fn namespace(&self) -> String {
+            self.client.namespace()
+        }
+
+        pub fn random_workflow_id() -> String {
+            temporal_runtime::random_workflow_id()
+        }
+
+        pub fn into_inner(self) -> temporal_runtime::TemporalClient {
+            self.client
+        }
+
+        pub fn clone_inner(&self) -> temporal_runtime::TemporalClient {
+            self.client.clone()
+        }
+
+    }
+
+    impl ::std::convert::From<temporal_runtime::TemporalClient> for JobServiceClient {
+        fn from(client: temporal_runtime::TemporalClient) -> Self {
+            Self::new(client)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::TemporalClient> for JobServiceClient {
+        fn as_ref(&self) -> &temporal_runtime::TemporalClient {
+            &self.client
+        }
+    }
+
+    impl JobServiceClient {
         /// Start a new `jobs.v1.JobService.RunJob` workflow.
         pub async fn run_job(
             &self,
@@ -121,10 +238,198 @@ pub mod jobs_v1_job_service_temporal {
         pub fn default_execution_timeout() -> Duration {
             Duration::from_secs(3600)
         }
+        pub fn proto_defaults() -> Self {
+            let mut opts = Self::default();
+            opts.execution_timeout = Some(Self::default_execution_timeout());
+            opts
+        }
+        pub fn with_proto_defaults(mut self) -> Self {
+            if self.execution_timeout.is_none() {
+                self.execution_timeout = Some(Self::default_execution_timeout());
+            }
+            self
+        }
     }
 
+    impl RunJobStartOptions {
+        pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
+            self.workflow_id = Some(v.into());
+            self
+        }
+        pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {
+            self.task_queue = Some(v.into());
+            self
+        }
+        pub fn with_id_reuse_policy(mut self, v: temporal_runtime::WorkflowIdReusePolicy) -> Self {
+            self.id_reuse_policy = Some(v);
+            self
+        }
+        pub fn with_id_conflict_policy(mut self, v: temporal_runtime::WorkflowIdConflictPolicy) -> Self {
+            self.id_conflict_policy = Some(v);
+            self
+        }
+        pub fn with_execution_timeout(mut self, v: Duration) -> Self {
+            self.execution_timeout = Some(v);
+            self
+        }
+        pub fn with_run_timeout(mut self, v: Duration) -> Self {
+            self.run_timeout = Some(v);
+            self
+        }
+        pub fn with_task_timeout(mut self, v: Duration) -> Self {
+            self.task_timeout = Some(v);
+            self
+        }
+        pub fn with_enable_eager_workflow_start(mut self, v: bool) -> Self {
+            self.enable_eager_workflow_start = Some(v);
+            self
+        }
+        pub fn with_retry_policy(mut self, v: temporal_runtime::RetryPolicy) -> Self {
+            self.retry_policy = Some(v);
+            self
+        }
+
+        /// Layer `other` over `self`, with `other`'s fields winning.
+        /// Lets callers fold env-driven overrides over a base config without
+        /// re-deriving each field. Per-field: `other.<f>.or(self.<f>)`.
+        pub fn merge(mut self, other: Self) -> Self {
+            self.workflow_id = other.workflow_id.or(self.workflow_id);
+            self.task_queue = other.task_queue.or(self.task_queue);
+            self.id_reuse_policy = other.id_reuse_policy.or(self.id_reuse_policy);
+            self.id_conflict_policy = other.id_conflict_policy.or(self.id_conflict_policy);
+            self.execution_timeout = other.execution_timeout.or(self.execution_timeout);
+            self.run_timeout = other.run_timeout.or(self.run_timeout);
+            self.task_timeout = other.task_timeout.or(self.task_timeout);
+            self.enable_eager_workflow_start = other.enable_eager_workflow_start.or(self.enable_eager_workflow_start);
+            self.retry_policy = other.retry_policy.or(self.retry_policy);
+            self
+        }
+        pub fn is_empty(&self) -> bool {
+            self.workflow_id.is_none()
+                && self.task_queue.is_none()
+                && self.id_reuse_policy.is_none()
+                && self.id_conflict_policy.is_none()
+                && self.execution_timeout.is_none()
+                && self.run_timeout.is_none()
+                && self.task_timeout.is_none()
+                && self.enable_eager_workflow_start.is_none()
+                && self.retry_policy.is_none()
+        }
+        /// Names of every field on this options struct, in declaration order.
+        /// Stable across re-codegen — see [`Self::set_field_names`] for the per-instance subset.
+        pub const FIELD_NAMES: &'static [&'static str] = &[
+            "workflow_id",
+            "task_queue",
+            "id_reuse_policy",
+            "id_conflict_policy",
+            "execution_timeout",
+            "run_timeout",
+            "task_timeout",
+            "enable_eager_workflow_start",
+            "retry_policy",
+        ];
+        /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
+        pub fn clear(&mut self) {
+            *self = Self::default();
+        }
+        /// Number of fields with `Some` values. Equivalent to `set_field_names().len()`,
+        /// but skips the Vec allocation.
+        pub fn set_field_count(&self) -> usize {
+            (self.workflow_id.is_some() as usize)
+                + (self.task_queue.is_some() as usize)
+                + (self.id_reuse_policy.is_some() as usize)
+                + (self.id_conflict_policy.is_some() as usize)
+                + (self.execution_timeout.is_some() as usize)
+                + (self.run_timeout.is_some() as usize)
+                + (self.task_timeout.is_some() as usize)
+                + (self.enable_eager_workflow_start.is_some() as usize)
+                + (self.retry_policy.is_some() as usize)
+        }
+        /// Names of fields with `Some` values, in declaration order. Empty iff [`Self::is_empty`].
+        pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {
+            let mut out = ::std::vec::Vec::new();
+            if self.workflow_id.is_some() { out.push("workflow_id"); }
+            if self.task_queue.is_some() { out.push("task_queue"); }
+            if self.id_reuse_policy.is_some() { out.push("id_reuse_policy"); }
+            if self.id_conflict_policy.is_some() { out.push("id_conflict_policy"); }
+            if self.execution_timeout.is_some() { out.push("execution_timeout"); }
+            if self.run_timeout.is_some() { out.push("run_timeout"); }
+            if self.task_timeout.is_some() { out.push("task_timeout"); }
+            if self.enable_eager_workflow_start.is_some() { out.push("enable_eager_workflow_start"); }
+            if self.retry_policy.is_some() { out.push("retry_policy"); }
+            out
+        }
+    }
+
+    #[derive(Clone)]
     pub struct RunJobHandle {
         inner: temporal_runtime::WorkflowHandle,
+    }
+
+    impl ::std::fmt::Debug for RunJobHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.debug_struct("RunJobHandle")
+                .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("workflow_id", &self.inner.workflow_id())
+                .field("run_id", &self.inner.run_id())
+                .finish()
+        }
+    }
+
+    impl ::std::fmt::Display for RunJobHandle {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+        }
+    }
+
+    impl RunJobHandle {
+        pub const WORKFLOW_NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::RUN_JOB_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::RUN_JOB_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::RUN_JOB_TASK_QUEUE;
+        pub const ID_TEMPLATE: &'static str = self::RUN_JOB_WORKFLOW_ID_TEMPLATE;
+
+        pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self { inner }
+        }
+
+    }
+
+    impl ::std::convert::From<temporal_runtime::WorkflowHandle> for RunJobHandle {
+        fn from(inner: temporal_runtime::WorkflowHandle) -> Self {
+            Self::from_inner(inner)
+        }
+    }
+
+    impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for RunJobHandle {
+        fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
+            &self.inner
+        }
+    }
+
+    impl ::std::cmp::PartialEq for RunJobHandle {
+        fn eq(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+                && self.inner.run_id() == other.inner.run_id()
+        }
+    }
+    impl ::std::cmp::Eq for RunJobHandle {}
+    impl ::std::hash::Hash for RunJobHandle {
+        fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+            self.inner.workflow_id().hash(state);
+            self.inner.run_id().hash(state);
+        }
+    }
+    impl ::std::cmp::PartialOrd for RunJobHandle {
+        fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl ::std::cmp::Ord for RunJobHandle {
+        fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+            self.inner.workflow_id().cmp(other.inner.workflow_id())
+                .then_with(|| self.inner.run_id().cmp(&other.inner.run_id()))
+        }
     }
 
     impl RunJobHandle {
@@ -132,11 +437,65 @@ pub mod jobs_v1_job_service_temporal {
             self.inner.workflow_id()
         }
 
+        pub fn workflow_id_owned(&self) -> String {
+            self.inner.workflow_id().to_string()
+        }
+
+        pub fn client(&self) -> &temporal_runtime::TemporalClient {
+            self.inner.client()
+        }
+
+        pub fn with_run_id(self, run_id: Option<String>) -> Self {
+            Self { inner: self.inner.with_run_id(run_id) }
+        }
+
+        pub fn without_run_id(self) -> Self {
+            self.with_run_id(None)
+        }
+
+        pub fn set_run_id(&mut self, run_id: Option<String>) {
+            self.inner = self.inner.clone().with_run_id(run_id);
+        }
+
+        pub fn same_workflow_as(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+        }
+
+        /// `true` IFF both handles carry a known run id, the run ids match,
+        /// and the workflow ids match. Returns `false` if either side has
+        /// no run id (constructed via `<rpc>_handle`) — strict equality requires
+        /// proof, and absence of a run id is not proof. Use [`Self::same_workflow_as`]
+        /// for the looser "same workflow id" comparison.
+        pub fn same_execution_as(&self, other: &Self) -> bool {
+            match (self.inner.run_id(), other.inner.run_id()) {
+                (Some(a), Some(b)) => a == b && self.inner.workflow_id() == other.inner.workflow_id(),
+                _ => false,
+            }
+        }
+
+        pub fn clone_inner(&self) -> temporal_runtime::WorkflowHandle {
+            self.inner.clone()
+        }
+
+        pub fn into_inner(self) -> temporal_runtime::WorkflowHandle {
+            self.inner
+        }
+
         /// The execution's run id, if known. `None` for handles created
         /// via `<rpc>_handle(workflow_id)` (the consumer didn't supply one);
         /// `Some(...)` for handles returned by the start path.
         pub fn run_id(&self) -> Option<&str> {
             self.inner.run_id()
+        }
+
+        pub fn run_id_owned(&self) -> Option<String> {
+            self.inner.run_id().map(String::from)
+        }
+
+        /// `true` if this handle has a known run id (started via the typed start
+        /// path); `false` if it was constructed via `<rpc>_handle(workflow_id)`.
+        pub fn has_run_id(&self) -> bool {
+            self.inner.run_id().is_some()
         }
 
         /// Wait for the workflow to complete and return its output.
@@ -168,19 +527,30 @@ pub mod jobs_v1_job_service_temporal {
 
 
     // ── Activities ────────────────────────────────────────────
-    // Phase 2 (activities=true): typed trait + name consts. Wire to
-    // your worker via temporalio-sdk's #[activities] macro;
-    // see temporal-proto-runtime-bridge README for the adapter pattern.
+    // Phase 2 (activities=true): typed trait + name consts. Register
+    // implementations with register_<service>_activities; no parallel
+    // temporalio-sdk #[activities] adapter is required.
 
     pub const PREPARE_WORKSPACE_ACTIVITY_NAME: &str = "jobs.v1.JobService.PrepareWorkspace";
     pub const EXECUTE_COMMAND_ACTIVITY_NAME: &str = "jobs.v1.JobService.ExecuteCommand";
     pub const COLLECT_OUTPUT_ACTIVITY_NAME: &str = "jobs.v1.JobService.CollectOutput";
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct PrepareWorkspaceActivity;
     impl temporal_runtime::worker::ActivityDefinition for PrepareWorkspaceActivity {
         type Input = temporal_runtime::TypedProtoMessage<PrepareWorkspaceInput>;
         type Output = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
         fn name() -> &'static str { PREPARE_WORKSPACE_ACTIVITY_NAME }
+    }
+    impl PrepareWorkspaceActivity {
+        pub const NAME: &'static str = self::PREPARE_WORKSPACE_ACTIVITY_NAME;
+        pub const INPUT_TYPE: &'static str = self::PREPARE_WORKSPACE_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::PREPARE_WORKSPACE_ACTIVITY_OUTPUT_TYPE;
+    }
+    impl ::std::fmt::Display for PrepareWorkspaceActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn execute_prepare_workspace<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
@@ -196,11 +566,22 @@ pub mod jobs_v1_job_service_temporal {
     ) -> ::std::result::Result<(), temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(PrepareWorkspaceActivity, input, opts).await.map(|_| ())
     }
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct ExecuteCommandActivity;
     impl temporal_runtime::worker::ActivityDefinition for ExecuteCommandActivity {
         type Input = temporal_runtime::TypedProtoMessage<JobInput>;
         type Output = temporal_runtime::TypedProtoMessage<JobOutput>;
         fn name() -> &'static str { EXECUTE_COMMAND_ACTIVITY_NAME }
+    }
+    impl ExecuteCommandActivity {
+        pub const NAME: &'static str = self::EXECUTE_COMMAND_ACTIVITY_NAME;
+        pub const INPUT_TYPE: &'static str = self::EXECUTE_COMMAND_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::EXECUTE_COMMAND_ACTIVITY_OUTPUT_TYPE;
+    }
+    impl ::std::fmt::Display for ExecuteCommandActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn execute_execute_command<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
@@ -216,11 +597,22 @@ pub mod jobs_v1_job_service_temporal {
     ) -> ::std::result::Result<JobOutput, temporal_runtime::worker::ActivityExecutionError> {
         ctx.start_local_activity(ExecuteCommandActivity, input, opts).await.map(temporal_runtime::TypedProtoMessage::into_inner)
     }
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CollectOutputActivity;
     impl temporal_runtime::worker::ActivityDefinition for CollectOutputActivity {
         type Input = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
         type Output = temporal_runtime::TypedProtoMessage<temporal_runtime::ProtoEmpty>;
         fn name() -> &'static str { COLLECT_OUTPUT_ACTIVITY_NAME }
+    }
+    impl CollectOutputActivity {
+        pub const NAME: &'static str = self::COLLECT_OUTPUT_ACTIVITY_NAME;
+        pub const INPUT_TYPE: &'static str = self::COLLECT_OUTPUT_ACTIVITY_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::COLLECT_OUTPUT_ACTIVITY_OUTPUT_TYPE;
+    }
+    impl ::std::fmt::Display for CollectOutputActivity {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn execute_collect_output<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
@@ -243,9 +635,49 @@ pub mod jobs_v1_job_service_temporal {
 
     pub fn register_job_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
     where
-        I: JobServiceActivities + temporal_runtime::worker::ActivityImplementer,
+        I: JobServiceActivities,
     {
-        worker.register_activities(impl_)
+        let impl_ = ::std::sync::Arc::new(impl_);
+        worker
+            .register_activity_fn::<PrepareWorkspaceActivity, _, _>({
+                let impl_ = ::std::sync::Arc::clone(&impl_);
+                move |ctx, input| {
+                    let impl_ = ::std::sync::Arc::clone(&impl_);
+                    async move {
+                        impl_
+                            .prepare_workspace(ctx, input.into_inner())
+                            .await
+                            .map(|_| temporal_runtime::TypedProtoMessage(temporal_runtime::ProtoEmpty {}))
+                            .map_err(temporal_runtime::worker::ActivityError::from)
+                    }
+                }
+            })
+            .register_activity_fn::<ExecuteCommandActivity, _, _>({
+                let impl_ = ::std::sync::Arc::clone(&impl_);
+                move |ctx, input| {
+                    let impl_ = ::std::sync::Arc::clone(&impl_);
+                    async move {
+                        impl_
+                            .execute_command(ctx, input.into_inner())
+                            .await
+                            .map(temporal_runtime::TypedProtoMessage)
+                            .map_err(temporal_runtime::worker::ActivityError::from)
+                    }
+                }
+            })
+            .register_activity_fn::<CollectOutputActivity, _, _>({
+                let impl_ = ::std::sync::Arc::clone(&impl_);
+                move |ctx, _input| {
+                    let impl_ = ::std::sync::Arc::clone(&impl_);
+                    async move {
+                        impl_
+                            .collect_output(ctx, ())
+                            .await
+                            .map(|_| temporal_runtime::TypedProtoMessage(temporal_runtime::ProtoEmpty {}))
+                            .map_err(temporal_runtime::worker::ActivityError::from)
+                    }
+                }
+            })
     }
 
     // ── Workflow handler names ──────────────────────────────
@@ -275,6 +707,9 @@ pub mod jobs_v1_job_service_temporal {
         type Output;
         const WORKFLOW_NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;
         const TASK_QUEUE: &'static str = self::RUN_JOB_TASK_QUEUE;
+        const INPUT_TYPE: &'static str = self::RUN_JOB_INPUT_TYPE;
+        const OUTPUT_TYPE: &'static str = self::RUN_JOB_OUTPUT_TYPE;
+        const ID_TEMPLATE: &'static str = self::RUN_JOB_WORKFLOW_ID_TEMPLATE;
         const CANCEL_JOB_SIGNAL_NAME: &'static str = self::CANCEL_JOB_SIGNAL_NAME;
         const GET_STATUS_QUERY_NAME: &'static str = self::GET_STATUS_QUERY_NAME;
     }
@@ -286,11 +721,24 @@ pub mod jobs_v1_job_service_temporal {
         worker.register_workflow::<W>()
     }
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RunJobWorkflow;
     impl temporal_runtime::worker::WorkflowDefinition for RunJobWorkflow {
         type Input = temporal_runtime::TypedProtoMessage<JobInput>;
         type Output = temporal_runtime::TypedProtoMessage<JobOutput>;
         fn name(&self) -> &str { self::RUN_JOB_WORKFLOW_NAME }
+    }
+    impl RunJobWorkflow {
+        pub const NAME: &'static str = self::RUN_JOB_WORKFLOW_NAME;
+        pub const INPUT_TYPE: &'static str = self::RUN_JOB_INPUT_TYPE;
+        pub const OUTPUT_TYPE: &'static str = self::RUN_JOB_OUTPUT_TYPE;
+        pub const TASK_QUEUE: &'static str = self::RUN_JOB_TASK_QUEUE;
+        pub const ID_TEMPLATE: &'static str = self::RUN_JOB_WORKFLOW_ID_TEMPLATE;
+    }
+    impl ::std::fmt::Display for RunJobWorkflow {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn start_run_job_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,
@@ -312,11 +760,21 @@ pub mod jobs_v1_job_service_temporal {
         ctx.continue_as_new(&wrapped, opts)
     }
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CancelJobSignal;
     impl temporal_runtime::worker::SignalDefinition for CancelJobSignal {
         type Workflow = RunJobWorkflow;
         type Input = temporal_runtime::TypedProtoMessage<CancelJobInput>;
         fn name(&self) -> &str { self::CANCEL_JOB_SIGNAL_NAME }
+    }
+    impl CancelJobSignal {
+        pub const NAME: &'static str = self::CANCEL_JOB_SIGNAL_NAME;
+        pub const INPUT_TYPE: &'static str = self::CANCEL_JOB_SIGNAL_INPUT_TYPE;
+    }
+    impl ::std::fmt::Display for CancelJobSignal {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            f.write_str(Self::NAME)
+        }
     }
     pub async fn signal_cancel_job_external<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

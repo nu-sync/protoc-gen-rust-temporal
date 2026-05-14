@@ -332,20 +332,20 @@ Each phase ends with green CI and a tagged release.
 **Phase 7 — Worker emit** (completed 2026-05-13)
 - Opt-in flags: `activities=true` and `workflows=true`.
 - Activity emit: per-service `<Service>Activities` trait, per-activity
-  `<METHOD>_ACTIVITY_NAME` constants, and
+  `<METHOD>_ACTIVITY_NAME` constants and marker structs implementing
+  `ActivityDefinition`, workflow-side execution helpers, and
   `register_<service>_activities<I>(&mut temporal_runtime::worker::Worker, I)`
-  where `I` implements both the generated trait and the SDK
-  `ActivityImplementer`.
+  where `I` implements the generated trait. The helper adapts trait methods to
+  the SDK's typed `register_activity_fn` callback surface.
 - Workflow emit: per-workflow `<Workflow>Definition` trait with associated
   `Input` / `Output` types and default associated consts for workflow name,
   task queue, and attached signal/query/update names, plus
   `register_<workflow>_workflow<W>(&mut temporal_runtime::worker::Worker)`
   where `W` implements both the generated definition trait and the SDK
   `WorkflowImplementer`.
-- Consumer-owned code remains responsible for `temporalio-sdk` macros:
-  `#[activities]` adapters for activities and `#[workflow]` /
-  `#[workflow_methods]` for workflows. Generated code does not emit workflow
-  structs, workflow method bodies, activity bodies, worker construction,
+- Consumer-owned code remains responsible for `temporalio-sdk` workflow macros:
+  `#[workflow]` / `#[workflow_methods]` for workflows. Generated code does not
+  emit workflow structs, workflow method bodies, activity bodies, worker construction,
   interceptors, worker versioning, or `WorkerOptions`.
 - Every worker-facing generated reference goes through
   `crate::temporal_runtime`; the default bridge exposes the needed symbols

@@ -56,3 +56,10 @@ url = "2"
 uuid = { version = "1", features = ["v4"] }
 tempfile = "3"
 pretty_assertions = "1"
+
+[patch.crates-io]
+temporalio-client = { path = "../sdk-core/crates/client" }
+temporalio-common = { path = "../sdk-core/crates/common" }
+temporalio-sdk = { path = "../sdk-core/crates/sdk" }
+temporalio-sdk-core = { path = "../sdk-core/crates/sdk-core" }
+temporalio-macros = { path = "../sdk-core/crates/macros" }
