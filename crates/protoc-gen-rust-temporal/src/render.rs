@@ -1115,6 +1115,32 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
         "            ::std::format!(\"{{}}{{}}\", prefix, Self::random_workflow_id())"
     );
     let _ = writeln!(out, "        }}");
+    // `diagnostic_summary` — pre-formatted one-line tracing/diagnostic
+    // string combining the service identity, active namespace, plugin
+    // version, and schema digest. Format:
+    //     "<fqn>@<namespace> <plugin_version> schema=<schema_digest>"
+    // Useful for: bug reports (paste into issue template),
+    // `--version`-style startup log lines, sanity-check assertions
+    // in CI ("did the right plugin produce this?"). Pulls namespace
+    // via the bridge (per-call allocation, acceptable for diagnostic
+    // paths).
+    let _ = writeln!(
+        out,
+        "        /// One-line diagnostic summary suitable for bug reports / startup logs."
+    );
+    let _ = writeln!(
+        out,
+        "        /// Format: `<fqn>@<namespace> <plugin_version> schema=<schema_digest>`."
+    );
+    let _ = writeln!(out, "        pub fn diagnostic_summary(&self) -> String {{");
+    let _ = writeln!(out, "            ::std::format!(");
+    let _ = writeln!(out, "                \"{{}}@{{}} {{}} schema={{}}\",");
+    let _ = writeln!(out, "                Self::FULLY_QUALIFIED_SERVICE_NAME,");
+    let _ = writeln!(out, "                self.client.namespace(),");
+    let _ = writeln!(out, "                Self::GENERATED_BY_PLUGIN_VERSION,");
+    let _ = writeln!(out, "                self::CLUDDEN_SCHEMA_DIGEST,");
+    let _ = writeln!(out, "            )");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
     // Consuming accessor — lets callers transfer ownership of the
     // underlying `TemporalClient` for sharing across multiple

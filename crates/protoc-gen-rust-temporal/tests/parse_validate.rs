@@ -3482,6 +3482,43 @@ fn client_exposes_handler_count_const_derived_from_aggregate() {
 }
 
 #[test]
+fn client_exposes_diagnostic_summary_one_liner() {
+    // R6 ergonomics — `<Service>Client::diagnostic_summary(&self)`
+    // returns a pre-formatted one-line tracing/diagnostic string
+    // combining service identity, active namespace, plugin version,
+    // and schema digest. Format:
+    //     "<fqn>@<namespace> <plugin_version> schema=<schema_digest>"
+    // Useful for bug reports (paste into issue), `--version`-style
+    // startup log lines, sanity-check assertions in CI.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn diagnostic_summary(&self) -> String {"),
+        "missing diagnostic_summary fn signature: {source}"
+    );
+    // Body must format four positional args via the four canonical
+    // sources: FULLY_QUALIFIED_SERVICE_NAME (identity),
+    // self.client.namespace() (per-instance namespace),
+    // GENERATED_BY_PLUGIN_VERSION (Client const), and
+    // self::CLUDDEN_SCHEMA_DIGEST (module const).
+    assert!(
+        source.contains("\"{}@{} {} schema={}\","),
+        "format string must be `<fqn>@<namespace> <plugin_version> schema=<digest>`: {source}"
+    );
+    for arg in [
+        "                Self::FULLY_QUALIFIED_SERVICE_NAME,",
+        "                self.client.namespace(),",
+        "                Self::GENERATED_BY_PLUGIN_VERSION,",
+        "                self::CLUDDEN_SCHEMA_DIGEST,",
+    ] {
+        assert!(
+            source.contains(arg),
+            "diagnostic_summary body missing source `{arg}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn client_exposes_random_workflow_id_with_prefix_helper() {
     // R6 ergonomics — `<Service>Client::random_workflow_id_with_prefix(prefix)`
     // returns a UUID-based workflow id with `prefix` prepended.

@@ -802,6 +802,28 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::diagnostic_summary()` one-line
+  bug-report helper): every `<Service>Client` now exposes
+  `pub fn diagnostic_summary(&self) -> String` returning a pre-
+  formatted one-line tracing/diagnostic string combining the four
+  canonical context sources:
+  ```
+  <fqn>@<namespace> <plugin_version> schema=<schema_digest>
+  ```
+  e.g. `jobs.v1.JobService@my-namespace protoc-gen-rust-temporal 0.1.1 schema=buf.build/cludden/protoc-gen-go-temporal:6d988a28...`.
+  Useful for: bug reports (paste this single line into the issue
+  template instead of digging up four separate facts), `--version`-
+  style startup log lines, sanity-check assertions in CI ("did the
+  right plugin produce this?"). Pulls each source from its canonical
+  spot (FULLY_QUALIFIED_SERVICE_NAME const, bridge `client.namespace()`
+  per-call, GENERATED_BY_PLUGIN_VERSION const, module-level
+  CLUDDEN_SCHEMA_DIGEST const) so the output stays in lockstep
+  with each underlying surface. One new positive parse_validate
+  test (`client_exposes_diagnostic_summary_one_liner`) pins the fn
+  signature, the format string shape, and each of the four positional
+  source references. 16 fixture goldens reblessed (every Client gains
+  the method). 256 parse_validate tests green; workspace clippy
+  clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::Debug` enriched with active
   namespace): paralleling the prior turn's Client Debug ship, the
   Handle Debug impl now also includes a `namespace` field pulled via

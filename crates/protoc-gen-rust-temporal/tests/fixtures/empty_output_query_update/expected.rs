@@ -137,6 +137,17 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub fn random_workflow_id_with_prefix(prefix: impl ::std::fmt::Display) -> String {
             ::std::format!("{}{}", prefix, Self::random_workflow_id())
         }
+        /// One-line diagnostic summary suitable for bug reports / startup logs.
+        /// Format: `<fqn>@<namespace> <plugin_version> schema=<schema_digest>`.
+        pub fn diagnostic_summary(&self) -> String {
+            ::std::format!(
+                "{}@{} {} schema={}",
+                Self::FULLY_QUALIFIED_SERVICE_NAME,
+                self.client.namespace(),
+                Self::GENERATED_BY_PLUGIN_VERSION,
+                self::CLUDDEN_SCHEMA_DIGEST,
+            )
+        }
 
         pub fn into_inner(self) -> temporal_runtime::TemporalClient {
             self.client
