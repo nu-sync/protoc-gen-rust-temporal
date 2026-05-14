@@ -66,6 +66,7 @@ pub mod empty_v1_nop_service_temporal {
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["nop"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("empty.v1.NopService.Tick", "nop")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

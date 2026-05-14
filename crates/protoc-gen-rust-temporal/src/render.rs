@@ -882,6 +882,32 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         }
     }
     emit(out, "TASK_QUEUES", &task_queues);
+    // `WORKFLOW_TASK_QUEUE_TABLE` — const lookup table mapping each
+    // workflow's registered name to its effective task queue. Useful
+    // for generic worker routing / queue-validation tooling that
+    // needs to map workflow_name → queue without per-workflow consts.
+    // Distinct from `TASK_QUEUES` (deduped union of all queues used)
+    // and from per-rpc `<RPC>_TASK_QUEUE` (one queue per workflow as
+    // a separate const). Entries are pairs in workflow declaration
+    // order. Skip-emit when no workflow has an effective queue (the
+    // table would be empty `&[]`, surface noise).
+    let mut wf_tq_pairs: Vec<(&str, &str)> = Vec::new();
+    for wf in &svc.workflows {
+        if let Some(tq) = effective_task_queue(svc, wf) {
+            wf_tq_pairs.push((wf.registered_name.as_str(), tq));
+        }
+    }
+    if !wf_tq_pairs.is_empty() {
+        let joined = wf_tq_pairs
+            .iter()
+            .map(|(n, q)| format!("(\"{}\", \"{}\")", n.escape_default(), q.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[{joined}];"
+        );
+    }
     // `lookup_handler_kind(name) -> Option<&'static str>` — generic
     // dispatch helper that scans the per-kind name aggregates and
     // returns "workflow" / "signal" / "query" / "update" / "activity"

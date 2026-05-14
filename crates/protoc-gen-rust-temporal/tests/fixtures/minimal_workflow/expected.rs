@@ -115,6 +115,7 @@ pub mod jobs_v1_job_service_temporal {
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["jobs"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.RunJob", "jobs")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

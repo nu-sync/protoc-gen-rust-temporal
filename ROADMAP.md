@@ -802,6 +802,34 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
+  workflow→queue lookup const): every `<Service>Client` whose
+  service has at least one workflow with an effective task queue now
+  exposes
+  `pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)]`
+  — a const lookup table mapping each workflow's registered name to
+  its effective task queue (workflow override OR service-level
+  fallback). Entries in workflow declaration order. Useful for
+  generic worker routing / queue-validation tooling that needs to
+  map workflow_name → queue without per-workflow consts:
+  ```
+  for (wf, q) in MyClient::WORKFLOW_TASK_QUEUE_TABLE {
+      worker_pool.assign(wf, q);
+  }
+  ```
+  Distinct from `TASK_QUEUES` (deduped union of all queues used)
+  and from per-rpc `<RPC>_TASK_QUEUE` (one queue per workflow as a
+  separate const). Skip-emit when no workflow has an effective
+  queue (an empty `&[]` const would be surface noise). Two new
+  positive parse_validate tests:
+  `client_exposes_workflow_task_queue_table_lookup_const` exercises
+  the multi-workflow case (Alpha inherits service-default, Beta
+  overrides — both pairs appear);
+  `client_omits_workflow_task_queue_table_when_no_workflow_has_queue`
+  pins the skip-guard for an activities-only service. 16 fixture
+  goldens reblessed (every Client with at least one queued workflow
+  gains the const). 260 parse_validate tests green; workspace
+  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::fill_proto_defaults(&mut self)`
   in-place sibling): every `<Wf>StartOptions` whose workflow declares
   at least one default-bearing field now also exposes

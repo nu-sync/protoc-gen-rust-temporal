@@ -96,6 +96,7 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["eoqu"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("eoqu.v1.EoquService.Run", "eoqu")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

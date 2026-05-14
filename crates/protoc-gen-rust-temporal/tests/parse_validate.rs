@@ -3747,6 +3747,58 @@ fn client_lookup_handler_kind_emits_only_present_kind_probes() {
 }
 
 #[test]
+fn client_exposes_workflow_task_queue_table_lookup_const() {
+    // R6 ergonomics — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
+    // is a const lookup table mapping each workflow's registered
+    // name to its effective task queue. Entries in workflow
+    // declaration order. Useful for generic worker routing /
+    // queue-validation tooling that needs to map workflow_name →
+    // queue without per-workflow consts. `multiple_workflows`
+    // declares Alpha (inherits service-default "multi") and Beta
+    // (overrides to "multi-beta"); both pairs must appear.
+    let services = parse_and_validate("multiple_workflows");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[(\"multi.v1.MultiService.Alpha\", \"multi\"), (\"multi.v1.MultiService.Beta\", \"multi-beta\")];"
+        ),
+        "WORKFLOW_TASK_QUEUE_TABLE must list both workflows in declaration order with their effective queues: {source}"
+    );
+}
+
+#[test]
+fn client_omits_workflow_task_queue_table_when_no_workflow_has_queue() {
+    // Skip-emit guard: when no workflow has an effective task queue
+    // (rare — typically one is set), the const must not emit (an
+    // empty `&[]` const is surface noise). Construct an
+    // activities-only service: no workflows ⇒ no entries.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package no_wftq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc DoWork(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+              task_queue: "act-tq"
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOW_TASK_QUEUE_TABLE"),
+        "table must omit when no workflow has an effective queue: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_task_queues_aggregate_const() {
     // R6 ergonomics — `<Service>Client::TASK_QUEUES: &'static [&'static str]`
     // is the union of every distinct task queue used across the

@@ -110,6 +110,7 @@ pub mod wf_v1_order_service_temporal {
         pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["orders"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Run", "orders")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

@@ -111,6 +111,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-full"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "worker-full")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

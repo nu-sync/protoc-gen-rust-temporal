@@ -118,6 +118,7 @@ pub mod full_v1_full_service_temporal {
         pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["full"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

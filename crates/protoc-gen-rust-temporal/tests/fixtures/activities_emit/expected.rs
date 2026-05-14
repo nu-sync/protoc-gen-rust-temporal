@@ -99,6 +99,7 @@ pub mod acts_v1_chunk_service_temporal {
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["chunks"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "chunks")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
