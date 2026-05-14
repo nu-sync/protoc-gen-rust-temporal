@@ -743,6 +743,24 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::same_execution_as()` strict-equality
+  comparator): every generated `<Wf>Handle` now exposes a strict-
+  equality sibling to `same_workflow_as`. Where `same_workflow_as`
+  compares only workflow_id (deliberately ignores run_id, useful for
+  deduping handles where one came from start and one from attach),
+  `same_execution_as` returns true IFF both handles carry a known
+  run id, the run ids match, AND the workflow ids match. Distinguishes
+  "same Temporal execution" from "same workflow id, possibly different
+  run" — continue-as-new produces a new run id under the same workflow
+  id, and silently treating those as equal would mask continue-as-new
+  bugs. When either side lacks a run id (constructed via
+  `<rpc>_handle(workflow_id)`), returns false: proof of same execution
+  requires a run id, and absence of one is not proof. One new positive
+  parse_validate test pins the fn signature, the match-on-both-options
+  body, the (Some,Some) arm comparing both ids, and the catch-all
+  false fallthrough. 16 fixture goldens reblessed (every Handle gained
+  the new method). 205 parse_validate tests green. No bridge signature
+  change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::with_proto_defaults(self)`
   chain-style underlay): every `<Wf>StartOptions` whose workflow
   declares at least one default-bearing field now exposes a sibling

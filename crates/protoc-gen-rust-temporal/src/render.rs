@@ -2045,6 +2045,49 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+    // Strict-equality sibling: same workflow id AND both run ids known
+    // and equal. Distinguishes "same Temporal workflow execution" from
+    // "same workflow id, possibly different run" (continue-as-new
+    // produces a new run id under the same workflow id). Returns false
+    // when either side lacks a run id — we can't prove same execution
+    // without one, and silently treating "unknown" as "match" would
+    // mask continue-as-new-related bugs.
+    let _ = writeln!(
+        out,
+        "        /// `true` IFF both handles carry a known run id, the run ids match,"
+    );
+    let _ = writeln!(
+        out,
+        "        /// and the workflow ids match. Returns `false` if either side has"
+    );
+    let _ = writeln!(
+        out,
+        "        /// no run id (constructed via `<rpc>_handle`) — strict equality requires"
+    );
+    let _ = writeln!(
+        out,
+        "        /// proof, and absence of a run id is not proof. Use [`Self::same_workflow_as`]"
+    );
+    let _ = writeln!(
+        out,
+        "        /// for the looser \"same workflow id\" comparison."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn same_execution_as(&self, other: &Self) -> bool {{"
+    );
+    let _ = writeln!(
+        out,
+        "            match (self.inner.run_id(), other.inner.run_id()) {{"
+    );
+    let _ = writeln!(
+        out,
+        "                (Some(a), Some(b)) => a == b && self.inner.workflow_id() == other.inner.workflow_id(),"
+    );
+    let _ = writeln!(out, "                _ => false,");
+    let _ = writeln!(out, "            }}");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
     // Cloning accessor — sugar over `.inner.clone()`. Lets callers
     // obtain an owned `WorkflowHandle` without consuming the typed
     // wrapper, useful for handing the bridge handle to a custom

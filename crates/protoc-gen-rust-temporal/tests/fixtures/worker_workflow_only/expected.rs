@@ -292,6 +292,18 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
             self.inner.workflow_id() == other.inner.workflow_id()
         }
 
+        /// `true` IFF both handles carry a known run id, the run ids match,
+        /// and the workflow ids match. Returns `false` if either side has
+        /// no run id (constructed via `<rpc>_handle`) — strict equality requires
+        /// proof, and absence of a run id is not proof. Use [`Self::same_workflow_as`]
+        /// for the looser "same workflow id" comparison.
+        pub fn same_execution_as(&self, other: &Self) -> bool {
+            match (self.inner.run_id(), other.inner.run_id()) {
+                (Some(a), Some(b)) => a == b && self.inner.workflow_id() == other.inner.workflow_id(),
+                _ => false,
+            }
+        }
+
         pub fn clone_inner(&self) -> temporal_runtime::WorkflowHandle {
             self.inner.clone()
         }

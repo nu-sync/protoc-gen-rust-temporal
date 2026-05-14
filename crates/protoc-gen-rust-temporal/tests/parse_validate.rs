@@ -3054,6 +3054,42 @@ fn handle_exposes_same_workflow_as_helper() {
 }
 
 #[test]
+fn handle_exposes_same_execution_as_strict_equality() {
+    // R6 ergonomics — `<Wf>Handle::same_execution_as(&other)` is the
+    // strict-equality sibling of `same_workflow_as`. It returns true
+    // IFF both handles carry a known run id, the run ids match, and
+    // the workflow ids match. Distinguishes "same Temporal execution"
+    // from "same workflow id, possibly different run" — continue-as-
+    // new produces a new run id under the same workflow id, and
+    // confusing the two would silently mask continue-as-new bugs.
+    // Returns false when either side lacks a run id (proof requires
+    // a run id; absence of one is not proof).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn same_execution_as(&self, other: &Self) -> bool {"),
+        "missing same_execution_as comparison: {source}"
+    );
+    // Body must match on both sides' run_id Options. The (Some, Some)
+    // arm is the only one that should evaluate to true; everything
+    // else must fall through to false.
+    assert!(
+        source.contains("match (self.inner.run_id(), other.inner.run_id()) {"),
+        "must pattern-match both run_id Options: {source}"
+    );
+    assert!(
+        source.contains(
+            "(Some(a), Some(b)) => a == b && self.inner.workflow_id() == other.inner.workflow_id(),"
+        ),
+        "Some/Some arm must compare run ids AND workflow ids: {source}"
+    );
+    assert!(
+        source.contains("_ => false,"),
+        "fallthrough arm must be false (no run id ⇒ no proof): {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_run_id_owned_accessor() {
     // R6 ergonomics — `<Wf>Handle::run_id_owned()` returns
     // `Option<String>`, the owned-string parallel of the
