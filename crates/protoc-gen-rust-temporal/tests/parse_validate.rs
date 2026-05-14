@@ -3009,6 +3009,119 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn cli_command_exposes_handler_name_accessor() {
+    // R6 ergonomics — `Command::handler_name(&self) -> &'static str`
+    // returns the registered (cross-language) name of the handler each
+    // subcommand variant targets. Lets dispatch middleware tag tracing
+    // spans / structured logs / metrics with the handler name without
+    // pattern-matching every variant at the call site.
+    //
+    // The mapping is uniform: Start/Attach/Cancel/Terminate share the
+    // workflow's name; Signal/Query/Update each return their own
+    // handler's name.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package hn.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    // Method signature.
+    assert!(
+        source.contains("pub fn handler_name(&self) -> &'static str {"),
+        "missing handler_name fn signature: {source}"
+    );
+    // Workflow verbs share the workflow's registered name.
+    for verb in ["Start", "Attach", "Cancel", "Terminate"] {
+        let arm = format!("Self::{verb}Run(_) => \"hn.v1.Svc.Run\",");
+        assert!(
+            source.contains(&arm),
+            "missing workflow-verb arm `{arm}`: {source}"
+        );
+    }
+    // Per-handler arms each return their own registered name.
+    for (variant, expected_name) in [
+        ("Self::SignalCancel(_)", "hn.v1.Svc.Cancel"),
+        ("Self::QueryStatus(_)", "hn.v1.Svc.Status"),
+        ("Self::UpdateTouch(_)", "hn.v1.Svc.Touch"),
+    ] {
+        let arm = format!("{variant} => \"{expected_name}\",");
+        assert!(
+            source.contains(&arm),
+            "missing handler arm `{arm}`: {source}"
+        );
+    }
+}
+
+#[test]
+fn cli_command_handler_name_skipped_when_no_subcommand_variants() {
+    // Skip-emit guard: when the service has no usable workflows AND no
+    // signals/queries/updates, the Command enum has no variants and
+    // `handler_name` would have no match arms (an empty match is
+    // unreachable but rustc still rejects the function signature
+    // returning `&'static str` from `match self {}` since `self: &!`
+    // doesn't apply — this also keeps the surface clean).
+    //
+    // Construct an activities-only service: activities don't generate
+    // CLI subcommands, so the Command enum stays empty.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package hn_empty.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc DoWork(In) returns (Out) {
+            option (temporal.v1.activity) = { start_to_close_timeout: { seconds: 30 } };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        !source.contains("pub fn handler_name(&self) -> &'static str"),
+        "no handler_name fn should emit when Command enum is empty: {source}"
+    );
+}
+
+#[test]
 fn update_default_wait_policy_helper_emits_when_proto_declares_it() {
     // R6 ergonomics — `<update>_default_wait_policy() -> WaitPolicy` is
     // a module-level static accessor parallel to

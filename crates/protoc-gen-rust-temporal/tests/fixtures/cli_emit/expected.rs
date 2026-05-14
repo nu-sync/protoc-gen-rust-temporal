@@ -648,6 +648,24 @@ pub mod report_service_cli {
         TerminateAggregate(TerminateAggregateArgs),
     }
 
+    impl Command {
+        /// Registered (cross-language) name of the handler this subcommand targets.
+        /// Workflow verbs (Start/Attach/Cancel/Terminate) share the workflow name;
+        /// Signal/Query/Update variants return their own handler's name.
+        pub fn handler_name(&self) -> &'static str {
+            match self {
+                Self::StartGenerate(_) => "cli.v1.ReportService.Generate",
+                Self::AttachGenerate(_) => "cli.v1.ReportService.Generate",
+                Self::CancelGenerate(_) => "cli.v1.ReportService.Generate",
+                Self::TerminateGenerate(_) => "cli.v1.ReportService.Generate",
+                Self::StartAggregate(_) => "cli.v1.ReportService.Aggregate",
+                Self::AttachAggregate(_) => "cli.v1.ReportService.Aggregate",
+                Self::CancelAggregate(_) => "cli.v1.ReportService.Aggregate",
+                Self::TerminateAggregate(_) => "cli.v1.ReportService.Aggregate",
+            }
+        }
+    }
+
     impl Cli {
         /// Dispatch the parsed command against `client`.
         ///

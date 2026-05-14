@@ -743,6 +743,28 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Command::handler_name(&self)` accessor on the
+  generated CLI Command enum): every `<service>_cli::Command` enum
+  now carries an inherent `pub fn handler_name(&self) -> &'static str`
+  returning the registered (cross-language) name of the handler each
+  subcommand variant targets. Lets dispatch middleware tag tracing
+  spans / structured logs / metrics with the targeted handler name
+  without pattern-matching every variant at the call site:
+  ```
+  tracing::info_span!("cli_dispatch", handler = cli.command.handler_name());
+  ```
+  The mapping is uniform: Start/Attach/Cancel/Terminate share the
+  workflow's registered name; Signal/Query/Update each return their
+  own handler's name (one-to-one with the `<service>.<rpc>` registered
+  identity). Skip-emit when the Command enum has no variants — an
+  activities-only service (which never gets CLI subcommands) plus a
+  `cli_ignore`-everywhere workflows-only service both produce empty
+  enums where `match self {}` would compile but the helper would be
+  surface noise. Two new positive parse_validate tests (one for the
+  full mapping with workflow + signal + query + update arms; one
+  pinning the skip-guard for an activities-only service). Two
+  fixture goldens reblessed (`cli_emit`, `cli_ignore`). 218
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<update>_default_wait_policy()` static accessor):
   every update declaring `wait_for_stage` (or the deprecated
   `wait_policy`) at the proto level now gets a module-level static

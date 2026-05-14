@@ -4390,6 +4390,83 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
+    // R6 — `Command::handler_name(&self) -> &'static str` returning the
+    // registered (cross-language) name of the targeted handler for each
+    // subcommand variant. Lets dispatch middleware tag tracing spans
+    // / structured logs / metrics with the handler name without
+    // pattern-matching every variant at the call site:
+    //     tracing::info_span!("cli_dispatch", handler = cli.command.handler_name());
+    // Each variant maps to exactly one registered name — Start/Attach/
+    // Cancel/Terminate share the workflow's name, Signal/Query/Update
+    // map to their own. Skip-emit when the Command enum has no
+    // variants (a service with no handlers and no usable workflows
+    // produces an empty Command — adding a method on that empty enum
+    // would not compile because match arms can't be exhaustive over
+    // `!`).
+    let usable_workflows: Vec<&WorkflowModel> =
+        svc.workflows.iter().filter(|wf| !wf.cli_ignore).collect();
+    let total_variants =
+        usable_workflows.len() * 4 + svc.signals.len() + svc.queries.len() + svc.updates.len();
+    if total_variants > 0 {
+        let _ = writeln!(out, "    impl Command {{");
+        let _ = writeln!(
+            out,
+            "        /// Registered (cross-language) name of the handler this subcommand targets."
+        );
+        let _ = writeln!(
+            out,
+            "        /// Workflow verbs (Start/Attach/Cancel/Terminate) share the workflow name;"
+        );
+        let _ = writeln!(
+            out,
+            "        /// Signal/Query/Update variants return their own handler's name."
+        );
+        let _ = writeln!(out, "        pub fn handler_name(&self) -> &'static str {{");
+        let _ = writeln!(out, "            match self {{");
+        for wf in &usable_workflows {
+            let pascal = wf.rpc_method.to_pascal_case();
+            let name = wf.registered_name.escape_default();
+            let _ = writeln!(out, "                Self::Start{pascal}(_) => \"{name}\",");
+            let _ = writeln!(
+                out,
+                "                Self::Attach{pascal}(_) => \"{name}\","
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Cancel{pascal}(_) => \"{name}\","
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Terminate{pascal}(_) => \"{name}\","
+            );
+        }
+        for sig in &svc.signals {
+            let pascal = sig.rpc_method.to_pascal_case();
+            let name = sig.registered_name.escape_default();
+            let _ = writeln!(
+                out,
+                "                Self::Signal{pascal}(_) => \"{name}\","
+            );
+        }
+        for q in &svc.queries {
+            let pascal = q.rpc_method.to_pascal_case();
+            let name = q.registered_name.escape_default();
+            let _ = writeln!(out, "                Self::Query{pascal}(_) => \"{name}\",");
+        }
+        for u in &svc.updates {
+            let pascal = u.rpc_method.to_pascal_case();
+            let name = u.registered_name.escape_default();
+            let _ = writeln!(
+                out,
+                "                Self::Update{pascal}(_) => \"{name}\","
+            );
+        }
+        let _ = writeln!(out, "            }}");
+        let _ = writeln!(out, "        }}");
+        let _ = writeln!(out, "    }}");
+        let _ = writeln!(out);
+    }
+
     render_cli_run_impl(out, svc);
 
     for wf in svc.workflows.iter().filter(|wf| !wf.cli_ignore) {
