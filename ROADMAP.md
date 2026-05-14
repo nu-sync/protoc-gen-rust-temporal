@@ -802,6 +802,25 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::workflow_id_with_run()` composite
+  identity key): every `<Wf>Handle` now exposes
+  `pub fn workflow_id_with_run(&self) -> String` that returns
+  `<workflow_id>:<run_id>` when both ids are known, falling back to
+  just `<workflow_id>` for attach-style handles where `run_id` is
+  None. Useful for tracing spans / log lines that want a single
+  string encoding both ids:
+  ```
+  tracing::info!(execution = %handle.workflow_id_with_run(), ...);
+  ```
+  The `:` separator matches Temporal web UI's `<wfid>:<runid>`
+  convention, so consumers can paste the value directly into the UI.
+  Body matches on `run_id()` Option, formatting both forms inline.
+  One new positive parse_validate test
+  (`handle_exposes_workflow_id_with_run_composite_key`) pins the fn
+  signature, the match-on-Option body, and both Some/None arms. 16
+  fixture goldens reblessed (every Handle gains the method). 255
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::stop(reason, force)` unified
   cancel/terminate dispatch): every `<Wf>Handle` now exposes
   `pub async fn stop(&self, reason: &str, force: bool) -> Result<()>`

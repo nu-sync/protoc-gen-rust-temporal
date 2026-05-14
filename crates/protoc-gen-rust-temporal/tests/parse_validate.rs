@@ -4404,6 +4404,34 @@ fn handle_exposes_client_passthrough() {
 }
 
 #[test]
+fn handle_exposes_workflow_id_with_run_composite_key() {
+    // R6 ergonomics — `<Wf>Handle::workflow_id_with_run(&self)`
+    // returns a composite `<workflow_id>:<run_id>` string when both
+    // ids are known, falling back to just `<workflow_id>` for
+    // attach-style handles where `run_id` is None. Useful for tracing
+    // spans / log lines that want a single string encoding both ids:
+    //     tracing::info!(execution = %handle.workflow_id_with_run(), ...);
+    // The `:` separator matches Temporal web UI's `<wfid>:<runid>`
+    // convention.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn workflow_id_with_run(&self) -> String {"),
+        "missing workflow_id_with_run fn signature: {source}"
+    );
+    assert!(
+        source.contains("            match self.inner.run_id() {")
+            && source.contains(
+                "                Some(run) => ::std::format!(\"{}:{}\", self.inner.workflow_id(), run),"
+            )
+            && source.contains(
+                "                None => self.inner.workflow_id().to_string(),"
+            ),
+        "body must match Some/None over run_id, formatting `<wfid>:<runid>` or just `<wfid>`: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_unified_stop_dispatch() {
     // R6 ergonomics — `<Wf>Handle::stop(&self, reason, force)` is the
     // unified cancel/terminate dispatch. `force = false` calls

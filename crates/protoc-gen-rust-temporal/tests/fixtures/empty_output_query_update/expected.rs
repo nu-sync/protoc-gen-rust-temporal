@@ -508,6 +508,14 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub fn workflow_id_owned(&self) -> String {
             self.inner.workflow_id().to_string()
         }
+        /// Composite `<workflow_id>:<run_id>` identity. Falls back to just
+        /// `<workflow_id>` for attach-style handles where `run_id` is `None`.
+        pub fn workflow_id_with_run(&self) -> String {
+            match self.inner.run_id() {
+                Some(run) => ::std::format!("{}:{}", self.inner.workflow_id(), run),
+                None => self.inner.workflow_id().to_string(),
+            }
+        }
 
         pub fn client(&self) -> &temporal_runtime::TemporalClient {
             self.inner.client()

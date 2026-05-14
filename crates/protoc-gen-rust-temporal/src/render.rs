@@ -2758,6 +2758,36 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "        pub fn workflow_id_owned(&self) -> String {{");
     let _ = writeln!(out, "            self.inner.workflow_id().to_string()");
     let _ = writeln!(out, "        }}");
+    // Composite key — `<workflow_id>:<run_id>` when both are known,
+    // else just `<workflow_id>` for attach-style handles. Useful for
+    // tracing spans / log lines that want a single string encoding
+    // both ids:
+    //     tracing::info!(execution = %handle.workflow_id_with_run(), ...);
+    // The `:` separator matches the `<wfid>:<runid>` convention
+    // Temporal's web UI uses for execution links.
+    let _ = writeln!(
+        out,
+        "        /// Composite `<workflow_id>:<run_id>` identity. Falls back to just"
+    );
+    let _ = writeln!(
+        out,
+        "        /// `<workflow_id>` for attach-style handles where `run_id` is `None`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn workflow_id_with_run(&self) -> String {{"
+    );
+    let _ = writeln!(out, "            match self.inner.run_id() {{");
+    let _ = writeln!(
+        out,
+        "                Some(run) => ::std::format!(\"{{}}:{{}}\", self.inner.workflow_id(), run),"
+    );
+    let _ = writeln!(
+        out,
+        "                None => self.inner.workflow_id().to_string(),"
+    );
+    let _ = writeln!(out, "            }}");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
     // Borrow the bound `TemporalClient` — passthrough to the
     // bridge handle's `client()` accessor. Lets callers construct
