@@ -209,6 +209,17 @@ pub mod jobs_v1_job_service_temporal {
             }
         }
 
+        /// Start a new `jobs.v1.JobService.RunJob` workflow and block on its result.
+        /// Sugar for `client.run_job(...).await?.result().await`.
+        pub async fn run_job_and_wait(
+            &self,
+            input: JobInput,
+            opts: RunJobStartOptions,
+        ) -> Result<JobOutput> {
+            let handle = self.run_job(input, opts).await?;
+            handle.result().await
+        }
+
         /// Send the `jobs.v1.JobService.CancelJob` signal to a workflow by id.
         pub async fn cancel_job(&self, workflow_id: impl Into<String>, input: CancelJobInput) -> Result<()> {
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());

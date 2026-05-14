@@ -190,6 +190,17 @@ pub mod eoqu_v1_eoqu_service_temporal {
             }
         }
 
+        /// Start a new `eoqu.v1.EoquService.Run` workflow and block on its result.
+        /// Sugar for `client.run(...).await?.result().await`.
+        pub async fn run_and_wait(
+            &self,
+            input: RunInput,
+            opts: RunStartOptions,
+        ) -> Result<RunOutput> {
+            let handle = self.run(input, opts).await?;
+            handle.result().await
+        }
+
         /// Run the `eoqu.v1.EoquService.Ack` query against a workflow by id.
         pub async fn ack(&self, workflow_id: impl Into<String>, input: AckInput) -> Result<()> {
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());

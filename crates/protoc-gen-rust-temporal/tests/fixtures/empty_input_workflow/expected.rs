@@ -158,6 +158,16 @@ pub mod empty_v1_nop_service_temporal {
             }
         }
 
+        /// Start a new `empty.v1.NopService.Tick` workflow and block on its result.
+        /// Sugar for `client.tick(...).await?.result().await`.
+        pub async fn tick_and_wait(
+            &self,
+            opts: TickStartOptions,
+        ) -> Result<()> {
+            let handle = self.tick(opts).await?;
+            handle.result().await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

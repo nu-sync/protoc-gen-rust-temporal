@@ -168,6 +168,17 @@ pub mod aliases_v1_alias_service_temporal {
             }
         }
 
+        /// Start a new `aliases.v1.AliasService.Run` workflow and block on its result.
+        /// Sugar for `client.run(...).await?.result().await`.
+        pub async fn run_and_wait(
+            &self,
+            input: RunInput,
+            opts: RunStartOptions,
+        ) -> Result<RunOutput> {
+            let handle = self.run(input, opts).await?;
+            handle.result().await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

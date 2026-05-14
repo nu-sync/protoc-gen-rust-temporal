@@ -168,6 +168,17 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
             }
         }
 
+        /// Start a new `workerwf.v1.WorkerWorkflowService.Run` workflow and block on its result.
+        /// Sugar for `client.run(...).await?.result().await`.
+        pub async fn run_and_wait(
+            &self,
+            input: WorkInput,
+            opts: RunStartOptions,
+        ) -> Result<WorkOutput> {
+            let handle = self.run(input, opts).await?;
+            handle.result().await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

@@ -167,6 +167,17 @@ pub mod solo_v1_solo_service_temporal {
             }
         }
 
+        /// Start a new `solo.v1.SoloService.DoWork` workflow and block on its result.
+        /// Sugar for `client.do_work(...).await?.result().await`.
+        pub async fn do_work_and_wait(
+            &self,
+            input: WorkInput,
+            opts: DoWorkStartOptions,
+        ) -> Result<WorkOutput> {
+            let handle = self.do_work(input, opts).await?;
+            handle.result().await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

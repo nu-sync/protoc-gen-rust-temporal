@@ -187,6 +187,17 @@ pub mod cli_v1_report_service_temporal {
             }
         }
 
+        /// Start a new `cli.v1.ReportService.Generate` workflow and block on its result.
+        /// Sugar for `client.generate(...).await?.result().await`.
+        pub async fn generate_and_wait(
+            &self,
+            input: GenerateInput,
+            opts: GenerateStartOptions,
+        ) -> Result<GenerateOutput> {
+            let handle = self.generate(input, opts).await?;
+            handle.result().await
+        }
+
         /// Start a new `cli.v1.ReportService.Internal` workflow.
         pub async fn internal(
             &self,
@@ -228,6 +239,17 @@ pub mod cli_v1_report_service_temporal {
             InternalHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
+        }
+
+        /// Start a new `cli.v1.ReportService.Internal` workflow and block on its result.
+        /// Sugar for `client.internal(...).await?.result().await`.
+        pub async fn internal_and_wait(
+            &self,
+            input: InternalInput,
+            opts: InternalStartOptions,
+        ) -> Result<InternalOutput> {
+            let handle = self.internal(input, opts).await?;
+            handle.result().await
         }
 
     }

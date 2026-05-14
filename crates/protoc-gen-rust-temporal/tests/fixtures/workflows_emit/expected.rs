@@ -204,6 +204,17 @@ pub mod wf_v1_order_service_temporal {
             }
         }
 
+        /// Start a new `wf.v1.OrderService.Run` workflow and block on its result.
+        /// Sugar for `client.run(...).await?.result().await`.
+        pub async fn run_and_wait(
+            &self,
+            input: OrderInput,
+            opts: RunStartOptions,
+        ) -> Result<OrderOutput> {
+            let handle = self.run(input, opts).await?;
+            handle.result().await
+        }
+
         /// Send the `wf.v1.OrderService.Cancel` signal to a workflow by id.
         pub async fn cancel(&self, workflow_id: impl Into<String>, input: CancelInput) -> Result<()> {
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());

@@ -192,6 +192,17 @@ pub mod multi_v1_multi_service_temporal {
             }
         }
 
+        /// Start a new `multi.v1.MultiService.Alpha` workflow and block on its result.
+        /// Sugar for `client.alpha(...).await?.result().await`.
+        pub async fn alpha_and_wait(
+            &self,
+            input: AlphaInput,
+            opts: AlphaStartOptions,
+        ) -> Result<AlphaOutput> {
+            let handle = self.alpha(input, opts).await?;
+            handle.result().await
+        }
+
         /// Start a new `multi.v1.MultiService.Beta` workflow.
         pub async fn beta(
             &self,
@@ -233,6 +244,17 @@ pub mod multi_v1_multi_service_temporal {
             BetaHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
+        }
+
+        /// Start a new `multi.v1.MultiService.Beta` workflow and block on its result.
+        /// Sugar for `client.beta(...).await?.result().await`.
+        pub async fn beta_and_wait(
+            &self,
+            input: BetaInput,
+            opts: BetaStartOptions,
+        ) -> Result<BetaOutput> {
+            let handle = self.beta(input, opts).await?;
+            handle.result().await
         }
 
     }

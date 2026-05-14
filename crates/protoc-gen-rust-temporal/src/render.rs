@@ -1484,6 +1484,49 @@ fn render_client_workflow_methods(out: &mut String, svc: &ServiceModel, wf: &Wor
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
+
+    // R6 — `<wf>_and_wait` convenience: start the workflow and block
+    // on its result in one call. Saves the two-line
+    // `let h = client.<wf>(opts, input).await?; h.result().await`
+    // pattern common in CLI tools, integration tests, and one-shot
+    // RPC-style invocations. Returns the workflow's typed output
+    // directly (or `()` for empty-output workflows). Discards the
+    // handle — callers that need it should use the two-step form.
+    let output_render = if wf.output_type.is_empty {
+        "()".to_string()
+    } else {
+        wf.output_type.rust_name().to_string()
+    };
+    let _ = writeln!(
+        out,
+        "        /// Start a new `{}` workflow and block on its result.",
+        wf.registered_name
+    );
+    let _ = writeln!(
+        out,
+        "        /// Sugar for `client.{method_snake}(...).await?.result().await`."
+    );
+    let _ = writeln!(out, "        pub async fn {method_snake}_and_wait(");
+    let _ = writeln!(out, "            &self,");
+    if !wf.input_type.is_empty {
+        let _ = writeln!(out, "            input: {},", wf.input_type.rust_name());
+    }
+    let _ = writeln!(out, "            opts: {opts_struct},");
+    let _ = writeln!(out, "        ) -> Result<{output_render}> {{");
+    if wf.input_type.is_empty {
+        let _ = writeln!(
+            out,
+            "            let handle = self.{method_snake}(opts).await?;"
+        );
+    } else {
+        let _ = writeln!(
+            out,
+            "            let handle = self.{method_snake}(input, opts).await?;"
+        );
+    }
+    let _ = writeln!(out, "            handle.result().await");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
 }
 
 /// Emit the body of the regular start method: resolves workflow_id +

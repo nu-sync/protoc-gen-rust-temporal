@@ -193,6 +193,17 @@ pub mod acts_v1_chunk_service_temporal {
             }
         }
 
+        /// Start a new `acts.v1.ChunkService.RunBatch` workflow and block on its result.
+        /// Sugar for `client.run_batch(...).await?.result().await`.
+        pub async fn run_batch_and_wait(
+            &self,
+            input: BatchInput,
+            opts: RunBatchStartOptions,
+        ) -> Result<BatchOutput> {
+            let handle = self.run_batch(input, opts).await?;
+            handle.result().await
+        }
+
     }
 
     #[derive(Debug, Default, Clone)]

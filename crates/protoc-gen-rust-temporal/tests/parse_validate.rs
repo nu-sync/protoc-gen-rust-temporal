@@ -3333,6 +3333,61 @@ fn client_exposes_handler_count_const_derived_from_aggregate() {
 }
 
 #[test]
+fn client_exposes_workflow_and_wait_convenience() {
+    // R6 ergonomics — `<Service>Client::<wf>_and_wait(...)` combines
+    // start + result in one async call. Saves the two-line
+    // `let h = client.<wf>(opts, input).await?; h.result().await`
+    // pattern common in CLI tools, integration tests, and one-shot
+    // RPC-style invocations.
+    //
+    // For non-empty input + non-empty output (`minimal_workflow`'s
+    // RunJob), the signature is
+    // `pub async fn run_job_and_wait(&self, input: JobInput, opts: RunJobStartOptions) -> Result<JobOutput>`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub async fn run_job_and_wait("),
+        "missing run_job_and_wait fn signature: {source}"
+    );
+    assert!(
+        source.contains("            input: JobInput,")
+            && source.contains("            opts: RunJobStartOptions,"),
+        "run_job_and_wait must take (input, opts): {source}"
+    );
+    assert!(
+        source.contains("        ) -> Result<JobOutput> {"),
+        "run_job_and_wait must return the typed Output: {source}"
+    );
+    assert!(
+        source.contains("            let handle = self.run_job(input, opts).await?;")
+            && source.contains("            handle.result().await"),
+        "body must start + .result() — the documented sugar pattern: {source}"
+    );
+}
+
+#[test]
+fn client_workflow_and_wait_handles_empty_io_signatures() {
+    // Empty-input workflow: `_and_wait` must skip the input arg
+    // (since `<wf>(opts)` skips it). `empty_input_workflow`
+    // declares `Tick(Empty) returns (TickOutput)`.
+    let services = parse_and_validate("empty_input_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub async fn tick_and_wait(")
+            && source.contains("            opts: TickStartOptions,"),
+        "empty-input _and_wait must take only opts: {source}"
+    );
+    assert!(
+        !source.contains("            input: ()") && !source.contains("input: ProtoEmpty"),
+        "empty-input _and_wait must not declare an input arg: {source}"
+    );
+    assert!(
+        source.contains("            let handle = self.tick(opts).await?;"),
+        "empty-input _and_wait body must call .tick(opts), no input: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_lookup_handler_kind_dispatch_helper() {
     // R6 ergonomics — `<Service>Client::lookup_handler_kind(name) ->
     // Option<&'static str>` is a generic dispatch helper that scans

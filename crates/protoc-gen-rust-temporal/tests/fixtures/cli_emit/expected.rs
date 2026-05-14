@@ -187,6 +187,17 @@ pub mod cli_v1_report_service_temporal {
             }
         }
 
+        /// Start a new `cli.v1.ReportService.Generate` workflow and block on its result.
+        /// Sugar for `client.generate(...).await?.result().await`.
+        pub async fn generate_and_wait(
+            &self,
+            input: GenerateInput,
+            opts: GenerateStartOptions,
+        ) -> Result<GenerateOutput> {
+            let handle = self.generate(input, opts).await?;
+            handle.result().await
+        }
+
         /// Start a new `cli.v1.ReportService.Aggregate` workflow.
         pub async fn aggregate(
             &self,
@@ -228,6 +239,17 @@ pub mod cli_v1_report_service_temporal {
             AggregateHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
+        }
+
+        /// Start a new `cli.v1.ReportService.Aggregate` workflow and block on its result.
+        /// Sugar for `client.aggregate(...).await?.result().await`.
+        pub async fn aggregate_and_wait(
+            &self,
+            input: AggregateInput,
+            opts: AggregateStartOptions,
+        ) -> Result<AggregateOutput> {
+            let handle = self.aggregate(input, opts).await?;
+            handle.result().await
         }
 
     }

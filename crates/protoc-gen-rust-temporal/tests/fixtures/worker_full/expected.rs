@@ -205,6 +205,17 @@ pub mod workerfull_v1_orchestration_service_temporal {
             }
         }
 
+        /// Start a new `workerfull.v1.OrchestrationService.Run` workflow and block on its result.
+        /// Sugar for `client.run(...).await?.result().await`.
+        pub async fn run_and_wait(
+            &self,
+            input: RunInput,
+            opts: RunStartOptions,
+        ) -> Result<RunOutput> {
+            let handle = self.run(input, opts).await?;
+            handle.result().await
+        }
+
         /// Send the `workerfull.v1.OrchestrationService.Cancel` signal to a workflow by id.
         pub async fn cancel(&self, workflow_id: impl Into<String>, input: CancelInput) -> Result<()> {
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
