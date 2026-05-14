@@ -149,3 +149,36 @@ fn encode_tagged(out: &mut Vec<u8>, field: u32, payload: &[u8]) {
     encode_varint(payload.len() as u64, out);
     out.extend_from_slice(payload);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raw_descriptor_walker_rejects_truncated_proto_file_blob() {
+        // field 15 (`proto_file`), length-delimited, declares two bytes but
+        // only carries one. This is the exact branch that protects the
+        // extension-preserving descriptor extraction path from malformed
+        // CodeGeneratorRequest bytes.
+        let err = extract_proto_file_blobs(&[0x7a, 0x02, 0x01])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("truncated proto_file blob"),
+            "diagnostic should mention the truncated proto_file: {err}"
+        );
+    }
+
+    #[test]
+    fn raw_descriptor_walker_rejects_group_wire_types() {
+        // Unknown field 1 with the deprecated StartGroup wire type. The
+        // plugin never expects groups in CodeGeneratorRequest, so accepting
+        // this would make the raw walker less strict than the protobuf
+        // envelope it is reconstructing.
+        let err = extract_proto_file_blobs(&[0x0b]).unwrap_err().to_string();
+        assert!(
+            err.contains("unexpected group wire type"),
+            "diagnostic should mention group wire types: {err}"
+        );
+    }
+}

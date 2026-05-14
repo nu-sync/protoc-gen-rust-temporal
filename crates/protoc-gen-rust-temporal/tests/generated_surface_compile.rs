@@ -69,12 +69,13 @@ publish = false
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
+prost = "0.13"
 "#,
     )
     .expect("write Cargo.toml");
 
     let mut source = String::new();
-    source.push_str("#![allow(dead_code, unused_imports, clippy::all)]\n\n");
+    source.push_str("#![allow(warnings, clippy::all)]\n\n");
     source.push_str(RUNTIME_STUB);
 
     for case in cases {
@@ -103,6 +104,89 @@ clap = { version = "4", features = ["derive", "env"] }
     assert!(
         output.status.success(),
         "generated surface temp crate failed to compile\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+}
+
+#[test]
+fn generated_surfaces_compile_against_real_bridge() {
+    let cases = [
+        // Full client surface: starts, signal/query/update, with-start, and
+        // search-attribute plumbing compile against the real bridge helpers.
+        "full_workflow",
+        // activities=true + workflows=true must line up with bridge worker
+        // re-exports, not only the local stub's approximation.
+        "worker_full",
+        // cli=true must line up with the bridge's clap re-export.
+        "cli_emit",
+    ];
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let src_dir = tmp.path().join("src");
+    fs::create_dir_all(&src_dir).expect("mkdir src");
+
+    let bridge_path = crate_root()
+        .parent()
+        .expect("crate has parent")
+        .join("temporal-proto-runtime-bridge");
+    fs::write(
+        tmp.path().join("Cargo.toml"),
+        format!(
+            r#"
+[package]
+name = "generated-real-bridge-check"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+anyhow = "1"
+prost = "0.13"
+temporal-proto-runtime-bridge = {{ path = "{}", features = ["worker", "cli"] }}
+
+[patch.crates-io]
+temporalio-client = {{ git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }}
+temporalio-common = {{ git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }}
+temporalio-sdk = {{ git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }}
+temporalio-sdk-core = {{ git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }}
+temporalio-macros = {{ git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }}
+"#,
+            bridge_path.display()
+        ),
+    )
+    .expect("write Cargo.toml");
+
+    let mut source = String::new();
+    source.push_str("#![allow(warnings, clippy::all)]\n\n");
+    source.push_str("pub use temporal_proto_runtime_bridge as temporal_runtime;\n\n");
+
+    for case in cases {
+        let (pool, files_to_generate) = compile_fixture(case);
+        let options = load_fixture_options(case);
+        source.push_str(&format!("\n// ---- fixture: {case} ----\n"));
+        source.push_str(&render_proto_stubs(&pool, &files_to_generate));
+
+        let services = parse::parse(&pool, &files_to_generate).expect("parse");
+        for service in &services {
+            validate::validate(service, &options).expect("validate");
+            source.push_str(&render::render(service, &options));
+        }
+    }
+
+    fs::write(src_dir.join("lib.rs"), source).expect("write lib.rs");
+
+    let output = Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
+        .arg("check")
+        .arg("--quiet")
+        .arg("--manifest-path")
+        .arg(tmp.path().join("Cargo.toml"))
+        .output()
+        .expect("run cargo check");
+
+    assert!(
+        output.status.success(),
+        "generated real-bridge temp crate failed to compile\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
@@ -187,7 +271,7 @@ fn close_package_modules(out: &mut String, package: &str) {
 fn render_message_stub(out: &mut String, package: &str, message: &MessageDescriptor) {
     let _ = writeln!(
         out,
-        "#[derive(Clone, Debug, Default, PartialEq)]\npub struct {} {{",
+        "#[derive(Clone, PartialEq, ::prost::Message)]\npub struct {} {{",
         message.name()
     );
     for field in message.fields() {
@@ -196,9 +280,76 @@ fn render_message_stub(out: &mut String, package: &str, message: &MessageDescrip
         }
         let rust_name = field.name().to_snake_case();
         let rust_type = rust_type_for_field(package, &field);
+        let prost_attr = prost_attr_for_field(&field);
+        let _ = writeln!(out, "    {prost_attr}");
         let _ = writeln!(out, "    pub {rust_name}: {rust_type},");
     }
     let _ = writeln!(out, "}}\n");
+}
+
+fn prost_attr_for_field(field: &FieldDescriptor) -> String {
+    let tag = field.number();
+    if field.is_map() {
+        let Kind::Message(entry) = field.kind() else {
+            unreachable!("map fields are represented as message entries")
+        };
+        let key = prost_map_type(&entry.map_entry_key_field());
+        let value = prost_map_type(&entry.map_entry_value_field());
+        return format!(r#"#[prost(map = "{key}, {value}", tag = "{tag}")]"#);
+    }
+
+    let repeated = if field.is_list() { ", repeated" } else { "" };
+    let optional = if !field.is_list() && field.supports_presence() {
+        ", optional"
+    } else {
+        ""
+    };
+    let kind = prost_field_kind(field);
+    format!(r#"#[prost({kind}{optional}{repeated}, tag = "{tag}")]"#)
+}
+
+fn prost_map_type(field: &FieldDescriptor) -> &'static str {
+    match field.kind() {
+        Kind::Double => "double",
+        Kind::Float => "float",
+        Kind::Int32 => "int32",
+        Kind::Int64 => "int64",
+        Kind::Uint32 => "uint32",
+        Kind::Uint64 => "uint64",
+        Kind::Sint32 => "sint32",
+        Kind::Sint64 => "sint64",
+        Kind::Fixed32 => "fixed32",
+        Kind::Fixed64 => "fixed64",
+        Kind::Sfixed32 => "sfixed32",
+        Kind::Sfixed64 => "sfixed64",
+        Kind::Bool => "bool",
+        Kind::String => "string",
+        Kind::Bytes => "bytes",
+        Kind::Enum(_) => "int32",
+        Kind::Message(_) => "message",
+    }
+}
+
+fn prost_field_kind(field: &FieldDescriptor) -> &'static str {
+    match field.kind() {
+        Kind::Double => "double",
+        Kind::Float => "float",
+        Kind::Int32 => "int32",
+        Kind::Int64 => "int64",
+        Kind::Uint32 => "uint32",
+        Kind::Uint64 => "uint64",
+        Kind::Sint32 => "sint32",
+        Kind::Sint64 => "sint64",
+        Kind::Fixed32 => "fixed32",
+        Kind::Fixed64 => "fixed64",
+        Kind::Sfixed32 => "sfixed32",
+        Kind::Sfixed64 => "sfixed64",
+        Kind::Bool => "bool",
+        Kind::String => "string",
+        Kind::Bytes => r#"bytes = "vec""#,
+        Kind::Enum(_) => "int32",
+        Kind::Message(_) => "message",
+    }
 }
 
 fn rust_type_for_field(current_package: &str, field: &FieldDescriptor) -> String {
@@ -207,7 +358,7 @@ fn rust_type_for_field(current_package: &str, field: &FieldDescriptor) -> String
             unreachable!("map fields are represented as message entries")
         };
         return format!(
-            "::std::collections::BTreeMap<{}, {}>",
+            "::std::collections::HashMap<{}, {}>",
             singular_type_for_field(current_package, &entry.map_entry_key_field()),
             singular_type_for_field(current_package, &entry.map_entry_value_field()),
         );
@@ -218,7 +369,7 @@ fn rust_type_for_field(current_package: &str, field: &FieldDescriptor) -> String
     }
 
     let ty = singular_type_for_field(current_package, field);
-    if matches!(field.kind(), Kind::Message(_)) && field.supports_presence() {
+    if !field.is_list() && field.supports_presence() {
         format!("Option<{ty}>")
     } else {
         ty
