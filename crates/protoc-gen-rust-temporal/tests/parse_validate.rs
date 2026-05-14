@@ -3308,6 +3308,60 @@ fn cli_command_exposes_handler_name_accessor() {
 }
 
 #[test]
+fn client_exposes_per_kind_count_consts_derived_from_aggregates() {
+    // R6 ergonomics — in addition to the aggregate `HANDLER_COUNT`,
+    // every present per-kind aggregate now has a paired count const
+    // derived at compile time from `Self::<KIND>_NAMES.len()`. Lets
+    // fine-grained sanity assertions stay readable:
+    //     assert_eq!(MyClient::WORKFLOW_COUNT, my_workers.workflow_count());
+    // const-evaluable so they land in const contexts.
+    //
+    // `minimal_workflow` declares all five kinds (workflow / signal /
+    // query / update / activity), so all five count consts emit.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    for (count_const, kind_const) in [
+        ("WORKFLOW_COUNT", "WORKFLOW_NAMES"),
+        ("SIGNAL_COUNT", "SIGNAL_NAMES"),
+        ("QUERY_COUNT", "QUERY_NAMES"),
+        ("UPDATE_COUNT", "UPDATE_NAMES"),
+        ("ACTIVITY_COUNT", "ACTIVITY_NAMES"),
+    ] {
+        let line = format!("pub const {count_const}: usize = Self::{kind_const}.len();");
+        assert!(
+            source.contains(&line),
+            "missing per-kind count const `{line}`: {source}"
+        );
+    }
+}
+
+#[test]
+fn client_per_kind_count_consts_skip_absent_kinds() {
+    // Skip-emit guard: per-kind counts only emit when the
+    // corresponding `<KIND>_NAMES` aggregate is present (otherwise
+    // the const refers to a name that doesn't exist on the Client).
+    // `workflow_only` declares only workflows — only WORKFLOW_COUNT
+    // should emit.
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();"),
+        "WORKFLOW_COUNT must emit for workflow_only: {source}"
+    );
+    for absent in [
+        "SIGNAL_COUNT",
+        "QUERY_COUNT",
+        "UPDATE_COUNT",
+        "ACTIVITY_COUNT",
+    ] {
+        assert!(
+            !source.contains(absent),
+            "{absent} must not emit when its <KIND>_NAMES is absent: {source}"
+        );
+    }
+}
+
+#[test]
 fn client_exposes_handler_count_const_derived_from_aggregate() {
     // R6 ergonomics — `<Service>Client::HANDLER_COUNT: usize` is
     // derived at compile time from `Self::ALL_HANDLER_NAMES.len()`.

@@ -802,6 +802,27 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — per-kind count consts on `<Service>Client`):
+  in addition to the aggregate `HANDLER_COUNT`, every present
+  per-kind name aggregate now has a paired count const derived at
+  compile time from `Self::<KIND>_NAMES.len()`: `WORKFLOW_COUNT`,
+  `SIGNAL_COUNT`, `QUERY_COUNT`, `UPDATE_COUNT`, `ACTIVITY_COUNT`.
+  Lets fine-grained sanity assertions stay readable
+  (`assert_eq!(MyClient::WORKFLOW_COUNT, my_workers.workflow_count())`)
+  and lets `static`-sized array dimensioning (`[Item; MyClient::WORKFLOW_COUNT]`)
+  work without manually unpacking the aggregate. Each per-kind count
+  is gated on the corresponding `<KIND>_NAMES` aggregate being
+  present (the const refers to it by name, so emitting one without
+  the other would not compile). Two new positive parse_validate
+  tests:
+  `client_exposes_per_kind_count_consts_derived_from_aggregates`
+  pins all five count consts on `minimal_workflow` (which declares
+  all five kinds);
+  `client_per_kind_count_consts_skip_absent_kinds` pins the skip-
+  emit guard for `workflow_only` (only WORKFLOW_COUNT emits).
+  16 fixture goldens reblessed (every Client gains the present
+  per-kind counts). 247 parse_validate tests green; workspace
+  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::<wf>_and_wait()` start+wait
   convenience): every workflow on the Client now also exposes a
   `_and_wait` sibling of the existing `<wf>` start method that

@@ -71,6 +71,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-workflows"];
 
         /// Look up which handler kind a registered name belongs to.

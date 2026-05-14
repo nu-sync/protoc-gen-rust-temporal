@@ -108,6 +108,11 @@ pub mod jobs_v1_job_service_temporal {
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.ProcessChunk"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["jobs.v1.JobService.RunJob", "jobs.v1.JobService.CancelJob", "jobs.v1.JobService.GetStatus", "jobs.v1.JobService.Reconfigure", "jobs.v1.JobService.ProcessChunk"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
+        pub const SIGNAL_COUNT: usize = Self::SIGNAL_NAMES.len();
+        pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
+        pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
+        pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["jobs"];
 
         /// Look up which handler kind a registered name belongs to.

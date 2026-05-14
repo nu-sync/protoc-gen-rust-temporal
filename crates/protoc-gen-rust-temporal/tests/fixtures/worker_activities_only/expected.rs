@@ -70,6 +70,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

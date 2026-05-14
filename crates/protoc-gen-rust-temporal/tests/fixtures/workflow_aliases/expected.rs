@@ -71,6 +71,7 @@ pub mod aliases_v1_alias_service_temporal {
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["aliases.v1.AliasService.Run"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["aliases.v1.AliasService.Run"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["aliases"];
 
         /// Look up which handler kind a registered name belongs to.

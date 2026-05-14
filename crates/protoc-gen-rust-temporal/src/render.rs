@@ -821,6 +821,36 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();"
         );
     }
+    // Per-kind counts paired with the aggregate HANDLER_COUNT. Each
+    // is gated on the corresponding `<KIND>_NAMES` aggregate being
+    // present (the const refers to it by name, so emitting one
+    // without the other would not compile). Lets fine-grained
+    // sanity assertions stay readable:
+    //     assert_eq!(MyClient::WORKFLOW_COUNT, my_workers.workflow_count());
+    // const-evaluable so they land in `static`-sized array
+    // dimensioning and other const contexts.
+    for (kind_const, count_const) in [
+        ("WORKFLOW_NAMES", "WORKFLOW_COUNT"),
+        ("SIGNAL_NAMES", "SIGNAL_COUNT"),
+        ("QUERY_NAMES", "QUERY_COUNT"),
+        ("UPDATE_NAMES", "UPDATE_COUNT"),
+        ("ACTIVITY_NAMES", "ACTIVITY_COUNT"),
+    ] {
+        let present = match kind_const {
+            "WORKFLOW_NAMES" => !wf_names.is_empty(),
+            "SIGNAL_NAMES" => !sig_names.is_empty(),
+            "QUERY_NAMES" => !q_names.is_empty(),
+            "UPDATE_NAMES" => !u_names.is_empty(),
+            "ACTIVITY_NAMES" => !act_names.is_empty(),
+            _ => false,
+        };
+        if present {
+            let _ = writeln!(
+                out,
+                "        pub const {count_const}: usize = Self::{kind_const}.len();"
+            );
+        }
+    }
     // TASK_QUEUES — distinct task queues used across the service's
     // workflows + activities, in declaration order. Lets worker setup
     // validate "I'm configured for every queue this service needs" via

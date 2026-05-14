@@ -91,6 +91,9 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const UPDATE_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Run", "eoqu.v1.EoquService.Ack", "eoqu.v1.EoquService.AckEmpty", "eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
+        pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
+        pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["eoqu"];
 
         /// Look up which handler kind a registered name belongs to.

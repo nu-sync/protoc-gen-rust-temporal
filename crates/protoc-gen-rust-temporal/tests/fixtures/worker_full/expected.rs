@@ -104,6 +104,11 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Load"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workerfull.v1.OrchestrationService.Run", "workerfull.v1.OrchestrationService.Cancel", "workerfull.v1.OrchestrationService.Status", "workerfull.v1.OrchestrationService.Confirm", "workerfull.v1.OrchestrationService.Load"];
         pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
+        pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
+        pub const SIGNAL_COUNT: usize = Self::SIGNAL_NAMES.len();
+        pub const QUERY_COUNT: usize = Self::QUERY_NAMES.len();
+        pub const UPDATE_COUNT: usize = Self::UPDATE_NAMES.len();
+        pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-full"];
 
         /// Look up which handler kind a registered name belongs to.
