@@ -802,6 +802,20 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::MESSAGE_TYPE_COUNT` const):
+  derived at compile time from `Self::ALL_MESSAGE_TYPES.len()`. Pairs
+  with HANDLER_COUNT for codec-coverage sanity assertions:
+  ```
+  assert_eq!(MyClient::MESSAGE_TYPE_COUNT, codec.registered_count());
+  ```
+  const-evaluable so it lands in `static`-sized array dimensioning.
+  Same emit guard as ALL_MESSAGE_TYPES (the const refers to it by
+  name). One new positive parse_validate test
+  (`client_exposes_message_type_count_const_derived_from_aggregate`)
+  pins both the count line and verifies the ALL_MESSAGE_TYPES
+  referent still emits. 16 fixture goldens reblessed (every Client
+  gains the const). 271 parse_validate tests green; workspace
+  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::has_message_type(name)`
   predicate): codec-side sibling of `has_handler`. Returns true iff
   `name` is one of the proto message FQNs this service touches

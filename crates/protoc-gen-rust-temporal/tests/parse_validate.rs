@@ -3804,6 +3804,27 @@ fn client_lookup_handler_kind_emits_only_present_kind_probes() {
 }
 
 #[test]
+fn client_exposes_message_type_count_const_derived_from_aggregate() {
+    // R6 ergonomics — `<Service>Client::MESSAGE_TYPE_COUNT: usize`
+    // is derived at compile time from `Self::ALL_MESSAGE_TYPES.len()`.
+    // Pairs with HANDLER_COUNT for codec-coverage sanity assertions:
+    //     assert_eq!(MyClient::MESSAGE_TYPE_COUNT, codec.registered_count());
+    // const-evaluable so it lands in `static`-sized array
+    // dimensioning. Same emit guard as ALL_MESSAGE_TYPES.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();"),
+        "missing MESSAGE_TYPE_COUNT const derived from ALL_MESSAGE_TYPES: {source}"
+    );
+    // Sanity: ALL_MESSAGE_TYPES still emits as the const referent.
+    assert!(
+        source.contains("pub const ALL_MESSAGE_TYPES: &'static [&'static str]"),
+        "ALL_MESSAGE_TYPES must accompany MESSAGE_TYPE_COUNT (const referent): {source}"
+    );
+}
+
+#[test]
 fn client_exposes_all_message_types_deduped_aggregate() {
     // R6 ergonomics — `<Service>Client::ALL_MESSAGE_TYPES: &'static
     // [&'static str]` is the deduped union of every distinct proto

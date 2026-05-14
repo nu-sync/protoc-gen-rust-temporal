@@ -120,6 +120,7 @@ pub mod wf_v1_order_service_temporal {
         pub const UPDATE_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Confirm", "wf.v1.ConfirmInput")];
         pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("wf.v1.OrderService.Confirm", "wf.v1.ConfirmOutput")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["wf.v1.OrderInput", "wf.v1.OrderOutput", "wf.v1.CancelInput", "google.protobuf.Empty", "wf.v1.StatusOutput", "wf.v1.ConfirmInput", "wf.v1.ConfirmOutput"];
+        pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "wf.v1.OrderService.Run"), ("signal", "wf.v1.OrderService.Cancel"), ("query", "wf.v1.OrderService.Status"), ("update", "wf.v1.OrderService.Confirm")];
 
         /// Look up which handler kind a registered name belongs to.

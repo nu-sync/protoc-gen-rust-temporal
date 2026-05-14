@@ -79,6 +79,7 @@ pub mod aliases_v1_alias_service_temporal {
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("aliases.v1.AliasService.Run", "aliases.v1.RunInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("aliases.v1.AliasService.Run", "aliases.v1.RunOutput")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["aliases.v1.RunInput", "aliases.v1.RunOutput"];
+        pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "aliases.v1.AliasService.Run")];
 
         /// Look up which handler kind a registered name belongs to.

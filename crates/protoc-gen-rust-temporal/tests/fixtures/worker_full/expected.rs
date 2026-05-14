@@ -123,6 +123,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Load", "workerfull.v1.LoadInput")];
         pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Load", "workerfull.v1.LoadOutput")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["workerfull.v1.RunInput", "workerfull.v1.RunOutput", "workerfull.v1.CancelInput", "google.protobuf.Empty", "workerfull.v1.StatusOutput", "workerfull.v1.ConfirmInput", "workerfull.v1.ConfirmOutput", "workerfull.v1.LoadInput", "workerfull.v1.LoadOutput"];
+        pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "workerfull.v1.OrchestrationService.Run"), ("signal", "workerfull.v1.OrchestrationService.Cancel"), ("query", "workerfull.v1.OrchestrationService.Status"), ("update", "workerfull.v1.OrchestrationService.Confirm"), ("activity", "workerfull.v1.OrchestrationService.Load")];
 
         /// Look up which handler kind a registered name belongs to.

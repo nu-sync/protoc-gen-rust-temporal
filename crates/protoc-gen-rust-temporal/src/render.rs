@@ -1189,6 +1189,16 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             out,
             "        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &[{joined}];"
         );
+        // `MESSAGE_TYPE_COUNT` — derived from
+        // `ALL_MESSAGE_TYPES.len()`. Pairs with HANDLER_COUNT for
+        // codec-coverage sanity assertions:
+        //     assert_eq!(MyClient::MESSAGE_TYPE_COUNT, codec.registered_count());
+        // const-evaluable so it lands in `static`-sized array
+        // dimensioning. Same emit guard as ALL_MESSAGE_TYPES.
+        let _ = writeln!(
+            out,
+            "        pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();"
+        );
     }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with

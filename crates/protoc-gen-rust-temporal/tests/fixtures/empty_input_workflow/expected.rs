@@ -71,6 +71,7 @@ pub mod empty_v1_nop_service_temporal {
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("empty.v1.NopService.Tick", "google.protobuf.Empty")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("empty.v1.NopService.Tick", "google.protobuf.Empty")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["google.protobuf.Empty"];
+        pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "empty.v1.NopService.Tick")];
 
         /// Look up which handler kind a registered name belongs to.

@@ -106,6 +106,7 @@ pub mod acts_v1_chunk_service_temporal {
         pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.Process", "acts.v1.ChunkInput"), ("acts.v1.ChunkService.Heartbeat", "google.protobuf.Empty")];
         pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.Process", "acts.v1.ChunkOutput"), ("acts.v1.ChunkService.Heartbeat", "acts.v1.HeartbeatOutput")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["acts.v1.BatchInput", "acts.v1.BatchOutput", "acts.v1.ChunkInput", "acts.v1.ChunkOutput", "google.protobuf.Empty", "acts.v1.HeartbeatOutput"];
+        pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "acts.v1.ChunkService.RunBatch"), ("activity", "acts.v1.ChunkService.Process"), ("activity", "acts.v1.ChunkService.Heartbeat")];
 
         /// Look up which handler kind a registered name belongs to.
