@@ -5063,6 +5063,81 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         let _ = writeln!(out, "                _ => None,");
         let _ = writeln!(out, "            }}");
         let _ = writeln!(out, "        }}");
+        // `--input-file` path accessor. Variants whose Args struct
+        // carries `pub input_file: PathBuf` return `Some(&path)`; the
+        // rest return `None`. Lets dispatch middleware validate the
+        // file exists / is readable before calling `run_with`:
+        //     if let Some(p) = cmd.input_path() {
+        //         if !p.exists() { return Err(...); }
+        //     }
+        // Mapping:
+        //   Start*           always Some (StartArgs has unconditional
+        //                    `input_file` even for empty-input
+        //                    workflows; the dispatch path silently
+        //                    ignores it for empty-input — pre-existing
+        //                    UX wart preserved here for accessor
+        //                    consistency).
+        //   Attach*/Cancel*/Terminate*  always None (no input model).
+        //   Signal*/Query*/Update*      Some only when the handler
+        //                    has a non-Empty input type; otherwise
+        //                    the Args struct skips the field and the
+        //                    arm returns None.
+        let _ = writeln!(
+            out,
+            "        /// Path to the `--input-file` arg, when this subcommand carries one."
+        );
+        let _ = writeln!(
+            out,
+            "        /// `Some(&path)` for variants whose Args struct has the field; `None` otherwise."
+        );
+        let _ = writeln!(
+            out,
+            "        pub fn input_path(&self) -> Option<&::std::path::Path> {{"
+        );
+        let _ = writeln!(out, "            match self {{");
+        for wf in &usable_workflows {
+            let pascal = wf.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Start{pascal}(args) => Some(args.input_file.as_path()),"
+            );
+        }
+        for sig in &svc.signals {
+            let pascal = sig.rpc_method.to_pascal_case();
+            if sig.input_type.is_empty {
+                let _ = writeln!(out, "                Self::Signal{pascal}(_) => None,");
+            } else {
+                let _ = writeln!(
+                    out,
+                    "                Self::Signal{pascal}(args) => Some(args.input_file.as_path()),"
+                );
+            }
+        }
+        for q in &svc.queries {
+            let pascal = q.rpc_method.to_pascal_case();
+            if q.input_type.is_empty {
+                let _ = writeln!(out, "                Self::Query{pascal}(_) => None,");
+            } else {
+                let _ = writeln!(
+                    out,
+                    "                Self::Query{pascal}(args) => Some(args.input_file.as_path()),"
+                );
+            }
+        }
+        for u in &svc.updates {
+            let pascal = u.rpc_method.to_pascal_case();
+            if u.input_type.is_empty {
+                let _ = writeln!(out, "                Self::Update{pascal}(_) => None,");
+            } else {
+                let _ = writeln!(
+                    out,
+                    "                Self::Update{pascal}(args) => Some(args.input_file.as_path()),"
+                );
+            }
+        }
+        let _ = writeln!(out, "                _ => None,");
+        let _ = writeln!(out, "            }}");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

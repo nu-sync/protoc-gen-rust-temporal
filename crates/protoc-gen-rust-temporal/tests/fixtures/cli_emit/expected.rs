@@ -864,6 +864,15 @@ pub mod report_service_cli {
                 _ => None,
             }
         }
+        /// Path to the `--input-file` arg, when this subcommand carries one.
+        /// `Some(&path)` for variants whose Args struct has the field; `None` otherwise.
+        pub fn input_path(&self) -> Option<&::std::path::Path> {
+            match self {
+                Self::StartGenerate(args) => Some(args.input_file.as_path()),
+                Self::StartAggregate(args) => Some(args.input_file.as_path()),
+                _ => None,
+            }
+        }
     }
 
     impl Cli {

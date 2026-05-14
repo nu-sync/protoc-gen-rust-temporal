@@ -743,6 +743,32 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Command::input_path(&self) -> Option<&Path>`
+  sixth dispatch-tuple accessor): completes the Command introspection
+  surface (handler_name / verb / workflow_id / wait / reason /
+  input_path). Variants whose Args struct carries
+  `pub input_file: PathBuf` return `Some(&path)`; the rest return
+  `None`. Lets dispatch middleware validate the input file before
+  calling `run_with`:
+  ```
+  if let Some(p) = cmd.input_path() {
+      if !p.exists() { return Err(...); }
+  }
+  ```
+  Per-variant: `Start*` always Some (StartArgs has unconditional
+  `input_file` even for empty-input workflows — preserved for
+  accessor consistency, the dispatch path silently ignores it for
+  empty-input as a pre-existing UX wart);
+  `Attach*/Cancel*/Terminate*` always None (no input model);
+  `Signal*/Query*/Update*` Some only when the handler has a non-Empty
+  input type (when Empty, the Args struct skips the field and the
+  arm returns None). Same emit-guard as the rest of the dispatch
+  block. One new positive parse_validate test
+  (`cli_command_exposes_input_path_accessor`) using inline proto with
+  a non-Empty-input signal + Empty-input query + Empty-input update,
+  pinning the Some/None mix per arm. Two fixture goldens reblessed
+  (`cli_emit`, `cli_ignore`). 238 parse_validate tests green. No
+  bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::set_field_count()` allocation-
   free counter): every `<Wf>StartOptions` struct now exposes
   `pub fn set_field_count(&self) -> usize` summing

@@ -3675,6 +3675,87 @@ fn cli_command_exposes_reason_accessor() {
 }
 
 #[test]
+fn cli_command_exposes_input_path_accessor() {
+    // R6 ergonomics — `Command::input_path(&self) -> Option<&Path>`
+    // is the sixth Command introspection accessor (handler_name /
+    // verb / workflow_id / wait / reason / input_path). Variants
+    // whose Args struct carries `pub input_file: PathBuf` return
+    // `Some(&path)`; the rest return `None`. Lets dispatch middleware
+    // validate the input file before calling `run_with`.
+    //
+    // This fixture exercises a non-Empty input signal (`Cancel` takes
+    // a CancelInput) — its arm must emit Some. The Empty-input query
+    // (`Status`) and Empty-input update (`Touch`) emit None arms.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package ip.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(CancelInput) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message CancelInput { string reason = 1; }
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn input_path(&self) -> Option<&::std::path::Path> {"),
+        "missing input_path fn signature: {source}"
+    );
+    // Start always Some.
+    assert!(
+        source.contains("Self::StartRun(args) => Some(args.input_file.as_path()),"),
+        "Start arm must emit Some(input_file): {source}"
+    );
+    // Non-Empty-input signal: Some arm.
+    assert!(
+        source.contains("Self::SignalCancel(args) => Some(args.input_file.as_path()),"),
+        "non-empty-input signal arm must emit Some: {source}"
+    );
+    // Empty-input query: None arm.
+    assert!(
+        source.contains("Self::QueryStatus(_) => None,"),
+        "empty-input query arm must emit None: {source}"
+    );
+    // Empty-input update: None arm.
+    assert!(
+        source.contains("Self::UpdateTouch(_) => None,"),
+        "empty-input update arm must emit None: {source}"
+    );
+    // Catch-all for Attach/Cancel/Terminate (no input_file at all).
+    assert!(
+        source.contains("                _ => None,"),
+        "catch-all None arm must emit: {source}"
+    );
+}
+
+#[test]
 fn cli_command_handler_name_skipped_when_no_subcommand_variants() {
     // Skip-emit guard: when the service has no usable workflows AND no
     // signals/queries/updates, the Command enum has no variants and
