@@ -732,6 +732,37 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
     all_names.extend(u_names.iter().copied());
     all_names.extend(act_names.iter().copied());
     emit(out, "ALL_HANDLER_NAMES", &all_names);
+    // TASK_QUEUES — distinct task queues used across the service's
+    // workflows + activities, in declaration order. Lets worker setup
+    // validate "I'm configured for every queue this service needs" via
+    //     for q in MyClient::TASK_QUEUES { assert!(workers.contains(q)); }
+    // without rederiving the union (workflows resolve service-default
+    // fallback; activities have their own optional override). Includes
+    // the service-level `DEFAULT_TASK_QUEUE` only when at least one
+    // workflow or activity actually resolves to it (otherwise it
+    // wouldn't be needed). Skip-emit when the union is empty (no
+    // queues declared anywhere).
+    let mut task_queues: Vec<&str> = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    for wf in &svc.workflows {
+        if let Some(tq) = effective_task_queue(svc, wf) {
+            if seen.insert(tq) {
+                task_queues.push(tq);
+            }
+        }
+    }
+    for act in &svc.activities {
+        if let Some(tq) = act
+            .default_options
+            .as_ref()
+            .and_then(|s| s.task_queue.as_deref())
+        {
+            if seen.insert(tq) {
+                task_queues.push(tq);
+            }
+        }
+    }
+    emit(out, "TASK_QUEUES", &task_queues);
     // Identity triple always emits, so the trailing newline is always
     // needed to separate the const block from the `new()` ctor below.
     let _ = writeln!(out);

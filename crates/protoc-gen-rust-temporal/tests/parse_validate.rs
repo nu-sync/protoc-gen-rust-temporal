@@ -3084,6 +3084,96 @@ fn cli_command_exposes_handler_name_accessor() {
 }
 
 #[test]
+fn client_exposes_task_queues_aggregate_const() {
+    // R6 ergonomics — `<Service>Client::TASK_QUEUES: &'static [&'static str]`
+    // is the union of every distinct task queue used across the
+    // service's workflows + activities, in declaration order. Lets
+    // worker setup validate "I'm configured for every queue this
+    // service needs" via:
+    //     for q in MyClient::TASK_QUEUES { assert!(workers.contains(q)); }
+    // Distinct from `DEFAULT_TASK_QUEUE` (just the service-level
+    // fallback) and from per-rpc `<RPC>_TASK_QUEUE` (one queue per
+    // workflow). This is the deduped union — handy when activities
+    // override their own queue and you need to start workers on
+    // multiple queues.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package tq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "default-tq" };
+          rpc Alpha(In) returns (Out) {
+            option (temporal.v1.workflow) = {};
+          }
+          rpc Beta(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "beta-tq" };
+          }
+          rpc Gamma(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+              task_queue: "gamma-tq"
+            };
+          }
+          rpc Delta(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    // Alpha resolves to service-default "default-tq".
+    // Beta overrides to "beta-tq".
+    // Gamma activity declares its own "gamma-tq".
+    // Delta activity has no task_queue declaration (inherits at runtime).
+    // Order: declaration order, deduped.
+    assert!(
+        source.contains(
+            "pub const TASK_QUEUES: &'static [&'static str] = &[\"default-tq\", \"beta-tq\", \"gamma-tq\"];"
+        ),
+        "TASK_QUEUES must dedupe and follow declaration order: {source}"
+    );
+}
+
+#[test]
+fn client_omits_task_queues_const_when_empty() {
+    // Skip-emit guard: when no workflow declares (or inherits) a queue
+    // and no activity overrides one, the union is empty and the const
+    // must not emit. Construct an activities-only service where the
+    // activity declares no task_queue and the service has no default —
+    // the union is empty.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package no_tq.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc DoWork(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("pub const TASK_QUEUES:"),
+        "TASK_QUEUES must omit when union is empty: {source}"
+    );
+}
+
+#[test]
 fn cli_command_exposes_verb_accessor() {
     // R6 ergonomics — `Command::verb(&self) -> &'static str` is the
     // action-side counterpart of `handler_name()`. Returns one of

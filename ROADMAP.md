@@ -743,6 +743,29 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::TASK_QUEUES` distinct-queue
+  aggregate const): every `<Service>Client` whose service uses at
+  least one task queue (workflow or activity, declared or inherited)
+  now exposes `pub const TASK_QUEUES: &'static [&'static str]` — the
+  deduped union of every distinct queue across the service's
+  workflows + activities, in declaration order. Lets worker setup
+  validate "I'm configured for every queue this service needs" via:
+  ```
+  for q in MyClient::TASK_QUEUES { assert!(workers.contains(q)); }
+  ```
+  without rederiving the union (workflows resolve service-default
+  fallback; activities have their own optional override). Distinct
+  from `DEFAULT_TASK_QUEUE` (just the service-level fallback) and
+  from per-rpc `<RPC>_TASK_QUEUE` (one queue per workflow). Skip-emit
+  when the union is empty (no queues declared anywhere). Two new
+  positive parse_validate tests, one per emit-guard branch:
+  `client_exposes_task_queues_aggregate_const` exercises the union
+  with workflow service-default + workflow override + activity
+  override + activity-without-queue (verifying dedup and order);
+  `client_omits_task_queues_const_when_empty` pins the skip-guard.
+  Ten fixture goldens reblessed (every fixture whose service has any
+  task queue, which is all of them). 221 parse_validate tests green.
+  No bridge signature change.
 - 2026-05-13 (R6 — `Command::verb(&self)` action-side accessor):
   companion ship to the prior turn's `handler_name()` accessor. Returns
   the verb keyword (`start` / `attach` / `cancel` / `terminate` /

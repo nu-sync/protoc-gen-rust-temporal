@@ -83,6 +83,7 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const QUERY_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Ack", "eoqu.v1.EoquService.AckEmpty"];
         pub const UPDATE_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Run", "eoqu.v1.EoquService.Ack", "eoqu.v1.EoquService.AckEmpty", "eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];
+        pub const TASK_QUEUES: &'static [&'static str] = &["eoqu"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
