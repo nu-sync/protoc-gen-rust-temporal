@@ -2742,6 +2742,44 @@ fn start_options_exposes_clear_mutating_reset() {
 }
 
 #[test]
+fn start_options_exposes_set_field_count_for_telemetry() {
+    // R6 ergonomics — `<Wf>StartOptions::set_field_count(&self) ->
+    // usize` is a direct sum of `field.is_some() as usize` per field,
+    // skipping the Vec allocation `set_field_names().len()` would
+    // require. Useful for telemetry counters and size-budget
+    // assertions ("at most 3 overrides allowed in this config layer").
+    // Pairs with `is_empty` (count == 0 ⇔ empty).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn set_field_count(&self) -> usize {"),
+        "missing set_field_count fn signature: {source}"
+    );
+    // First addend kicks off the chain (no `+` prefix).
+    assert!(
+        source.contains("(self.workflow_id.is_some() as usize)"),
+        "first addend missing: {source}"
+    );
+    // Each subsequent field must contribute `+ (self.<f>.is_some() as usize)`.
+    for field in [
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let line = format!("+ (self.{field}.is_some() as usize)");
+        assert!(
+            source.contains(&line),
+            "set_field_count body missing addend for `{field}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn start_options_exposes_set_field_names_introspector() {
     // R6 ergonomics — `<Wf>StartOptions::set_field_names(&self) ->
     // Vec<&'static str>` returns the names of fields with `Some`

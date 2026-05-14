@@ -743,6 +743,20 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::set_field_count()` allocation-
+  free counter): every `<Wf>StartOptions` struct now exposes
+  `pub fn set_field_count(&self) -> usize` summing
+  `field.is_some() as usize` directly per field. Skips the Vec
+  allocation `set_field_names().len()` would require — useful for
+  telemetry counters ("user customized N fields") and size-budget
+  assertions ("at most 3 overrides allowed in this config layer").
+  Pairs with `is_empty` (count == 0 ⇔ empty) and `set_field_names`
+  (count == names.len()). One new positive parse_validate test
+  (`start_options_exposes_set_field_count_for_telemetry`) pins the
+  fn signature, the kickoff first-addend, and the `+ (...)` sum
+  fragment for every remaining field. 16 fixture goldens reblessed
+  (every StartOptions gains the method). 237 parse_validate tests
+  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::HANDLER_COUNT` const derived from
   ALL_HANDLER_NAMES): every `<Service>Client` whose service has at
   least one handler now exposes

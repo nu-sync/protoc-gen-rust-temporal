@@ -2101,6 +2101,52 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(out, "        pub fn clear(&mut self) {{");
     let _ = writeln!(out, "            *self = Self::default();");
     let _ = writeln!(out, "        }}");
+    // `set_field_count` — number of fields with `Some` values.
+    // Direct sum (no Vec allocation), faster than
+    // `set_field_names().len()`. Useful for telemetry counters
+    // ("user customized N fields") and size-budget assertions
+    // ("at most 3 overrides allowed in this config layer"). Pairs
+    // with `is_empty` (count == 0 ⇔ empty).
+    let _ = writeln!(
+        out,
+        "        /// Number of fields with `Some` values. Equivalent to `set_field_names().len()`,"
+    );
+    let _ = writeln!(out, "        /// but skips the Vec allocation.");
+    let _ = writeln!(out, "        pub fn set_field_count(&self) -> usize {{");
+    let _ = writeln!(out, "            (self.workflow_id.is_some() as usize)");
+    let _ = writeln!(
+        out,
+        "                + (self.task_queue.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.id_reuse_policy.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.id_conflict_policy.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.execution_timeout.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.run_timeout.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.task_timeout.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.enable_eager_workflow_start.is_some() as usize)"
+    );
+    let _ = writeln!(
+        out,
+        "                + (self.retry_policy.is_some() as usize)"
+    );
+    let _ = writeln!(out, "        }}");
     // `set_field_names` — names of fields with `Some` values, in
     // declaration order. Useful for diagnostic logs ("user customized:
     // workflow_id, task_queue") and config-validation tests that want

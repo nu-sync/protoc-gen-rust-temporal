@@ -250,6 +250,19 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub fn clear(&mut self) {
             *self = Self::default();
         }
+        /// Number of fields with `Some` values. Equivalent to `set_field_names().len()`,
+        /// but skips the Vec allocation.
+        pub fn set_field_count(&self) -> usize {
+            (self.workflow_id.is_some() as usize)
+                + (self.task_queue.is_some() as usize)
+                + (self.id_reuse_policy.is_some() as usize)
+                + (self.id_conflict_policy.is_some() as usize)
+                + (self.execution_timeout.is_some() as usize)
+                + (self.run_timeout.is_some() as usize)
+                + (self.task_timeout.is_some() as usize)
+                + (self.enable_eager_workflow_start.is_some() as usize)
+                + (self.retry_policy.is_some() as usize)
+        }
         /// Names of fields with `Some` values, in declaration order. Empty iff [`Self::is_empty`].
         pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {
             let mut out = ::std::vec::Vec::new();
