@@ -1980,6 +1980,19 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
             "        pub const ID_TEMPLATE: &'static str = self::{id_const};"
         );
     }
+    // WORKFLOW_ALIASES re-export — every other identity const is on
+    // the inherent impl; aliases were previously only on the Definition
+    // trait. Lets diagnostic code spell `MyHandle::WORKFLOW_ALIASES`
+    // to enumerate aliases without dragging the trait into scope.
+    // Skip-emit when no aliases declared (tracks the existing module-
+    // const emit guard).
+    if !wf.aliases.is_empty() {
+        let aliases_const = format!("{}_WORKFLOW_ALIASES", wf.rpc_method.to_shouty_snake_case());
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOW_ALIASES: &'static [&'static str] = self::{aliases_const};"
+        );
+    }
     let _ = writeln!(out);
     // `from_inner` — inverse of `into_inner`. Lets test harnesses
     // construct a typed handle from a hand-built bridge handle
@@ -3480,6 +3493,18 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
             let _ = writeln!(
                 out,
                 "        pub const ID_TEMPLATE: &'static str = self::{id_const};"
+            );
+        }
+        // WORKFLOW_ALIASES re-export on the child-workflow marker,
+        // mirroring the parallel Handle ship. Lets generic worker code
+        // holding a `<W>Workflow` marker enumerate aliases without
+        // pulling in the Definition trait.
+        if !wf.aliases.is_empty() {
+            let aliases_const =
+                format!("{}_WORKFLOW_ALIASES", wf.rpc_method.to_shouty_snake_case());
+            let _ = writeln!(
+                out,
+                "        pub const WORKFLOW_ALIASES: &'static [&'static str] = self::{aliases_const};"
             );
         }
         let _ = writeln!(out, "    }}");

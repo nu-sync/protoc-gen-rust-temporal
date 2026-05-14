@@ -252,6 +252,7 @@ pub mod aliases_v1_alias_service_temporal {
         pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+        pub const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;
 
         pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self { inner }
@@ -383,6 +384,7 @@ pub mod aliases_v1_alias_service_temporal {
         pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+        pub const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;
     }
     pub async fn start_run_child<W>(
         ctx: &temporal_runtime::worker::WorkflowContext<W>,

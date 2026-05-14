@@ -3009,6 +3009,69 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_struct_re_exposes_workflow_aliases_const_when_declared() {
+    // R6 ergonomics — `WORKFLOW_ALIASES` was previously only on the
+    // Definition trait, forcing diagnostic code that wanted to enumerate
+    // a workflow's aliases (e.g. for compat-name logging during a
+    // rename) to drag in the trait. Now also re-exposed inherently on
+    // the `<Wf>Handle`. The `worker_workflow_aliases` fixture declares
+    // aliases on its Run workflow and is the only render fixture that
+    // exercises the alias path.
+    let services = parse_and_validate("worker_workflow_aliases");
+    let opts = load_fixture_options("worker_workflow_aliases");
+    let source = render::render(&services[0], &opts);
+    // Scope to the Handle's inherent impl — the same const is also
+    // emitted on the child-workflow marker (covered by a sibling test
+    // below).
+    let handle_block_start = source
+        .find("impl RunHandle {")
+        .expect("RunHandle inherent impl present");
+    let after_block = &source[handle_block_start..];
+    let block_end = after_block.find("\n    }\n").expect("inherent impl closer");
+    let block = &after_block[..block_end];
+    assert!(
+        block.contains(
+            "pub const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;"
+        ),
+        "Handle must re-expose WORKFLOW_ALIASES when declared: {block}"
+    );
+}
+
+#[test]
+fn handle_struct_omits_workflow_aliases_const_when_not_declared() {
+    // Skip-guard parity with the existing module-const emit. Most
+    // workflows declare no aliases; emitting `&[]` would mislead.
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("pub const WORKFLOW_ALIASES:"),
+        "Handle must omit WORKFLOW_ALIASES when no aliases declared: {source}"
+    );
+}
+
+#[test]
+fn child_workflow_marker_re_exposes_workflow_aliases_const_when_declared() {
+    // Parallel parity ship on the child-workflow marker. Lets generic
+    // worker code holding a `<W>Workflow` marker enumerate aliases via
+    // `<W>::WORKFLOW_ALIASES` without dragging in the Definition trait.
+    let services = parse_and_validate("worker_workflow_aliases");
+    let opts = load_fixture_options("worker_workflow_aliases");
+    let source = render::render(&services[0], &opts);
+    let marker_block_start = source
+        .find("impl RunWorkflow {")
+        .expect("RunWorkflow inherent impl present");
+    let after_block = &source[marker_block_start..];
+    let block_end = after_block.find("\n    }\n").expect("inherent impl closer");
+    let block = &after_block[..block_end];
+    assert!(
+        block.contains(
+            "pub const WORKFLOW_ALIASES: &'static [&'static str] = self::RUN_WORKFLOW_ALIASES;"
+        ),
+        "child-workflow marker must re-expose WORKFLOW_ALIASES when declared: {block}"
+    );
+}
+
+#[test]
 fn handle_struct_re_exposes_id_template_const_when_declared() {
     // R6 ergonomics — completes the identity-const matrix on the Handle.
     // `WORKFLOW_NAME` / `INPUT_TYPE` / `OUTPUT_TYPE` / `TASK_QUEUE` are

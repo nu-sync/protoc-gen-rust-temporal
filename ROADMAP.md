@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `WORKFLOW_ALIASES` re-exposed inherently on Handle
+  + child-workflow marker): companion ship to the ID_TEMPLATE pair from
+  the prior two turns. `WORKFLOW_ALIASES: &'static [&'static str]` was
+  previously only on the Definition trait, forcing diagnostic code that
+  wanted to enumerate a workflow's aliases (e.g. compat-name logging
+  during a rename) to drag in the trait. Now also re-exposed inherently
+  on both `<Wf>Handle` and the `<Wf>Workflow` child marker — matching
+  the parity model for NAME / INPUT_TYPE / OUTPUT_TYPE / TASK_QUEUE /
+  ID_TEMPLATE. Skip-emit on both surfaces when the workflow declares
+  no aliases — tracks the existing module-const emit guard. Three new
+  positive parse_validate tests:
+  `handle_struct_re_exposes_workflow_aliases_const_when_declared`
+  pins the Handle emit (scoped to the `impl RunHandle {` block);
+  `handle_struct_omits_workflow_aliases_const_when_not_declared` pins
+  the skip-guard;
+  `child_workflow_marker_re_exposes_workflow_aliases_const_when_declared`
+  pins the marker emit (scoped to `impl RunWorkflow {`). Two fixture
+  goldens reblessed (`workflow_aliases` and `worker_workflow_aliases`,
+  the only fixtures whose workflow declares aliases). 215 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Workflow` child-workflow marker re-exposes
   `ID_TEMPLATE`): parity follow-up to the Handle ship from the prior
   turn. The child-workflow marker (emitted under `workflows=true` for
