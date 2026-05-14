@@ -707,6 +707,18 @@ pub mod report_service_cli {
                 _ => None,
             }
         }
+        /// Cancellation/termination reason, when this subcommand carries one.
+        /// `Some` for `Cancel*` and `Terminate*` (which model `--reason`, default "");
+        /// `None` for all other verbs (which don't have the field).
+        pub fn reason(&self) -> Option<&str> {
+            match self {
+                Self::CancelGenerate(args) => Some(args.reason.as_str()),
+                Self::TerminateGenerate(args) => Some(args.reason.as_str()),
+                Self::CancelAggregate(args) => Some(args.reason.as_str()),
+                Self::TerminateAggregate(args) => Some(args.reason.as_str()),
+                _ => None,
+            }
+        }
     }
 
     impl Cli {

@@ -4654,6 +4654,42 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         let _ = writeln!(out, "                _ => None,");
         let _ = writeln!(out, "            }}");
         let _ = writeln!(out, "        }}");
+        // Cancel/Terminate `--reason` accessor. Both verb variants
+        // carry `pub reason: String` (with `default_value = ""`).
+        // Returning `Option<&str>` lets dispatch middleware spell:
+        //     match cmd.reason() { Some(r) if !r.is_empty() => ..., _ => ... }
+        // to distinguish "verb supports a reason but caller left it
+        // empty" from "verb doesn't apply" — useful when formatting
+        // event-history entries or telemetry tags. Other verbs return
+        // `None` because the field doesn't exist on their Args.
+        let _ = writeln!(
+            out,
+            "        /// Cancellation/termination reason, when this subcommand carries one."
+        );
+        let _ = writeln!(
+            out,
+            "        /// `Some` for `Cancel*` and `Terminate*` (which model `--reason`, default \"\");"
+        );
+        let _ = writeln!(
+            out,
+            "        /// `None` for all other verbs (which don't have the field)."
+        );
+        let _ = writeln!(out, "        pub fn reason(&self) -> Option<&str> {{");
+        let _ = writeln!(out, "            match self {{");
+        for wf in &usable_workflows {
+            let pascal = wf.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Cancel{pascal}(args) => Some(args.reason.as_str()),"
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Terminate{pascal}(args) => Some(args.reason.as_str()),"
+            );
+        }
+        let _ = writeln!(out, "                _ => None,");
+        let _ = writeln!(out, "            }}");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

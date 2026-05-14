@@ -743,6 +743,29 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Command::reason(&self) -> Option<&str>` reason
+  accessor): fifth Command introspection accessor, joining
+  handler_name / verb / workflow_id / wait. Exposes the `--reason`
+  field from `Cancel*` and `Terminate*` Args (both carry
+  `pub reason: String` with `default_value = ""`) as a uniformly-typed
+  Option. Other variants return `None` because the field doesn't
+  exist on their Args. Lets dispatch middleware spell:
+  ```
+  match cmd.reason() {
+      Some(r) if !r.is_empty() => …, // explicit reason
+      Some(_)                  => …, // verb supports it but caller left empty
+      None                     => …, // verb doesn't model reason
+  }
+  ```
+  to distinguish "verb supports a reason but caller left it empty"
+  from "verb doesn't apply" — useful for formatting event-history
+  entries or telemetry tags. Folded into the same `impl Command`
+  block as the other accessors. One new positive parse_validate test
+  (`cli_command_exposes_reason_accessor`) using inline proto with
+  workflow + signal, pinning Cancel/Terminate Some-wrapped arms and
+  the `_ => None` catch-all. Two fixture goldens reblessed
+  (`cli_emit`, `cli_ignore`). 224 parse_validate tests green. No
+  bridge signature change.
 - 2026-05-13 (R6 — `Command::wait(&self) -> Option<bool>` `--wait`
   flag accessor): exposes the `--wait` flag from `Start*` and
   `Attach*` Args structs (which carry `pub wait: bool`) as a

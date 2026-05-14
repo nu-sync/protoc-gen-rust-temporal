@@ -3389,6 +3389,64 @@ fn cli_command_exposes_wait_accessor() {
 }
 
 #[test]
+fn cli_command_exposes_reason_accessor() {
+    // R6 ergonomics — `Command::reason(&self) -> Option<&str>` exposes
+    // the `--reason` field from `Cancel*` and `Terminate*` Args
+    // (both carry `pub reason: String` with `default_value = ""`).
+    // Other variants return `None`. Lets dispatch middleware spell:
+    //     match cmd.reason() { Some(r) if !r.is_empty() => …, _ => … }
+    // to distinguish "supports a reason but caller left it empty" from
+    // "doesn't apply", which helps when formatting event-history
+    // entries or telemetry tags.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package rsn.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              signal: [{ ref: "Cancel" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn reason(&self) -> Option<&str> {"),
+        "missing reason fn signature: {source}"
+    );
+    // Cancel + Terminate arms both pull `.reason.as_str()`.
+    for variant in ["Self::CancelRun(args)", "Self::TerminateRun(args)"] {
+        let arm = format!("{variant} => Some(args.reason.as_str()),");
+        assert!(
+            source.contains(&arm),
+            "missing reason-bearing arm `{arm}`: {source}"
+        );
+    }
+    // Catch-all yields None for non-reason-bearing variants
+    // (Start / Attach / Signal here).
+    assert!(
+        source.contains("_ => None,"),
+        "missing catch-all `_ => None,` arm: {source}"
+    );
+}
+
+#[test]
 fn cli_command_handler_name_skipped_when_no_subcommand_variants() {
     // Skip-emit guard: when the service has no usable workflows AND no
     // signals/queries/updates, the Command enum has no variants and
