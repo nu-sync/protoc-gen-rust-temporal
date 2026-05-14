@@ -802,6 +802,18 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::Debug` enriched with active
+  namespace): paralleling the prior turn's Client Debug ship, the
+  Handle Debug impl now also includes a `namespace` field pulled via
+  the `self.inner.client().namespace()` chain. Sits between the
+  existing `workflow_name` and `workflow_id` fields, so handle and
+  client surfaces share the same identity context in
+  `tracing::info!(?handle, ...)` structured logs. Per-fmt namespace
+  lookup allocates an owned String — acceptable for log/trace paths.
+  Existing test `handle_struct_implements_debug` updated to pin the
+  new `namespace` field assertion. 16 fixture goldens reblessed
+  (every Handle Debug body gained the field). 255 parse_validate
+  tests green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::Debug` enriched with active
   namespace): paralleling the prior turn's Display ship, the Client
   Debug impl now also includes a `namespace` field pulled via

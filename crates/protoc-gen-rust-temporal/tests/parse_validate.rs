@@ -3269,10 +3269,12 @@ fn handle_struct_implements_display() {
 #[test]
 fn handle_struct_implements_debug() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Debug` impl
-    // that prints `workflow_name`, `workflow_id`, `run_id`. Bridge
-    // `WorkflowHandle` doesn't derive Debug (its inner SDK client
-    // is opaque), so a derive is unavailable; the manual impl gives
-    // logging frameworks a structured form.
+    // that prints `workflow_name`, `namespace`, `workflow_id`,
+    // `run_id`. Bridge `WorkflowHandle` doesn't derive Debug (its
+    // inner SDK client is opaque), so a derive is unavailable; the
+    // manual impl gives logging frameworks a structured form. The
+    // `namespace` field parallels the Client Debug ship — handle and
+    // client surfaces share the same identity context.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3282,6 +3284,10 @@ fn handle_struct_implements_debug() {
     assert!(
         source.contains(".field(\"workflow_name\", &Self::WORKFLOW_NAME)"),
         "Debug impl must include workflow_name: {source}"
+    );
+    assert!(
+        source.contains(".field(\"namespace\", &self.inner.client().namespace())"),
+        "Debug impl must include namespace via the bridge client.namespace() chain: {source}"
     );
     assert!(
         source.contains(".field(\"workflow_id\", &self.inner.workflow_id())"),

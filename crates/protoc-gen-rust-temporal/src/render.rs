@@ -2557,6 +2557,15 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
         out,
         "                .field(\"workflow_name\", &Self::WORKFLOW_NAME)"
     );
+    // Namespace field — paralleling the Client Debug ship, so handles
+    // and clients surface the same identity context in structured
+    // logs. Pulled via the bridge `client().namespace()` chain
+    // (allocates an owned String per fmt() — acceptable for log/trace
+    // paths).
+    let _ = writeln!(
+        out,
+        "                .field(\"namespace\", &self.inner.client().namespace())"
+    );
     let _ = writeln!(
         out,
         "                .field(\"workflow_id\", &self.inner.workflow_id())"

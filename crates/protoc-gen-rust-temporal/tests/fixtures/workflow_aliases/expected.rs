@@ -383,6 +383,7 @@ pub mod aliases_v1_alias_service_temporal {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
             f.debug_struct("RunHandle")
                 .field("workflow_name", &Self::WORKFLOW_NAME)
+                .field("namespace", &self.inner.client().namespace())
                 .field("workflow_id", &self.inner.workflow_id())
                 .field("run_id", &self.inner.run_id())
                 .finish()
