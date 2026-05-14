@@ -3466,6 +3466,22 @@ fn render_workflow_definition(out: &mut String, svc: &ServiceModel, wf: &Workflo
                 "        pub const TASK_QUEUE: &'static str = self::{tq_const};"
             );
         }
+        // ID_TEMPLATE re-export on the child-workflow marker, mirroring
+        // the same R6 ship on `<Wf>Handle`. Closes the parity gap so
+        // generic worker code holding a `<W>Workflow` marker can spell
+        // `<W>::ID_TEMPLATE` without dragging in the Definition trait.
+        // Skip-emit when the workflow declares no template — tracks the
+        // existing module-const emit guard.
+        if wf.id_template_source.is_some() {
+            let id_const = format!(
+                "{}_WORKFLOW_ID_TEMPLATE",
+                wf.rpc_method.to_shouty_snake_case()
+            );
+            let _ = writeln!(
+                out,
+                "        pub const ID_TEMPLATE: &'static str = self::{id_const};"
+            );
+        }
         let _ = writeln!(out, "    }}");
 
         // R5 — `<workflow>_default_child_options() -> ChildWorkflowOptions`

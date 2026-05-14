@@ -743,6 +743,24 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Workflow` child-workflow marker re-exposes
+  `ID_TEMPLATE`): parity follow-up to the Handle ship from the prior
+  turn. The child-workflow marker (emitted under `workflows=true` for
+  workflows with non-Empty input + output) already re-exposed
+  `NAME` / `INPUT_TYPE` / `OUTPUT_TYPE` / `TASK_QUEUE` as inherent
+  consts; ID_TEMPLATE was previously only on the Definition trait,
+  forcing generic worker code holding a `<W>Workflow` marker to drag
+  in the trait import to read it. Now spellable as `<W>::ID_TEMPLATE`
+  directly. Skip-emit when the workflow declares no template — tracks
+  the existing module-const emit guard. Two new positive parse_validate
+  tests, one per emit-guard branch:
+  `child_workflow_marker_re_exposes_id_template_const_when_declared`
+  and `child_workflow_marker_omits_id_template_const_when_not_declared`.
+  Each test scopes its assertion to the `impl RunWorkflow {` block so
+  it doesn't accidentally match the prior turn's Handle const. One
+  fixture golden reblessed (`workflows_emit`, the only workflows-emit
+  fixture whose workflow declares an id template). 212 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::ID_TEMPLATE` inherent const completes
   Handle identity matrix): every generated `<Wf>Handle` whose workflow
   declares an `id` template now exposes the template verbatim as

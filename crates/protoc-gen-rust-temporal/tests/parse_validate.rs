@@ -1381,6 +1381,58 @@ fn child_workflow_marker_exposes_task_queue_const() {
 }
 
 #[test]
+fn child_workflow_marker_re_exposes_id_template_const_when_declared() {
+    // R6 ergonomics — completes the identity-const matrix on the child-
+    // workflow marker, mirroring the parallel `<Wf>Handle::ID_TEMPLATE`
+    // ship. NAME / INPUT_TYPE / OUTPUT_TYPE / TASK_QUEUE were already
+    // re-exposed; ID_TEMPLATE was previously only on the Definition
+    // trait, forcing generic worker code holding a `<W>Workflow` marker
+    // to drag in the trait import. Now spellable as `<W>::ID_TEMPLATE`.
+    // `workflows_emit` declares `id: "order-{{ .Id }}"` on its workflow
+    // so the const should appear on `RunWorkflow`.
+    let services = parse_and_validate("workflows_emit");
+    let opts = load_fixture_options("workflows_emit");
+    let source = render::render(&services[0], &opts);
+    // Locate the inherent impl block on the child-workflow marker so we
+    // know we're checking the right struct (not the Handle's ID_TEMPLATE
+    // shipped in the previous turn).
+    let marker_block_start = source
+        .find("impl RunWorkflow {")
+        .expect("RunWorkflow inherent impl present");
+    let after_block = &source[marker_block_start..];
+    let marker_block_end = after_block.find("\n    }\n").expect("inherent impl closer");
+    let marker_block = &after_block[..marker_block_end];
+    assert!(
+        marker_block
+            .contains("pub const ID_TEMPLATE: &'static str = self::RUN_WORKFLOW_ID_TEMPLATE;"),
+        "child-workflow marker must re-expose ID_TEMPLATE when workflow declares one: {marker_block}"
+    );
+}
+
+#[test]
+fn child_workflow_marker_omits_id_template_const_when_not_declared() {
+    // Skip-guard parity with the existing module-const emit. When the
+    // workflow declares no id template, the marker must not bake an
+    // empty string — a baked "" would mislead diagnostic code into
+    // thinking a template existed. `worker_full` declares no `id` on
+    // its workflow, so the const should NOT appear in its
+    // `RunWorkflow` inherent impl.
+    let services = parse_and_validate("worker_full");
+    let opts = load_fixture_options("worker_full");
+    let source = render::render(&services[0], &opts);
+    let marker_block_start = source
+        .find("impl RunWorkflow {")
+        .expect("RunWorkflow inherent impl present");
+    let after_block = &source[marker_block_start..];
+    let marker_block_end = after_block.find("\n    }\n").expect("inherent impl closer");
+    let marker_block = &after_block[..marker_block_end];
+    assert!(
+        !marker_block.contains("pub const ID_TEMPLATE:"),
+        "child-workflow marker must omit ID_TEMPLATE when workflow declares none: {marker_block}"
+    );
+}
+
+#[test]
 fn child_workflow_and_signal_markers_expose_input_output_type_consts() {
     // R4 — child-workflow markers (`<Wf>Workflow`) and signal
     // markers (`<Sig>Signal`) gain inherent `INPUT_TYPE` /
