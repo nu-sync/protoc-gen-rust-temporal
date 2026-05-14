@@ -1306,6 +1306,28 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         let _ = writeln!(out, "        pub fn has_handler(name: &str) -> bool {{");
         let _ = writeln!(out, "            Self::lookup_handler_kind(name).is_some()");
         let _ = writeln!(out, "        }}");
+        // `has_message_type(name) -> bool` — codec-side sibling of
+        // `has_handler`. Returns true iff `name` is one of the proto
+        // message FQNs this service touches (i.e. appears in
+        // ALL_MESSAGE_TYPES). Useful for codec setup that wants to
+        // validate "is this type one I should register?" without
+        // iterating the full table:
+        //     if MyClient::has_message_type(ty) { codec.register(ty); }
+        // Sugar over `ALL_MESSAGE_TYPES.contains(&name)`.
+        let _ = writeln!(
+            out,
+            "        /// `true` if `name` is one of the proto message FQNs this service uses."
+        );
+        let _ = writeln!(
+            out,
+            "        /// Sugar over [`Self::ALL_MESSAGE_TYPES`]`.contains(&name)`."
+        );
+        let _ = writeln!(
+            out,
+            "        pub fn has_message_type(name: &str) -> bool {{"
+        );
+        let _ = writeln!(out, "            Self::ALL_MESSAGE_TYPES.contains(&name)");
+        let _ = writeln!(out, "        }}");
     }
     // Identity triple always emits, so the trailing newline is always
     // needed to separate the const block from the `new()` ctor below.

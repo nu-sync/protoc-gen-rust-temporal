@@ -3733,6 +3733,26 @@ fn client_exposes_lookup_handler_kind_dispatch_helper() {
 }
 
 #[test]
+fn client_exposes_has_message_type_predicate() {
+    // R6 ergonomics — `<Service>Client::has_message_type(name) -> bool`
+    // is the codec-side sibling of `has_handler`. Returns true iff
+    // `name` is one of the proto message FQNs this service touches
+    // (appears in ALL_MESSAGE_TYPES). Useful for codec setup that
+    // wants to validate "is this type one I should register?" without
+    // iterating the full table.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn has_message_type(name: &str) -> bool {"),
+        "missing has_message_type fn signature: {source}"
+    );
+    assert!(
+        source.contains("Self::ALL_MESSAGE_TYPES.contains(&name)"),
+        "has_message_type body must forward to ALL_MESSAGE_TYPES.contains: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_has_handler_predicate_sibling_of_lookup() {
     // R6 ergonomics — `<Service>Client::has_handler(name) -> bool` is
     // a predicate sibling of `lookup_handler_kind`. Reads more

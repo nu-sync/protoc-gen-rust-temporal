@@ -802,6 +802,22 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::has_message_type(name)`
+  predicate): codec-side sibling of `has_handler`. Returns true iff
+  `name` is one of the proto message FQNs this service touches
+  (appears in ALL_MESSAGE_TYPES). Useful for codec setup that wants
+  to validate "is this type one I should register?" without
+  iterating the full table:
+  ```
+  if MyClient::has_message_type(ty) { codec.register(ty); }
+  ```
+  Sugar over `ALL_MESSAGE_TYPES.contains(&name)`. Same emit guard as
+  ALL_MESSAGE_TYPES (gated on at least one handler being present).
+  One new positive parse_validate test
+  (`client_exposes_has_message_type_predicate`) pins the fn signature
+  and the body's forwarding shape. 16 fixture goldens reblessed
+  (every Client gains the predicate). 270 parse_validate tests
+  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::ALL_MESSAGE_TYPES` deduped
   aggregate): caps the per-kind input/output type tables shipped over
   the prior four turns with a single `&'static [&'static str]`

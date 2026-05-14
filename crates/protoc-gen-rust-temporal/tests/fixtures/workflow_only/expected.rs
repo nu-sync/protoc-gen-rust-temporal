@@ -92,6 +92,11 @@ pub mod solo_v1_solo_service_temporal {
         pub fn has_handler(name: &str) -> bool {
             Self::lookup_handler_kind(name).is_some()
         }
+        /// `true` if `name` is one of the proto message FQNs this service uses.
+        /// Sugar over [`Self::ALL_MESSAGE_TYPES`]`.contains(&name)`.
+        pub fn has_message_type(name: &str) -> bool {
+            Self::ALL_MESSAGE_TYPES.contains(&name)
+        }
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
