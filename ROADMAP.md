@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle` impls `PartialEq` / `Eq` / `Hash`
+  by `(workflow_id, run_id)` structural equality): lets typed
+  workflow handles serve as `HashMap` keys or `HashSet` members
+  directly, without callers extracting and tupling
+  `(workflow_id, run_id)` themselves. Hand-rolled (not derived)
+  because the bridge `WorkflowHandle` carries an opaque
+  `TemporalClient` that doesn't impl these traits — the wrapper
+  computes `Hash` and `Eq` over only the two identifying fields.
+  Distinct from `same_execution_as` (which returns false when *either*
+  side lacks a run id — strict execution match); structural eq treats
+  two attach-style handles with the same `workflow_id` and
+  `run_id == None` as equal, satisfying `Eq`'s reflexivity contract
+  (`h == h` always holds even for an attach handle). One new positive
+  parse_validate test
+  (`handle_implements_partial_eq_eq_and_hash_via_workflow_run_id`)
+  pins each impl block + the body shapes (`workflow_id() == ` /
+  `run_id() == ` for PartialEq; `workflow_id().hash` /
+  `run_id().hash` for Hash; empty marker block for Eq). 16 fixture
+  goldens reblessed (every Handle gains the three impls). 226
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `AsRef<bridge>` impls on `<Service>Client` and
   `<Wf>Handle`): rounds out the conversion-trait surface alongside
   `From<bridge>` and the `inner` / `into_inner` / `clone_inner`

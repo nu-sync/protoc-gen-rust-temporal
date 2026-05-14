@@ -294,6 +294,20 @@ pub mod solo_v1_solo_service_temporal {
         }
     }
 
+    impl ::std::cmp::PartialEq for DoWorkHandle {
+        fn eq(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+                && self.inner.run_id() == other.inner.run_id()
+        }
+    }
+    impl ::std::cmp::Eq for DoWorkHandle {}
+    impl ::std::hash::Hash for DoWorkHandle {
+        fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+            self.inner.workflow_id().hash(state);
+            self.inner.run_id().hash(state);
+        }
+    }
+
     impl DoWorkHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()

@@ -4304,6 +4304,46 @@ fn client_exposes_service_level_name_aggregates() {
 }
 
 #[test]
+fn handle_implements_partial_eq_eq_and_hash_via_workflow_run_id() {
+    // R6 ergonomics — `<Wf>Handle` impls `PartialEq` / `Eq` / `Hash`
+    // by `(workflow_id, run_id)` structural equality. Lets handles
+    // serve as `HashMap` keys or `HashSet` members. Hand-rolled
+    // (not derived) because the bridge `WorkflowHandle` carries an
+    // opaque `TemporalClient`. Distinct from `same_execution_as`
+    // (which is false when *either* side lacks run id — strict
+    // execution match); structural eq treats two attach-style handles
+    // with the same workflow_id and `run_id == None` as equal,
+    // satisfying `Eq`'s reflexivity (`h == h` always holds).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    // PartialEq impl with structural body.
+    assert!(
+        source.contains("impl ::std::cmp::PartialEq for RunJobHandle {"),
+        "PartialEq impl must emit on RunJobHandle: {source}"
+    );
+    assert!(
+        source.contains("self.inner.workflow_id() == other.inner.workflow_id()")
+            && source.contains("&& self.inner.run_id() == other.inner.run_id()"),
+        "PartialEq body must compare workflow_id AND run_id structurally: {source}"
+    );
+    // Eq is the marker trait — empty impl block.
+    assert!(
+        source.contains("impl ::std::cmp::Eq for RunJobHandle {}"),
+        "Eq marker impl must emit on RunJobHandle: {source}"
+    );
+    // Hash impl folds both fields.
+    assert!(
+        source.contains("impl ::std::hash::Hash for RunJobHandle {"),
+        "Hash impl must emit on RunJobHandle: {source}"
+    );
+    assert!(
+        source.contains("self.inner.workflow_id().hash(state);")
+            && source.contains("self.inner.run_id().hash(state);"),
+        "Hash body must fold workflow_id AND run_id: {source}"
+    );
+}
+
+#[test]
 fn client_and_handle_implement_as_ref_for_bridge_types() {
     // R6 ergonomics — `<Service>Client` and `<Wf>Handle` both impl
     // `AsRef<bridge type>`, rounding out the conversion-trait surface

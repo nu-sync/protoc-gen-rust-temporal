@@ -2115,6 +2115,40 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
+    // `PartialEq` / `Eq` / `Hash` based on `(workflow_id, run_id)`
+    // structural equality. Lets handles serve as `HashMap` keys or
+    // `HashSet` members. Cannot derive directly because the bridge
+    // `WorkflowHandle` carries an opaque `TemporalClient` that doesn't
+    // impl these traits, so we hand-roll the comparison over the two
+    // identifying fields only. Distinct from `same_execution_as`
+    // (which returns `false` when *either* side lacks a run id —
+    // strict execution match); structural eq treats two attach-style
+    // handles with the same workflow_id and `run_id == None` as
+    // equal, satisfying `Eq`'s reflexivity contract (`h == h` always
+    // holds).
+    let _ = writeln!(out, "    impl ::std::cmp::PartialEq for {handle_struct} {{");
+    let _ = writeln!(out, "        fn eq(&self, other: &Self) -> bool {{");
+    let _ = writeln!(
+        out,
+        "            self.inner.workflow_id() == other.inner.workflow_id()"
+    );
+    let _ = writeln!(
+        out,
+        "                && self.inner.run_id() == other.inner.run_id()"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out, "    impl ::std::cmp::Eq for {handle_struct} {{}}");
+    let _ = writeln!(out, "    impl ::std::hash::Hash for {handle_struct} {{");
+    let _ = writeln!(
+        out,
+        "        fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {{"
+    );
+    let _ = writeln!(out, "            self.inner.workflow_id().hash(state);");
+    let _ = writeln!(out, "            self.inner.run_id().hash(state);");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
     // Continue the inherent impl block where the rest of the
     // handle methods live. Reopen by re-emitting the impl header
     // and dropping the previous closing brace — render below stays

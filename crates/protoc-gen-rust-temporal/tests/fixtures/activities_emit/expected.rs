@@ -303,6 +303,20 @@ pub mod acts_v1_chunk_service_temporal {
         }
     }
 
+    impl ::std::cmp::PartialEq for RunBatchHandle {
+        fn eq(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+                && self.inner.run_id() == other.inner.run_id()
+        }
+    }
+    impl ::std::cmp::Eq for RunBatchHandle {}
+    impl ::std::hash::Hash for RunBatchHandle {
+        fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+            self.inner.workflow_id().hash(state);
+            self.inner.run_id().hash(state);
+        }
+    }
+
     impl RunBatchHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()

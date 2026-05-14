@@ -345,6 +345,20 @@ pub mod multi_v1_multi_service_temporal {
         }
     }
 
+    impl ::std::cmp::PartialEq for AlphaHandle {
+        fn eq(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+                && self.inner.run_id() == other.inner.run_id()
+        }
+    }
+    impl ::std::cmp::Eq for AlphaHandle {}
+    impl ::std::hash::Hash for AlphaHandle {
+        fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+            self.inner.workflow_id().hash(state);
+            self.inner.run_id().hash(state);
+        }
+    }
+
     impl AlphaHandle {
         pub fn workflow_id(&self) -> &str {
             self.inner.workflow_id()
@@ -566,6 +580,20 @@ pub mod multi_v1_multi_service_temporal {
     impl ::std::convert::AsRef<temporal_runtime::WorkflowHandle> for BetaHandle {
         fn as_ref(&self) -> &temporal_runtime::WorkflowHandle {
             &self.inner
+        }
+    }
+
+    impl ::std::cmp::PartialEq for BetaHandle {
+        fn eq(&self, other: &Self) -> bool {
+            self.inner.workflow_id() == other.inner.workflow_id()
+                && self.inner.run_id() == other.inner.run_id()
+        }
+    }
+    impl ::std::cmp::Eq for BetaHandle {}
+    impl ::std::hash::Hash for BetaHandle {
+        fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+            self.inner.workflow_id().hash(state);
+            self.inner.run_id().hash(state);
         }
     }
 
