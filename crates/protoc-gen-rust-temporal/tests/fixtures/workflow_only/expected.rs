@@ -75,6 +75,8 @@ pub mod solo_v1_solo_service_temporal {
         pub const HANDLER_SUMMARY: &'static str = "1 workflow";
         pub const TASK_QUEUES: &'static [&'static str] = &["solo-tq"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("solo.v1.SoloService.DoWork", "solo-tq")];
+        pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("solo.v1.SoloService.DoWork", "solo.v1.WorkInput")];
+        pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("solo.v1.SoloService.DoWork", "solo.v1.WorkOutput")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "solo.v1.SoloService.DoWork")];
 
         /// Look up which handler kind a registered name belongs to.

@@ -101,6 +101,8 @@ pub mod acts_v1_chunk_service_temporal {
         pub const HANDLER_SUMMARY: &'static str = "1 workflow, 2 activities";
         pub const TASK_QUEUES: &'static [&'static str] = &["chunks"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "chunks")];
+        pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "acts.v1.BatchInput")];
+        pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("acts.v1.ChunkService.RunBatch", "acts.v1.BatchOutput")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "acts.v1.ChunkService.RunBatch"), ("activity", "acts.v1.ChunkService.Process"), ("activity", "acts.v1.ChunkService.Heartbeat")];
 
         /// Look up which handler kind a registered name belongs to.

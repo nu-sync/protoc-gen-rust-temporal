@@ -802,6 +802,30 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOW_INPUT_TYPES` /
+  `WORKFLOW_OUTPUT_TYPES` lookup tables): every `<Service>Client`
+  whose service has at least one workflow now exposes a pair of
+  `&'static [(&'static str, &'static str)]` lookup tables mapping
+  each workflow's registered name to its input / output proto type
+  FQN. Useful for codecs and payload routers that need to deserialize
+  workflow inputs by workflow name without per-rpc consts:
+  ```
+  for (wf, ty) in MyClient::WORKFLOW_INPUT_TYPES {
+      codec.register(wf, ty, …);
+  }
+  ```
+  Empty-input/output workflows surface `"google.protobuf.Empty"`
+  verbatim (the canonical Empty FQN) so callers don't need to special-
+  case Empty separately. Distinct from the per-rpc `<RPC>_INPUT_TYPE`
+  / `<RPC>_OUTPUT_TYPE` consts (one per workflow as separate names).
+  Skip-emit when no workflows declared. One new positive parse_validate
+  test (`client_exposes_workflow_input_output_type_lookup_consts`)
+  pins the RunJob → JobInput / JobOutput mapping on `minimal_workflow`
+  and verifies the Empty FQN appears for an empty-input workflow on
+  `empty_input_workflow`. 16 fixture goldens reblessed (every Client
+  with at least one workflow gains the two consts). 264
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::HANDLER_SUMMARY` natural-language
   counts const): every `<Service>Client` whose service has at least
   one handler now exposes

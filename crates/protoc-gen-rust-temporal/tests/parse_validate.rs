@@ -3807,6 +3807,42 @@ fn client_exposes_registered_names_by_kind_pairs_const() {
 }
 
 #[test]
+fn client_exposes_workflow_input_output_type_lookup_consts() {
+    // R6 ergonomics — `<Service>Client::WORKFLOW_INPUT_TYPES` and
+    // `WORKFLOW_OUTPUT_TYPES` are `&'static [(&'static str, &'static
+    // str)]` lookup tables mapping each workflow's registered name to
+    // its input / output proto type FQN. Useful for codecs and
+    // payload routers that need to deserialize workflow inputs by
+    // workflow name without per-rpc consts. Empty-input/output
+    // workflows surface `"google.protobuf.Empty"` verbatim.
+    //
+    // `minimal_workflow` declares `RunJob(JobInput) -> JobOutput`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.RunJob\", \"jobs.v1.JobInput\")];"
+        ),
+        "WORKFLOW_INPUT_TYPES must map RunJob → JobInput: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.RunJob\", \"jobs.v1.JobOutput\")];"
+        ),
+        "WORKFLOW_OUTPUT_TYPES must map RunJob → JobOutput: {source}"
+    );
+
+    // `empty_input_workflow` declares `Tick(google.protobuf.Empty) -> TickOutput`.
+    // The Empty input must surface as the proto FQN verbatim.
+    let services = parse_and_validate("empty_input_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("\"google.protobuf.Empty\""),
+        "empty-input workflow must surface `google.protobuf.Empty` verbatim in the table: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflow_task_queue_table_lookup_const() {
     // R6 ergonomics — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
     // is a const lookup table mapping each workflow's registered

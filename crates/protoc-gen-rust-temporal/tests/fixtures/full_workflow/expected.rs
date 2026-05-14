@@ -120,6 +120,8 @@ pub mod full_v1_full_service_temporal {
         pub const HANDLER_SUMMARY: &'static str = "1 workflow, 2 signals, 1 query, 1 update, 1 activity";
         pub const TASK_QUEUES: &'static [&'static str] = &["full"];
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full")];
+        pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full.v1.RunInput")];
+        pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Run", "full.v1.RunOutput")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "full.v1.FullService.Run"), ("signal", "full.v1.FullService.Cancel"), ("signal", "full.v1.FullService.Bootstrap"), ("query", "full.v1.FullService.Status"), ("update", "full.v1.FullService.Reconfigure"), ("activity", "full.v1.FullService.DoChunk")];
 
         /// Look up which handler kind a registered name belongs to.

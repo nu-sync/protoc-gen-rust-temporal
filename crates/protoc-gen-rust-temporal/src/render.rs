@@ -939,6 +939,48 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[{joined}];"
         );
     }
+    // `WORKFLOW_INPUT_TYPES` / `WORKFLOW_OUTPUT_TYPES` — pairs of
+    // (registered workflow name, proto type FQN) for tooling that
+    // needs to map workflow_name → input/output type without per-rpc
+    // const enumeration. Useful for codecs, payload routers, and
+    // CLI-style dispatchers that resolve incoming JSON/bytes by
+    // workflow name. Empty-input/output workflows surface
+    // `"google.protobuf.Empty"` verbatim (the canonical Empty type
+    // FQN). Skip-emit when no workflows declared.
+    if !svc.workflows.is_empty() {
+        let joined_in = svc
+            .workflows
+            .iter()
+            .map(|wf| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    wf.registered_name.escape_default(),
+                    wf.input_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_in}];"
+        );
+        let joined_out = svc
+            .workflows
+            .iter()
+            .map(|wf| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    wf.registered_name.escape_default(),
+                    wf.output_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
+        );
+    }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with
     // both dimensions instead of probing per-name. Same kind labels
