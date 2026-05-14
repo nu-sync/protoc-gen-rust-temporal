@@ -692,6 +692,13 @@ pub mod multi_v1_multi_service_temporal {
             }
             self
         }
+        /// In-place mutating sibling of [`Self::with_proto_defaults`].
+        /// Fills `None` fields with their proto-declared defaults; user-set fields are untouched.
+        pub fn fill_proto_defaults(&mut self) {
+            if self.run_timeout.is_none() {
+                self.run_timeout = Some(Self::default_run_timeout());
+            }
+        }
     }
 
     impl BetaStartOptions {

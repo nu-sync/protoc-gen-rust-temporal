@@ -343,6 +343,22 @@ pub mod full_v1_full_service_temporal {
             }
             self
         }
+        /// In-place mutating sibling of [`Self::with_proto_defaults`].
+        /// Fills `None` fields with their proto-declared defaults; user-set fields are untouched.
+        pub fn fill_proto_defaults(&mut self) {
+            if self.id_reuse_policy.is_none() {
+                self.id_reuse_policy = Some(Self::default_id_reuse_policy());
+            }
+            if self.execution_timeout.is_none() {
+                self.execution_timeout = Some(Self::default_execution_timeout());
+            }
+            if self.run_timeout.is_none() {
+                self.run_timeout = Some(Self::default_run_timeout());
+            }
+            if self.task_timeout.is_none() {
+                self.task_timeout = Some(Self::default_task_timeout());
+            }
+        }
     }
 
     impl RunStartOptions {

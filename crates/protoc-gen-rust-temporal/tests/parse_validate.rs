@@ -8143,6 +8143,45 @@ fn workflow_id_conflict_policy_flows_into_start_options() {
 }
 
 #[test]
+fn start_options_exposes_fill_proto_defaults_in_place_sibling() {
+    // R6 ergonomics — `<Wf>StartOptions::fill_proto_defaults(&mut self)`
+    // is the in-place mutating sibling of `with_proto_defaults(self)
+    // -> Self`. Same underlay semantics; mutates instead of consuming.
+    // Pairs with `merge_in` (mutating sibling of `merge`) so the
+    // chain/in-place pair pattern is consistent across the
+    // StartOptions builder surface. Only emits when at least one
+    // proto-declared default exists (the underlay is gated on the
+    // same condition as `with_proto_defaults`).
+    let services = parse_and_validate("full_workflow");
+    let opts = load_fixture_options("full_workflow");
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn fill_proto_defaults(&mut self) {"),
+        "missing fill_proto_defaults fn signature: {source}"
+    );
+    // Body must guard each fold with the corresponding is_none()
+    // check — same as `with_proto_defaults`.
+    assert!(
+        source.contains("            if self.id_reuse_policy.is_none() {")
+            && source.contains(
+                "                self.id_reuse_policy = Some(Self::default_id_reuse_policy());"
+            ),
+        "fill_proto_defaults must guard each fold with is_none() and assign: {source}"
+    );
+    // No trailing `self` (it's `&mut self`, no return value).
+    let body_start = source
+        .find("pub fn fill_proto_defaults(&mut self) {")
+        .expect("signature present");
+    let after = &source[body_start..];
+    let body_end = after.find("\n        }").expect("closing brace");
+    let body = &after[..body_end];
+    assert!(
+        !body.contains("            self\n"),
+        "fill_proto_defaults must NOT return self (it's &mut self): {body}"
+    );
+}
+
+#[test]
 fn start_options_exposes_with_proto_defaults_chainable_underlay() {
     // R6 ergonomics — `<Wf>StartOptions::with_proto_defaults(self) -> Self`
     // is the chain-style underlay sibling of `proto_defaults()`. Where

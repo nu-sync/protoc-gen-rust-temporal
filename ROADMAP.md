@@ -802,6 +802,25 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::fill_proto_defaults(&mut self)`
+  in-place sibling): every `<Wf>StartOptions` whose workflow declares
+  at least one default-bearing field now also exposes
+  `pub fn fill_proto_defaults(&mut self)` — the in-place mutating
+  sibling of the existing chain-style `with_proto_defaults(self) ->
+  Self`. Same underlay semantics: each field's `default_*()` helper
+  runs only when the field is currently `None`. Pairs with `merge_in`
+  (mutating sibling of `merge`) so the chain/in-place pair pattern
+  is consistent across the StartOptions builder surface — every
+  consume-and-return method now has a `&mut self` counterpart for
+  in-place layering. Same emit guard as `with_proto_defaults` (gated
+  on the same defaults Vec being non-empty). One new positive
+  parse_validate test
+  (`start_options_exposes_fill_proto_defaults_in_place_sibling`)
+  pins the fn signature, the per-field is_none-guarded fold, and
+  asserts the body has no trailing `self` (it's `&mut self`, not
+  `self -> Self`). 16 fixture goldens reblessed (every StartOptions
+  with declared defaults gains the method). 258 parse_validate
+  tests green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::diagnostic_summary()` handle-side
   parallel of the Client one-liner): every `<Wf>Handle` now exposes
   `pub fn diagnostic_summary(&self) -> String` returning a pre-
