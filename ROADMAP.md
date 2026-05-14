@@ -802,6 +802,22 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::execution_pair() -> Option<(String, String)>`):
+  every `<Wf>Handle` now exposes the structured-tuple sibling of
+  `workflow_id_with_run()`. Returns `Some((workflow_id, run_id))`
+  when both ids are known; `None` for attach-style handles where
+  run_id is None. Useful when callers want to pass the two ids
+  separately to APIs that take them as distinct args (an external
+  workflow handle constructor, a serialized record's two columns,
+  etc.) instead of parsing the composite `<wfid>:<runid>` string.
+  Body uses `run_id().map(|run| (workflow_id().to_string(),
+  run.to_string()))` so the None case is implicit (Option's map is
+  identity for None). One new positive parse_validate test
+  (`handle_exposes_execution_pair_structured_tuple`) pins the fn
+  signature and the body's map-over-Option shape. 16 fixture
+  goldens reblessed (every Handle gains the method). 262
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::REGISTERED_NAMES_BY_KIND`
   `(kind, name)` pairs const): every `<Service>Client` whose service
   has at least one handler now exposes

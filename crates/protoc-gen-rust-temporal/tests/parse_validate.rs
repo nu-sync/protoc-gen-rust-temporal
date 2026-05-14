@@ -4568,6 +4568,30 @@ fn handle_exposes_diagnostic_summary_one_liner() {
 }
 
 #[test]
+fn handle_exposes_execution_pair_structured_tuple() {
+    // R6 ergonomics — `<Wf>Handle::execution_pair(&self) ->
+    // Option<(String, String)>` returns the structured
+    // (workflow_id, run_id) tuple when both are known; `None` for
+    // attach-style handles where run_id is None. Sibling of
+    // `workflow_id_with_run()` (the joined string form). Useful when
+    // callers want to pass the two ids separately to APIs that take
+    // them as distinct args.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn execution_pair(&self) -> Option<(String, String)> {"),
+        "missing execution_pair fn signature: {source}"
+    );
+    // Body uses `run_id().map(|run| (workflow_id().to_string(), run.to_string()))`.
+    assert!(
+        source.contains(
+            "self.inner.run_id().map(|run| (self.inner.workflow_id().to_string(), run.to_string()))"
+        ),
+        "execution_pair body must map over run_id() yielding owned (wfid, runid) pair: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_workflow_id_with_run_composite_key() {
     // R6 ergonomics — `<Wf>Handle::workflow_id_with_run(&self)`
     // returns a composite `<workflow_id>:<run_id>` string when both

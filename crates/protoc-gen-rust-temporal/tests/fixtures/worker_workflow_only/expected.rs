@@ -474,6 +474,11 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
                 None => self.inner.workflow_id().to_string(),
             }
         }
+        /// Structured `(workflow_id, run_id)` pair when both ids are known.
+        /// `None` for attach-style handles where `run_id` is `None`.
+        pub fn execution_pair(&self) -> Option<(String, String)> {
+            self.inner.run_id().map(|run| (self.inner.workflow_id().to_string(), run.to_string()))
+        }
         /// One-line diagnostic summary suitable for handle-specific bug reports / logs.
         /// Format: `<workflow_name>@<namespace> <workflow_id>[:<run_id>]`.
         pub fn diagnostic_summary(&self) -> String {

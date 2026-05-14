@@ -2969,6 +2969,30 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "        }}");
+    // Structured-pair sibling of `workflow_id_with_run()`. Returns
+    // `Some((workflow_id, run_id))` when both are known; `None` for
+    // attach-style handles where run_id is `None`. Useful when
+    // callers want to pass the two ids separately to APIs that take
+    // them as distinct args (e.g. an external workflow handle, a
+    // serialized record's two columns) instead of parsing the
+    // composite string.
+    let _ = writeln!(
+        out,
+        "        /// Structured `(workflow_id, run_id)` pair when both ids are known."
+    );
+    let _ = writeln!(
+        out,
+        "        /// `None` for attach-style handles where `run_id` is `None`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn execution_pair(&self) -> Option<(String, String)> {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.inner.run_id().map(|run| (self.inner.workflow_id().to_string(), run.to_string()))"
+    );
+    let _ = writeln!(out, "        }}");
     // `diagnostic_summary` — handle-side parallel of the Client
     // method. Pre-formatted one-line tracing/diagnostic string
     // combining workflow_name, active namespace, and the
