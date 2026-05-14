@@ -302,6 +302,19 @@ pub mod workerfull_v1_orchestration_service_temporal {
                 && self.enable_eager_workflow_start.is_none()
                 && self.retry_policy.is_none()
         }
+        /// Names of every field on this options struct, in declaration order.
+        /// Stable across re-codegen — see [`Self::set_field_names`] for the per-instance subset.
+        pub const FIELD_NAMES: &'static [&'static str] = &[
+            "workflow_id",
+            "task_queue",
+            "id_reuse_policy",
+            "id_conflict_policy",
+            "execution_timeout",
+            "run_timeout",
+            "task_timeout",
+            "enable_eager_workflow_start",
+            "retry_policy",
+        ];
         /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
         pub fn clear(&mut self) {
             *self = Self::default();
@@ -550,9 +563,23 @@ pub mod workerfull_v1_orchestration_service_temporal {
 
     pub fn register_orchestration_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
     where
-        I: OrchestrationServiceActivities + temporal_runtime::worker::ActivityImplementer,
+        I: OrchestrationServiceActivities,
     {
-        worker.register_activities(impl_)
+        let impl_ = ::std::sync::Arc::new(impl_);
+        worker
+            .register_activity_fn::<LoadActivity, _, _>({
+                let impl_ = ::std::sync::Arc::clone(&impl_);
+                move |ctx, input| {
+                    let impl_ = ::std::sync::Arc::clone(&impl_);
+                    async move {
+                        impl_
+                            .load(ctx, input.into_inner())
+                            .await
+                            .map(temporal_runtime::TypedProtoMessage)
+                            .map_err(temporal_runtime::worker::ActivityError::from)
+                    }
+                }
+            })
     }
 
     // ── Workflow handler names ──────────────────────────────

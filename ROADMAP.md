@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::FIELD_NAMES` static const):
+  every `<Wf>StartOptions` struct now exposes
+  `pub const FIELD_NAMES: &'static [&'static str]` listing all nine
+  field names in declaration order. Pairs with `set_field_names()`
+  (per-instance subset filtered to `Some`). Useful for reflective
+  tooling — debug tables, config-merge UIs, serializer-coverage
+  assertions ("does my serde codec cover every field?"). const-
+  evaluable so it lands in `static` contexts. The order matches
+  `set_field_names`, `is_empty`, and `set_field_count` so tooling can
+  iterate with consistent semantics across the four introspection
+  surfaces. One new positive parse_validate test
+  (`start_options_exposes_field_names_static_const`) pins the const
+  declaration AND every field entry. 16 fixture goldens reblessed
+  (every StartOptions gains the const). 238+1 = 239 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::clear(&mut self)` mutating
   reset): every `<Wf>StartOptions` struct now exposes
   `pub fn clear(&mut self)` that self-replaces with `Self::default()`.

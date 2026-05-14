@@ -308,6 +308,19 @@ pub mod cli_v1_report_service_temporal {
                 && self.enable_eager_workflow_start.is_none()
                 && self.retry_policy.is_none()
         }
+        /// Names of every field on this options struct, in declaration order.
+        /// Stable across re-codegen — see [`Self::set_field_names`] for the per-instance subset.
+        pub const FIELD_NAMES: &'static [&'static str] = &[
+            "workflow_id",
+            "task_queue",
+            "id_reuse_policy",
+            "id_conflict_policy",
+            "execution_timeout",
+            "run_timeout",
+            "task_timeout",
+            "enable_eager_workflow_start",
+            "retry_policy",
+        ];
         /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
         pub fn clear(&mut self) {
             *self = Self::default();
@@ -572,6 +585,19 @@ pub mod cli_v1_report_service_temporal {
                 && self.enable_eager_workflow_start.is_none()
                 && self.retry_policy.is_none()
         }
+        /// Names of every field on this options struct, in declaration order.
+        /// Stable across re-codegen — see [`Self::set_field_names`] for the per-instance subset.
+        pub const FIELD_NAMES: &'static [&'static str] = &[
+            "workflow_id",
+            "task_queue",
+            "id_reuse_policy",
+            "id_conflict_policy",
+            "execution_timeout",
+            "run_timeout",
+            "task_timeout",
+            "enable_eager_workflow_start",
+            "retry_policy",
+        ];
         /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
         pub fn clear(&mut self) {
             *self = Self::default();

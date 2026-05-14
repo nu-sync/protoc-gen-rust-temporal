@@ -2087,6 +2087,37 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "                && self.retry_policy.is_none()");
     let _ = writeln!(out, "        }}");
+    // `FIELD_NAMES` — full schema of nine field names in declaration
+    // order. Pairs with `set_field_names()` (per-instance subset
+    // filtered to `Some`). Useful for reflective tooling (debug
+    // tables, config-merge UIs, serializer-coverage assertions).
+    // const-evaluable so it lands in `static` contexts.
+    let _ = writeln!(
+        out,
+        "        /// Names of every field on this options struct, in declaration order."
+    );
+    let _ = writeln!(
+        out,
+        "        /// Stable across re-codegen — see [`Self::set_field_names`] for the per-instance subset."
+    );
+    let _ = writeln!(
+        out,
+        "        pub const FIELD_NAMES: &'static [&'static str] = &["
+    );
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let _ = writeln!(out, "            \"{field}\",");
+    }
+    let _ = writeln!(out, "        ];");
     // `clear` — mutating reset to all-None state. Sibling of
     // `is_empty()` (predicate) and `Default::default()` (constructor).
     // Lets callers spell `opts.clear()` in long-lived option-builder
@@ -3408,15 +3439,15 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
     );
     let _ = writeln!(
         out,
-        "    // Phase 2 (activities=true): typed trait + name consts. Wire to"
+        "    // Phase 2 (activities=true): typed trait + name consts. Register"
     );
     let _ = writeln!(
         out,
-        "    // your worker via temporalio-sdk's #[activities] macro;"
+        "    // implementations with register_<service>_activities; no parallel"
     );
     let _ = writeln!(
         out,
-        "    // see temporal-proto-runtime-bridge README for the adapter pattern."
+        "    // temporalio-sdk #[activities] adapter is required."
     );
     let _ = writeln!(out);
 
@@ -3581,12 +3612,57 @@ fn render_activities_trait(out: &mut String, svc: &ServiceModel) {
         "    pub fn {fn_name}<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker"
     );
     let _ = writeln!(out, "    where");
-    let _ = writeln!(
-        out,
-        "        I: {trait_name} + temporal_runtime::worker::ActivityImplementer,"
-    );
+    let _ = writeln!(out, "        I: {trait_name},");
     let _ = writeln!(out, "    {{");
-    let _ = writeln!(out, "        worker.register_activities(impl_)");
+    let _ = writeln!(out, "        let impl_ = ::std::sync::Arc::new(impl_);");
+    let _ = writeln!(out, "        worker");
+    for act in &svc.activities {
+        let marker_struct = format!("{}Activity", act.rpc_method);
+        let method_name = act.rpc_method.to_snake_case();
+        let closure_input = if act.input_type.is_empty {
+            "_input"
+        } else {
+            "input"
+        };
+        let trait_input = if act.input_type.is_empty {
+            "()".to_string()
+        } else {
+            "input.into_inner()".to_string()
+        };
+        let output_mapper = if act.output_type.is_empty {
+            ".map(|_| temporal_runtime::TypedProtoMessage(temporal_runtime::ProtoEmpty {}))"
+        } else {
+            ".map(temporal_runtime::TypedProtoMessage)"
+        };
+        let _ = writeln!(
+            out,
+            "            .register_activity_fn::<{marker_struct}, _, _>({{"
+        );
+        let _ = writeln!(
+            out,
+            "                let impl_ = ::std::sync::Arc::clone(&impl_);"
+        );
+        let _ = writeln!(out, "                move |ctx, {closure_input}| {{");
+        let _ = writeln!(
+            out,
+            "                    let impl_ = ::std::sync::Arc::clone(&impl_);"
+        );
+        let _ = writeln!(out, "                    async move {{");
+        let _ = writeln!(out, "                        impl_");
+        let _ = writeln!(
+            out,
+            "                            .{method_name}(ctx, {trait_input})"
+        );
+        let _ = writeln!(out, "                            .await");
+        let _ = writeln!(out, "                            {output_mapper}");
+        let _ = writeln!(
+            out,
+            "                            .map_err(temporal_runtime::worker::ActivityError::from)"
+        );
+        let _ = writeln!(out, "                    }}");
+        let _ = writeln!(out, "                }}");
+        let _ = writeln!(out, "            }})");
+    }
     let _ = writeln!(out, "    }}");
 }
 

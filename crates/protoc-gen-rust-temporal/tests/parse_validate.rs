@@ -810,9 +810,20 @@ fn activities_emit_renders_trait_and_consts() {
         "missing activities registration helper: {source}"
     );
     assert!(
-        source
-            .contains("I: ChunkServiceActivities + temporal_runtime::worker::ActivityImplementer"),
-        "registration helper should require both generated trait and SDK implementer: {source}"
+        source.contains("I: ChunkServiceActivities,"),
+        "registration helper should only require the generated trait: {source}"
+    );
+    assert!(
+        source.contains(".register_activity_fn::<ProcessActivity, _, _>"),
+        "registration helper should use typed activity function registration: {source}"
+    );
+    assert!(
+        source.contains(".process(ctx, input.into_inner())"),
+        "registration helper should unwrap non-Empty activity input: {source}"
+    );
+    assert!(
+        source.contains(".heartbeat(ctx, ())"),
+        "registration helper should map Empty activity input to unit: {source}"
     );
 }
 
@@ -2716,6 +2727,41 @@ fn start_options_exposes_is_empty_predicate() {
         assert!(
             source.contains(field),
             "is_empty body missing `{field}`: {source}"
+        );
+    }
+}
+
+#[test]
+fn start_options_exposes_field_names_static_const() {
+    // R6 ergonomics — `<Wf>StartOptions::FIELD_NAMES: &'static [&'static str]`
+    // is the full schema of the nine field names in declaration order.
+    // Pairs with `set_field_names()` (the per-instance subset filtered
+    // to Some). Useful for reflective tooling (debug tables,
+    // config-merge UIs, serializer-coverage assertions). const-
+    // evaluable so it lands in `static` contexts.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const FIELD_NAMES: &'static [&'static str] = &["),
+        "missing FIELD_NAMES const declaration: {source}"
+    );
+    // Every field must appear in declaration order (matching
+    // set_field_names() and the `is_empty` chain).
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let line = format!("            \"{field}\",");
+        assert!(
+            source.contains(&line),
+            "FIELD_NAMES body missing entry for `{field}`: {source}"
         );
     }
 }

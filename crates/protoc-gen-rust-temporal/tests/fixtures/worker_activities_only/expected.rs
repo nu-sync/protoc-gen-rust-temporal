@@ -201,8 +201,35 @@ pub mod workeract_v1_activity_worker_service_temporal {
 
     pub fn register_activity_worker_service_activities<I>(worker: &mut temporal_runtime::worker::Worker, impl_: I) -> &mut temporal_runtime::worker::Worker
     where
-        I: ActivityWorkerServiceActivities + temporal_runtime::worker::ActivityImplementer,
+        I: ActivityWorkerServiceActivities,
     {
-        worker.register_activities(impl_)
+        let impl_ = ::std::sync::Arc::new(impl_);
+        worker
+            .register_activity_fn::<FetchActivity, _, _>({
+                let impl_ = ::std::sync::Arc::clone(&impl_);
+                move |ctx, input| {
+                    let impl_ = ::std::sync::Arc::clone(&impl_);
+                    async move {
+                        impl_
+                            .fetch(ctx, input.into_inner())
+                            .await
+                            .map(temporal_runtime::TypedProtoMessage)
+                            .map_err(temporal_runtime::worker::ActivityError::from)
+                    }
+                }
+            })
+            .register_activity_fn::<PingActivity, _, _>({
+                let impl_ = ::std::sync::Arc::clone(&impl_);
+                move |ctx, _input| {
+                    let impl_ = ::std::sync::Arc::clone(&impl_);
+                    async move {
+                        impl_
+                            .ping(ctx, ())
+                            .await
+                            .map(|_| temporal_runtime::TypedProtoMessage(temporal_runtime::ProtoEmpty {}))
+                            .map_err(temporal_runtime::worker::ActivityError::from)
+                    }
+                }
+            })
     }
 }
