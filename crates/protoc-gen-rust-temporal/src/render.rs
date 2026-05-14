@@ -998,6 +998,15 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
         out,
         "                .field(\"service\", &Self::SERVICE_NAME)"
     );
+    // Namespace field — parallels the Display ship's `@<namespace>`
+    // suffix. Lets `tracing::info!(?client, ...)` structured logs
+    // expose the active namespace without callers spelling
+    // `client.namespace()` separately. Pulls via the bridge accessor
+    // (owned String allocation per fmt() — acceptable for log paths).
+    let _ = writeln!(
+        out,
+        "                .field(\"namespace\", &self.client.namespace())"
+    );
     let _ = writeln!(
         out,
         "                .field(\"plugin_version\", &Self::GENERATED_BY_PLUGIN_VERSION)"

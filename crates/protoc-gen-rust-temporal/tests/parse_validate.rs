@@ -3135,10 +3135,11 @@ fn client_struct_implements_display() {
 #[test]
 fn client_struct_implements_debug() {
     // R6 ergonomics — `<Service>Client` carries a manual `Debug`
-    // impl that prints `package`, `service`, `plugin_version`
-    // (`finish_non_exhaustive` since the inner client is opaque).
-    // Lets `tracing::info!(?client, ...)` emit useful structured
-    // output without dumping connection internals.
+    // impl that prints `package`, `service`, `namespace`,
+    // `plugin_version` (`finish_non_exhaustive` since the inner
+    // client is opaque). Lets `tracing::info!(?client, ...)` emit
+    // useful structured output — including the active namespace —
+    // without dumping connection internals.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3152,6 +3153,10 @@ fn client_struct_implements_debug() {
     assert!(
         source.contains(".field(\"service\", &Self::SERVICE_NAME)"),
         "Debug impl must include service: {source}"
+    );
+    assert!(
+        source.contains(".field(\"namespace\", &self.client.namespace())"),
+        "Debug impl must include namespace via the bridge accessor: {source}"
     );
     assert!(
         source.contains(".field(\"plugin_version\", &Self::GENERATED_BY_PLUGIN_VERSION)"),

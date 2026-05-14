@@ -74,6 +74,7 @@ pub mod acts_v1_chunk_service_temporal {
             f.debug_struct("ChunkServiceClient")
                 .field("package", &Self::PACKAGE)
                 .field("service", &Self::SERVICE_NAME)
+                .field("namespace", &self.client.namespace())
                 .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
                 .finish_non_exhaustive()
         }

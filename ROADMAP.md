@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::Debug` enriched with active
+  namespace): paralleling the prior turn's Display ship, the Client
+  Debug impl now also includes a `namespace` field pulled via
+  `self.client.namespace()`. Sits between the existing `service`
+  field and `plugin_version` field, so `tracing::info!(?client, ...)`
+  structured logs show the active Temporal namespace alongside the
+  service identity without callers needing to spell `client.namespace()`
+  separately. Per-fmt namespace lookup allocates an owned String —
+  acceptable for log/trace paths. Existing test
+  `client_struct_implements_debug` updated to pin the new `namespace`
+  field assertion (bridging assertion order: package → service →
+  namespace → plugin_version → finish_non_exhaustive). 16 fixture
+  goldens reblessed (every Client Debug body gained the field). 255
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::Display` enriched with active
   namespace): the existing Client Display impl that printed just the
   fully-qualified service name now prints

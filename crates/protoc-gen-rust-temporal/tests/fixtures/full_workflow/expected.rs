@@ -87,6 +87,7 @@ pub mod full_v1_full_service_temporal {
             f.debug_struct("FullServiceClient")
                 .field("package", &Self::PACKAGE)
                 .field("service", &Self::SERVICE_NAME)
+                .field("namespace", &self.client.namespace())
                 .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
                 .finish_non_exhaustive()
         }

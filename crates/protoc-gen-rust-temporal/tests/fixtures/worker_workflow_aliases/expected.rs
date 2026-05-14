@@ -51,6 +51,7 @@ pub mod aliases_v1_alias_service_temporal {
             f.debug_struct("AliasServiceClient")
                 .field("package", &Self::PACKAGE)
                 .field("service", &Self::SERVICE_NAME)
+                .field("namespace", &self.client.namespace())
                 .field("plugin_version", &Self::GENERATED_BY_PLUGIN_VERSION)
                 .finish_non_exhaustive()
         }
