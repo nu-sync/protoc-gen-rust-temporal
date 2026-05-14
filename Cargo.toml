@@ -27,7 +27,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 prost = "0.13"
 prost-types = "0.13"
-prost-wkt-types = "0.7"
+prost-wkt-types = { version = "0.7", features = ["vendored-protox"] }
 prost-reflect = "0.14"
 prost-build = "0.13"
 protoc-bin-vendored = "3.2"
@@ -59,8 +59,8 @@ tempfile = "3"
 pretty_assertions = "1"
 
 [patch.crates-io]
-temporalio-client = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
-temporalio-common = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
-temporalio-sdk = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
-temporalio-sdk-core = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
-temporalio-macros = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
+temporalio-client = { git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }
+temporalio-common = { git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }
+temporalio-sdk = { git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }
+temporalio-sdk-core = { git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }
+temporalio-macros = { git = "https://github.com/wcygan/sdk-core.git", rev = "d5b706e8f0a1c6ec19f04ad53687dbc8df4b7366" }
