@@ -4115,6 +4115,54 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
+fn client_exposes_workflows_with_retry_policy_classifier() {
+    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_RETRY_POLICY`
+    // lists registered names of workflows that declare a proto-level
+    // retry policy. Useful for tooling that distinguishes workflows
+    // with built-in retry expectations from those that rely on server
+    // defaults. Sibling of WORKFLOWS_WITH_ID_TEMPLATE and
+    // WORKFLOWS_WITH_ALIASES.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wfretry.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Retried(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              retry_policy: { max_attempts: 3 }
+            };
+          }
+          rpc Plain(In) returns (Out) {
+            option (temporal.v1.workflow) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    // Only Retried (which declares retry_policy) should appear.
+    assert!(
+        source.contains(
+            "pub const WORKFLOWS_WITH_RETRY_POLICY: &'static [&'static str] = &[\"wfretry.v1.Svc.Retried\"];"
+        ),
+        "WORKFLOWS_WITH_RETRY_POLICY must list Retried but not Plain: {source}"
+    );
+
+    // Skip-guard: `minimal_workflow` declares no workflow retry policy.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOWS_WITH_RETRY_POLICY"),
+        "const must omit when no workflow declares a retry policy: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflows_with_aliases_classifier() {
     // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_ALIASES`
     // lists registered names of workflows that declare alternate

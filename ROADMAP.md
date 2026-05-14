@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_RETRY_POLICY`
+  classifier const): completes the classifier-trio (id-template +
+  aliases + retry-policy). Lists registered names of workflows that
+  declare a proto-level retry policy
+  (`retry_policy: { max_attempts: 3, ... }`). Useful for tooling that
+  distinguishes workflows with built-in retry expectations from those
+  that rely on server defaults. Skip-emit when no workflow declares a
+  retry policy (the common case). One new positive parse_validate
+  test (`client_exposes_workflows_with_retry_policy_classifier`)
+  uses inline proto with two workflows (one with retry_policy, one
+  without) to verify only the policy-bearing one appears, plus the
+  skip-guard on `minimal_workflow`. 279 parse_validate tests green;
+  workspace clippy clean. No fixture goldens reblessed (no existing
+  fixture declares a workflow retry policy). No bridge signature
+  change.
 - 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_ALIASES`
   classifier const): sibling of WORKFLOWS_WITH_ID_TEMPLATE. Lists
   registered names of workflows that declare alternate registration

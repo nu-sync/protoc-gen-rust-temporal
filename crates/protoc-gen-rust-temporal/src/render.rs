@@ -998,6 +998,30 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOWS_WITH_ALIASES: &'static [&'static str] = &[{joined}];"
         );
     }
+    // `WORKFLOWS_WITH_RETRY_POLICY` — registered names of workflows
+    // that declare a proto-level retry policy
+    // (`retry_policy: { initial_interval: ... }`). Useful for tooling
+    // that distinguishes workflows with built-in retry expectations
+    // from those that rely on server defaults. Sibling of
+    // WORKFLOWS_WITH_ID_TEMPLATE and WORKFLOWS_WITH_ALIASES. Skip-emit
+    // when no workflow declares a retry policy.
+    let wf_with_retry: Vec<&str> = svc
+        .workflows
+        .iter()
+        .filter(|wf| wf.retry_policy.is_some())
+        .map(|wf| wf.registered_name.as_str())
+        .collect();
+    if !wf_with_retry.is_empty() {
+        let joined = wf_with_retry
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOWS_WITH_RETRY_POLICY: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
     // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
     // own task queue to that queue. Activities without an explicit
