@@ -4115,6 +4115,32 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
+fn client_exposes_workflows_with_aliases_classifier() {
+    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_ALIASES`
+    // lists registered names of workflows that declare alternate
+    // registration names. Useful for tooling that audits compat-name
+    // coverage during renames. Sibling of WORKFLOWS_WITH_ID_TEMPLATE.
+    //
+    // `workflow_aliases` declares Run with aliases.
+    let services = parse_and_validate("workflow_aliases");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const WORKFLOWS_WITH_ALIASES: &'static [&'static str] = &[\"aliases.v1.AliasService.Run\"];"
+        ),
+        "WORKFLOWS_WITH_ALIASES must list Run (has aliases): {source}"
+    );
+
+    // Skip-guard: `minimal_workflow` declares no aliases.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOWS_WITH_ALIASES"),
+        "const must omit when no workflow declares aliases: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflows_with_id_template_const() {
     // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_ID_TEMPLATE`
     // lists registered names of workflows that declare an `id`

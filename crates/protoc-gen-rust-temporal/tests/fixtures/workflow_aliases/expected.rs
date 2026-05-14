@@ -77,6 +77,7 @@ pub mod aliases_v1_alias_service_temporal {
         pub const TASK_QUEUES: &'static [&'static str] = &["aliases"];
         pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("aliases.v1.AliasService.Run", "aliases")];
+        pub const WORKFLOWS_WITH_ALIASES: &'static [&'static str] = &["aliases.v1.AliasService.Run"];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("aliases.v1.AliasService.Run", "aliases.v1.RunInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("aliases.v1.AliasService.Run", "aliases.v1.RunOutput")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["aliases.v1.RunInput", "aliases.v1.RunOutput"];

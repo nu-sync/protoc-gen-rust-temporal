@@ -975,6 +975,29 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &[{joined}];"
         );
     }
+    // `WORKFLOWS_WITH_ALIASES` — registered names of workflows that
+    // declare alternate registration names (`aliases: ["legacy_name"]`).
+    // Useful for tooling that audits compat-name coverage (e.g.,
+    // "during the rename, are all the renamed workflows still listed
+    // by their old names?"). Skip-emit when no workflow declares
+    // aliases.
+    let wf_with_aliases: Vec<&str> = svc
+        .workflows
+        .iter()
+        .filter(|wf| !wf.aliases.is_empty())
+        .map(|wf| wf.registered_name.as_str())
+        .collect();
+    if !wf_with_aliases.is_empty() {
+        let joined = wf_with_aliases
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOWS_WITH_ALIASES: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
     // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
     // own task queue to that queue. Activities without an explicit

@@ -802,6 +802,19 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_ALIASES`
+  classifier const): sibling of WORKFLOWS_WITH_ID_TEMPLATE. Lists
+  registered names of workflows that declare alternate registration
+  names (`aliases: ["legacy_name"]`). Useful for tooling that audits
+  compat-name coverage during renames — e.g., "during the rename, are
+  all the renamed workflows still listed by their old names?".
+  Skip-emit when no workflow declares aliases (the common case).
+  One new positive parse_validate test
+  (`client_exposes_workflows_with_aliases_classifier`) covers both
+  the emit case (`workflow_aliases` fixture) and the skip-guard
+  (`minimal_workflow` has no aliased workflows). 2 fixture goldens
+  reblessed (the two alias-bearing fixtures). 278 parse_validate
+  tests green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_ID_TEMPLATE`
   classifier const): every `<Service>Client` whose service has at
   least one workflow declaring an `id` template now exposes
