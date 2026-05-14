@@ -802,6 +802,20 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_TIMEOUTS`
+  classifier const): lists registered names of workflows that declare
+  at least one of `execution_timeout` / `run_timeout` / `task_timeout`.
+  Useful for tooling that identifies workflows with proto-baked SLA
+  expectations vs those that rely on server defaults. Sibling of the
+  retry-policy / id-template / aliases classifiers. Skip-emit when no
+  workflow declares any timeout (the common case for short-lived
+  workflows). One new positive parse_validate test
+  (`client_exposes_workflows_with_timeouts_classifier`) covers both
+  the multi-workflow case (Beta declares run_timeout, Alpha doesn't)
+  and the skip-guard. 3 fixture goldens reblessed (full_workflow,
+  multiple_workflows, workflow_only — the three that declare any
+  timeout). 281 parse_validate tests green; workspace clippy clean.
+  No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::ACTIVITIES_WITH_RETRY_POLICY`
   classifier const): activity-side parity of WORKFLOWS_WITH_RETRY_POLICY.
   Lists registered names of activities that declare a proto-level

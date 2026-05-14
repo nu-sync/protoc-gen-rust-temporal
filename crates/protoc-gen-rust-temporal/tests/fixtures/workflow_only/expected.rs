@@ -76,6 +76,7 @@ pub mod solo_v1_solo_service_temporal {
         pub const TASK_QUEUES: &'static [&'static str] = &["solo-tq"];
         pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("solo.v1.SoloService.DoWork", "solo-tq")];
+        pub const WORKFLOWS_WITH_TIMEOUTS: &'static [&'static str] = &["solo.v1.SoloService.DoWork"];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("solo.v1.SoloService.DoWork", "solo.v1.WorkInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("solo.v1.SoloService.DoWork", "solo.v1.WorkOutput")];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["solo.v1.WorkInput", "solo.v1.WorkOutput"];

@@ -102,6 +102,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi"), ("multi.v1.MultiService.Beta", "multi-beta")];
         pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &["multi.v1.MultiService.Alpha"];
+        pub const WORKFLOWS_WITH_TIMEOUTS: &'static [&'static str] = &["multi.v1.MultiService.Beta"];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi.v1.AlphaInput"), ("multi.v1.MultiService.Beta", "multi.v1.BetaInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi.v1.AlphaOutput"), ("multi.v1.MultiService.Beta", "multi.v1.BetaOutput")];
         pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Ping", "google.protobuf.Empty")];

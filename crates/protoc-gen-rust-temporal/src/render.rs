@@ -1048,6 +1048,31 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const ACTIVITIES_WITH_RETRY_POLICY: &'static [&'static str] = &[{joined}];"
         );
     }
+    // `WORKFLOWS_WITH_TIMEOUTS` — registered names of workflows that
+    // declare at least one of `execution_timeout` / `run_timeout` /
+    // `task_timeout`. Useful for tooling that wants to identify
+    // workflows with proto-baked SLA expectations vs those that rely
+    // on server defaults. Skip-emit when no workflow declares any
+    // timeout (the common case for short-lived workflows).
+    let wf_with_timeouts: Vec<&str> = svc
+        .workflows
+        .iter()
+        .filter(|wf| {
+            wf.execution_timeout.is_some() || wf.run_timeout.is_some() || wf.task_timeout.is_some()
+        })
+        .map(|wf| wf.registered_name.as_str())
+        .collect();
+    if !wf_with_timeouts.is_empty() {
+        let joined = wf_with_timeouts
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOWS_WITH_TIMEOUTS: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
     // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
     // own task queue to that queue. Activities without an explicit

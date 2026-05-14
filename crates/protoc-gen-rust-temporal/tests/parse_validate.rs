@@ -4115,6 +4115,35 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
+fn client_exposes_workflows_with_timeouts_classifier() {
+    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_TIMEOUTS`
+    // lists registered names of workflows that declare at least one
+    // of execution_timeout / run_timeout / task_timeout. Useful for
+    // tooling that identifies workflows with proto-baked SLA
+    // expectations vs those that rely on server defaults.
+    //
+    // `multiple_workflows` declares two workflows: Alpha (no
+    // timeouts) and Beta (declares a run_timeout). Only Beta should
+    // appear.
+    let services = parse_and_validate("multiple_workflows");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const WORKFLOWS_WITH_TIMEOUTS: &'static [&'static str] = &[\"multi.v1.MultiService.Beta\"];"
+        ),
+        "WORKFLOWS_WITH_TIMEOUTS must list Beta (declares run_timeout) but not Alpha: {source}"
+    );
+
+    // Skip-guard: `minimal_workflow` declares no timeouts.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOWS_WITH_TIMEOUTS"),
+        "const must omit when no workflow declares any timeout: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_activities_with_retry_policy_classifier() {
     // R6 ergonomics — `<Service>Client::ACTIVITIES_WITH_RETRY_POLICY`
     // is the activity-side parity of WORKFLOWS_WITH_RETRY_POLICY.
