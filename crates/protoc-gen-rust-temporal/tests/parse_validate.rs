@@ -2836,6 +2836,31 @@ fn start_options_exposes_field_names_static_const() {
 }
 
 #[test]
+fn start_options_exposes_workflow_id_or_random_conditional() {
+    // R6 ergonomics — `<Wf>StartOptions::workflow_id_or_random(self)`
+    // is the conditional sibling of `with_random_workflow_id`. Sets
+    // `workflow_id` to a UUID only when currently `None`. Pattern:
+    // "use the caller's override if present, else fall back to
+    // random". Saves the `if opts.workflow_id.is_none()` check at
+    // every call site.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn workflow_id_or_random(mut self) -> Self {"),
+        "missing workflow_id_or_random fn signature: {source}"
+    );
+    // Body must be guarded by an is_none check, then assign — the
+    // only difference vs the unconditional `with_random_workflow_id`.
+    assert!(
+        source.contains("            if self.workflow_id.is_none() {")
+            && source.contains(
+                "                self.workflow_id = Some(temporal_runtime::random_workflow_id());"
+            ),
+        "body must check is_none() then assign: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_with_random_workflow_id_chain() {
     // R6 ergonomics — `<Wf>StartOptions::with_random_workflow_id(self)`
     // sugar for setting `workflow_id` to a UUID via the bridge's

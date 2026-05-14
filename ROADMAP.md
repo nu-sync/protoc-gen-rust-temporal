@@ -802,6 +802,23 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::workflow_id_or_random(self)`
+  conditional sibling): every `<Wf>StartOptions` struct now exposes
+  `pub fn workflow_id_or_random(mut self) -> Self` that sets
+  `workflow_id` to a UUID only when currently `None`. Pattern: "use
+  the caller's override if present, else fall back to random". Saves
+  the `if opts.workflow_id.is_none()` check at every call site.
+  Conditional sibling of the prior turn's unconditional
+  `with_random_workflow_id` — together they cover the common
+  layered-config patterns where some sites want "always randomize"
+  and others want "only randomize on miss". One new positive
+  parse_validate test
+  (`start_options_exposes_workflow_id_or_random_conditional`) pins
+  the fn signature, the is_none check guard, and the same bridge-
+  call body as the unconditional sibling. 16 fixture goldens
+  reblessed (every StartOptions gains the method). 253
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::with_random_workflow_id(self)`
   chain method): every `<Wf>StartOptions` struct now exposes
   `pub fn with_random_workflow_id(mut self) -> Self` that sets

@@ -296,6 +296,14 @@ pub mod jobs_v1_job_service_temporal {
             self.workflow_id = Some(temporal_runtime::random_workflow_id());
             self
         }
+        /// Fill `workflow_id` with a random UUID if not already set.
+        /// No-op when `workflow_id` is already `Some`.
+        pub fn workflow_id_or_random(mut self) -> Self {
+            if self.workflow_id.is_none() {
+                self.workflow_id = Some(temporal_runtime::random_workflow_id());
+            }
+            self
+        }
         pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.task_queue = Some(v.into());
             self

@@ -2159,6 +2159,31 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "            self");
     let _ = writeln!(out, "        }}");
+    // `workflow_id_or_random` — conditional sibling. Sets
+    // `workflow_id` to a UUID only when currently `None`. Pattern:
+    // "use the caller's override if present, else fall back to
+    // random". Saves the `if opts.workflow_id.is_none()` check at
+    // every call site.
+    let _ = writeln!(
+        out,
+        "        /// Fill `workflow_id` with a random UUID if not already set."
+    );
+    let _ = writeln!(
+        out,
+        "        /// No-op when `workflow_id` is already `Some`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn workflow_id_or_random(mut self) -> Self {{"
+    );
+    let _ = writeln!(out, "            if self.workflow_id.is_none() {{");
+    let _ = writeln!(
+        out,
+        "                self.workflow_id = Some(temporal_runtime::random_workflow_id());"
+    );
+    let _ = writeln!(out, "            }}");
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(
         out,
         "        pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {{"
