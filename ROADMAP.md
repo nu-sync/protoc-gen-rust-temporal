@@ -802,6 +802,23 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS`
+  classifier const): lists registered names of workflows that declare
+  at least one of `parent_close_policy` or `wait_for_cancellation` —
+  the two fields that produce the existing
+  `<wf>_default_child_options()` factory. Mirrors that factory's emit
+  guard so a workflow appears in this const iff its child-options
+  factory was emitted under `workflows=true`. Useful for tooling
+  that wants to know which workflows expect specific child
+  semantics vs those accepting SDK defaults. Skip-emit when no
+  workflow declares either field. One new positive parse_validate
+  test (`client_exposes_workflows_with_default_child_options_classifier`)
+  uses inline proto with three workflows (one with policy, one with
+  wait, one with neither) verifying both child-options-bearing ones
+  appear; plus the skip-guard on `minimal_workflow`. 282
+  parse_validate tests green; workspace clippy clean. No fixture
+  goldens reblessed (no existing fixture declares either field).
+  No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_TIMEOUTS`
   classifier const): lists registered names of workflows that declare
   at least one of `execution_timeout` / `run_timeout` / `task_timeout`.

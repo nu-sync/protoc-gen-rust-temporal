@@ -1073,6 +1073,32 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOWS_WITH_TIMEOUTS: &'static [&'static str] = &[{joined}];"
         );
     }
+    // `WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS` — registered names of
+    // workflows that declare at least one of `parent_close_policy` or
+    // `wait_for_cancellation`. Mirrors the existing emit guard for
+    // `<wf>_default_child_options()` factory: a workflow appears in
+    // this list iff its child-workflow factory was emitted under
+    // `workflows=true`. Useful for tooling that wants to know which
+    // workflows expect specific child-semantics defaults vs those
+    // accepting the SDK defaults. Skip-emit when no workflow declares
+    // either field.
+    let wf_with_child_opts: Vec<&str> = svc
+        .workflows
+        .iter()
+        .filter(|wf| wf.parent_close_policy.is_some() || wf.wait_for_cancellation)
+        .map(|wf| wf.registered_name.as_str())
+        .collect();
+    if !wf_with_child_opts.is_empty() {
+        let joined = wf_with_child_opts
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
     // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
     // own task queue to that queue. Activities without an explicit

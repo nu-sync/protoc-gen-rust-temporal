@@ -4115,6 +4115,61 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
+fn client_exposes_workflows_with_default_child_options_classifier() {
+    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS`
+    // lists registered names of workflows that declare at least one
+    // of `parent_close_policy` or `wait_for_cancellation`. Mirrors
+    // the existing emit guard for `<wf>_default_child_options()` —
+    // a workflow appears here iff its factory was emitted under
+    // `workflows=true`. Useful for tooling that wants to know which
+    // workflows expect specific child semantics.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wfchild.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc WithPolicy(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
+            };
+          }
+          rpc WithWait(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              wait_for_cancellation: true
+            };
+          }
+          rpc Plain(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    // WithPolicy + WithWait should appear; Plain should not.
+    assert!(
+        source.contains(
+            "pub const WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS: &'static [&'static str] = &[\"wfchild.v1.Svc.WithPolicy\", \"wfchild.v1.Svc.WithWait\"];"
+        ),
+        "WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS must list WithPolicy + WithWait but not Plain: {source}"
+    );
+
+    // Skip-guard: minimal_workflow declares neither.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS"),
+        "const must omit when no workflow declares child-options fields: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflows_with_timeouts_classifier() {
     // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_TIMEOUTS`
     // lists registered names of workflows that declare at least one
