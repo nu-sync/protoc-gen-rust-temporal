@@ -28,6 +28,10 @@ pub mod solo_v1_solo_service_temporal {
         const MESSAGE_TYPE: &'static str = "solo.v1.WorkOutput";
     }
 
+    pub const PACKAGE: &str = "solo.v1";
+    pub const SERVICE_NAME: &str = "SoloService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "solo.v1.SoloService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const DO_WORK_WORKFLOW_NAME: &str = "solo.v1.SoloService.DoWork";
     pub const DO_WORK_INPUT_TYPE: &str = "solo.v1.WorkInput";
     pub const DO_WORK_OUTPUT_TYPE: &str = "solo.v1.WorkOutput";

@@ -21,6 +21,10 @@ pub mod act_v1_worker_only_service_temporal {
     use crate::temporal_runtime;
     use crate::act::v1::*;
 
+    pub const PACKAGE: &str = "act.v1";
+    pub const SERVICE_NAME: &str = "WorkerOnlyService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "act.v1.WorkerOnlyService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const PROCESS_CHUNK_ACTIVITY_INPUT_TYPE: &str = "act.v1.ChunkInput";
     pub const PROCESS_CHUNK_ACTIVITY_OUTPUT_TYPE: &str = "act.v1.ChunkOutput";
     pub const CLEANUP_ACTIVITY_INPUT_TYPE: &str = "act.v1.CleanupInput";

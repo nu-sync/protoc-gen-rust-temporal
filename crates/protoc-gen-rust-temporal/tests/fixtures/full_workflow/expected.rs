@@ -43,6 +43,10 @@ pub mod full_v1_full_service_temporal {
         const MESSAGE_TYPE: &'static str = "full.v1.StatusOutput";
     }
 
+    pub const PACKAGE: &str = "full.v1";
+    pub const SERVICE_NAME: &str = "FullService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "full.v1.FullService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_WORKFLOW_NAME: &str = "full.v1.FullService.Run";
     pub const RUN_INPUT_TYPE: &str = "full.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "full.v1.RunOutput";

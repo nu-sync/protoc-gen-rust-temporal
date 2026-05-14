@@ -21,6 +21,10 @@ pub mod empty_v1_nop_service_temporal {
     use crate::temporal_runtime;
     use crate::empty::v1::*;
 
+    pub const PACKAGE: &str = "empty.v1";
+    pub const SERVICE_NAME: &str = "NopService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "empty.v1.NopService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const TICK_WORKFLOW_NAME: &str = "empty.v1.NopService.Tick";
     pub const TICK_INPUT_TYPE: &str = "google.protobuf.Empty";
     pub const TICK_OUTPUT_TYPE: &str = "google.protobuf.Empty";

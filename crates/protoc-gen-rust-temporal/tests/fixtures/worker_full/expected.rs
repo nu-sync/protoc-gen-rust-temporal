@@ -46,6 +46,10 @@ pub mod workerfull_v1_orchestration_service_temporal {
         const MESSAGE_TYPE: &'static str = "workerfull.v1.StatusOutput";
     }
 
+    pub const PACKAGE: &str = "workerfull.v1";
+    pub const SERVICE_NAME: &str = "OrchestrationService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "workerfull.v1.OrchestrationService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_WORKFLOW_NAME: &str = "workerfull.v1.OrchestrationService.Run";
     pub const RUN_INPUT_TYPE: &str = "workerfull.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "workerfull.v1.RunOutput";

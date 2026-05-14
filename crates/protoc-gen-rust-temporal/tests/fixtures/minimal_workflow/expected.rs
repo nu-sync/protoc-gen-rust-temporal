@@ -40,6 +40,10 @@ pub mod jobs_v1_job_service_temporal {
         const MESSAGE_TYPE: &'static str = "jobs.v1.ReconfigureOutput";
     }
 
+    pub const PACKAGE: &str = "jobs.v1";
+    pub const SERVICE_NAME: &str = "JobService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "jobs.v1.JobService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
     pub const RUN_JOB_INPUT_TYPE: &str = "jobs.v1.JobInput";
     pub const RUN_JOB_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";

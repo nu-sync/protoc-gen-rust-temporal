@@ -743,6 +743,24 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — module-level `PACKAGE` / `SERVICE_NAME` /
+  `FULLY_QUALIFIED_SERVICE_NAME` / `SOURCE_FILE` consts mirror the
+  per-Client ones): every generated `<service>_temporal` module now
+  carries these four identity consts at module scope, in addition to
+  the existing inherent versions on `<Service>Client`. Lets consumer
+  code (proc macros, build scripts, dispatch tables, `pub use module::*`
+  glob imports) spell `<service_temporal_module>::PACKAGE` directly
+  without referencing `<Service>Client`. Module-level uses `&str`
+  (matching the existing per-workflow / per-handler module consts)
+  while the Client inherent ones use `&'static str` — both forms
+  coexist; module-level supplements rather than replaces. One new
+  positive parse_validate test
+  (`module_level_identity_consts_mirror_client_consts`) pins all four
+  module-level emit lines AND verifies the Client inherent PACKAGE
+  still emits alongside (no accidental replacement). 16 fixture
+  goldens reblessed (every fixture now has the four module consts at
+  the top of its constants block). 230 parse_validate tests green.
+  No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::set_field_names()` introspector):
   every `<Wf>StartOptions` struct now exposes
   `pub fn set_field_names(&self) -> Vec<&'static str>` returning the

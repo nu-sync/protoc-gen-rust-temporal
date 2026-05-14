@@ -202,6 +202,37 @@ fn render_message_type_impls(
 }
 
 fn render_constants(out: &mut String, svc: &ServiceModel) {
+    // Module-level service-identity consts mirroring the per-Client
+    // ones. Lets consumer code (proc macros, build scripts, dispatch
+    // tables) spell `<service_temporal_module>::PACKAGE` directly
+    // without needing `<Service>Client` in scope. These have always
+    // been on the Client; surfacing them at module scope just makes
+    // them spellable from `pub use <module>::*;` glob imports too.
+    let _ = writeln!(
+        out,
+        "    pub const PACKAGE: &str = \"{}\";",
+        svc.package.escape_default()
+    );
+    let _ = writeln!(
+        out,
+        "    pub const SERVICE_NAME: &str = \"{}\";",
+        svc.service.escape_default()
+    );
+    let fqn = if svc.package.is_empty() {
+        svc.service.clone()
+    } else {
+        format!("{}.{}", svc.package, svc.service)
+    };
+    let _ = writeln!(
+        out,
+        "    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = \"{}\";",
+        fqn.escape_default()
+    );
+    let _ = writeln!(
+        out,
+        "    pub const SOURCE_FILE: &str = \"{}\";",
+        svc.source_file.escape_default()
+    );
     for wf in &svc.workflows {
         let const_name = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
         let _ = writeln!(

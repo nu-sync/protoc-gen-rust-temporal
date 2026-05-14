@@ -28,6 +28,10 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         const MESSAGE_TYPE: &'static str = "workerwf.v1.WorkOutput";
     }
 
+    pub const PACKAGE: &str = "workerwf.v1";
+    pub const SERVICE_NAME: &str = "WorkerWorkflowService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "workerwf.v1.WorkerWorkflowService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_WORKFLOW_NAME: &str = "workerwf.v1.WorkerWorkflowService.Run";
     pub const RUN_INPUT_TYPE: &str = "workerwf.v1.WorkInput";
     pub const RUN_OUTPUT_TYPE: &str = "workerwf.v1.WorkOutput";

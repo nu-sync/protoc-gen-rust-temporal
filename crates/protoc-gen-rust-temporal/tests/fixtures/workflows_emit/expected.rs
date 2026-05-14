@@ -40,6 +40,10 @@ pub mod wf_v1_order_service_temporal {
         const MESSAGE_TYPE: &'static str = "wf.v1.StatusOutput";
     }
 
+    pub const PACKAGE: &str = "wf.v1";
+    pub const SERVICE_NAME: &str = "OrderService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "wf.v1.OrderService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_WORKFLOW_NAME: &str = "wf.v1.OrderService.Run";
     pub const RUN_INPUT_TYPE: &str = "wf.v1.OrderInput";
     pub const RUN_OUTPUT_TYPE: &str = "wf.v1.OrderOutput";

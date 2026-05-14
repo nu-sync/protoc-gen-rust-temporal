@@ -37,6 +37,10 @@ pub mod acts_v1_chunk_service_temporal {
         const MESSAGE_TYPE: &'static str = "acts.v1.HeartbeatOutput";
     }
 
+    pub const PACKAGE: &str = "acts.v1";
+    pub const SERVICE_NAME: &str = "ChunkService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "acts.v1.ChunkService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_BATCH_WORKFLOW_NAME: &str = "acts.v1.ChunkService.RunBatch";
     pub const RUN_BATCH_INPUT_TYPE: &str = "acts.v1.BatchInput";
     pub const RUN_BATCH_OUTPUT_TYPE: &str = "acts.v1.BatchOutput";

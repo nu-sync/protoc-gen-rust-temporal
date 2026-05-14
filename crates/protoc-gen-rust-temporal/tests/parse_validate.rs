@@ -4381,6 +4381,44 @@ fn marker_structs_implement_display_printing_registered_name() {
 }
 
 #[test]
+fn module_level_identity_consts_mirror_client_consts() {
+    // R6 ergonomics — `PACKAGE` / `SERVICE_NAME` /
+    // `FULLY_QUALIFIED_SERVICE_NAME` / `SOURCE_FILE` consts are now
+    // emitted at the generated module scope (in addition to the
+    // existing inherent ones on `<Service>Client`). Lets consumer code
+    // (proc macros, build scripts, dispatch tables, `pub use module::*`
+    // glob imports) spell `<service_temporal_module>::PACKAGE`
+    // directly without dragging the Client type into scope.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    // Module-level consts use `&str` (not `&'static str`) — matches
+    // the existing per-workflow / per-handler module consts.
+    assert!(
+        source.contains("    pub const PACKAGE: &str = \"jobs.v1\";"),
+        "module-level PACKAGE const must emit: {source}"
+    );
+    assert!(
+        source.contains("    pub const SERVICE_NAME: &str = \"JobService\";"),
+        "module-level SERVICE_NAME const must emit: {source}"
+    );
+    assert!(
+        source
+            .contains("    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = \"jobs.v1.JobService\";"),
+        "module-level FULLY_QUALIFIED_SERVICE_NAME const must emit: {source}"
+    );
+    assert!(
+        source.contains("    pub const SOURCE_FILE: &str = \"input.proto\";"),
+        "module-level SOURCE_FILE const must emit: {source}"
+    );
+    // The existing Client inherent consts must still emit too —
+    // module-level supplements, doesn't replace.
+    assert!(
+        source.contains("        pub const PACKAGE: &'static str = \"jobs.v1\";"),
+        "Client inherent PACKAGE must still emit alongside module-level: {source}"
+    );
+}
+
+#[test]
 fn handle_implements_ord_partial_ord_via_workflow_run_id_lex() {
     // R6 ergonomics — `<Wf>Handle` impls `PartialOrd` / `Ord` based on
     // `(workflow_id, run_id)` lex ordering, matching the

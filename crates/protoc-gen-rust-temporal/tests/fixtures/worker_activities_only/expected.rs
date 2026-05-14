@@ -28,6 +28,10 @@ pub mod workeract_v1_activity_worker_service_temporal {
         const MESSAGE_TYPE: &'static str = "workeract.v1.FetchOutput";
     }
 
+    pub const PACKAGE: &str = "workeract.v1";
+    pub const SERVICE_NAME: &str = "ActivityWorkerService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "workeract.v1.ActivityWorkerService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const FETCH_ACTIVITY_INPUT_TYPE: &str = "workeract.v1.FetchInput";
     pub const FETCH_ACTIVITY_OUTPUT_TYPE: &str = "workeract.v1.FetchOutput";
     pub const PING_ACTIVITY_INPUT_TYPE: &str = "google.protobuf.Empty";

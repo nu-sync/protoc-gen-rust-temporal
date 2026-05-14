@@ -28,6 +28,10 @@ pub mod aliases_v1_alias_service_temporal {
         const MESSAGE_TYPE: &'static str = "aliases.v1.RunOutput";
     }
 
+    pub const PACKAGE: &str = "aliases.v1";
+    pub const SERVICE_NAME: &str = "AliasService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "aliases.v1.AliasService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_WORKFLOW_NAME: &str = "aliases.v1.AliasService.Run";
     pub const RUN_INPUT_TYPE: &str = "aliases.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "aliases.v1.RunOutput";

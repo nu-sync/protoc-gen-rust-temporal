@@ -34,6 +34,10 @@ pub mod cli_v1_report_service_temporal {
         const MESSAGE_TYPE: &'static str = "cli.v1.GenerateOutput";
     }
 
+    pub const PACKAGE: &str = "cli.v1";
+    pub const SERVICE_NAME: &str = "ReportService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "cli.v1.ReportService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const GENERATE_WORKFLOW_NAME: &str = "cli.v1.ReportService.Generate";
     pub const GENERATE_INPUT_TYPE: &str = "cli.v1.GenerateInput";
     pub const GENERATE_OUTPUT_TYPE: &str = "cli.v1.GenerateOutput";

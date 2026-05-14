@@ -34,6 +34,10 @@ pub mod eoqu_v1_eoqu_service_temporal {
         const MESSAGE_TYPE: &'static str = "eoqu.v1.TouchInput";
     }
 
+    pub const PACKAGE: &str = "eoqu.v1";
+    pub const SERVICE_NAME: &str = "EoquService";
+    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "eoqu.v1.EoquService";
+    pub const SOURCE_FILE: &str = "input.proto";
     pub const RUN_WORKFLOW_NAME: &str = "eoqu.v1.EoquService.Run";
     pub const RUN_INPUT_TYPE: &str = "eoqu.v1.RunInput";
     pub const RUN_OUTPUT_TYPE: &str = "eoqu.v1.RunOutput";
