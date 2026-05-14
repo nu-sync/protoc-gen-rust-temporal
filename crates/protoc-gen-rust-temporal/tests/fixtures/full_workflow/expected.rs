@@ -102,6 +102,7 @@ pub mod full_v1_full_service_temporal {
         pub const QUERY_NAMES: &'static [&'static str] = &["full.v1.FullService.Status"];
         pub const UPDATE_NAMES: &'static [&'static str] = &["full.v1.FullService.Reconfigure"];
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["full.v1.FullService.DoChunk"];
+        pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["full.v1.FullService.Run", "full.v1.FullService.Cancel", "full.v1.FullService.Bootstrap", "full.v1.FullService.Status", "full.v1.FullService.Reconfigure", "full.v1.FullService.DoChunk"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }

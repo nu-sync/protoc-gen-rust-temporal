@@ -3607,6 +3607,49 @@ fn client_exposes_service_level_name_aggregates() {
         ),
         "ACTIVITY_NAMES const missing: {source}"
     );
+    // Aggregate-of-aggregates: ALL_HANDLER_NAMES must list every
+    // registered name in WF / SIG / QUERY / UPDATE / ACT order. Lets
+    // tooling spell `MyClient::ALL_HANDLER_NAMES` once instead of
+    // concatenating five per-kind consts at the call site. Order
+    // matches the per-kind emit order (workflows first, activities
+    // last) so callers can rely on it.
+    assert!(
+        source.contains(
+            "pub const ALL_HANDLER_NAMES: &'static [&'static str] = &[\"agg.v1.Svc.Run\", \"agg.v1.Svc.Cancel\", \"agg.v1.Svc.Status\", \"agg.v1.Svc.Touch\", \"agg.v1.Svc.DoWork\"];"
+        ),
+        "ALL_HANDLER_NAMES aggregate const missing or out of order: {source}"
+    );
+}
+
+#[test]
+fn workflow_only_service_emits_all_handler_names_with_just_workflows() {
+    // The aggregate `ALL_HANDLER_NAMES` is the union of every per-kind
+    // aggregate. When a service declares only workflows (no signals /
+    // queries / updates / activities), the aggregate must contain
+    // exactly the workflow names — not `&[]`, not a synthetic placeholder.
+    // Locks the property that the concatenation respects each per-kind
+    // list's individual skip-guard (empty kinds contribute nothing
+    // rather than a stray "" entry).
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    // The workflow_only fixture declares one workflow rpc `Run`.
+    assert!(
+        source.contains("pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["),
+        "workflow_only must still emit ALL_HANDLER_NAMES: {source}"
+    );
+    // Aggregate must not double-list the workflow (regression against a
+    // bug where an empty-kind concat could repeat the previous list's
+    // last element).
+    let line = source
+        .lines()
+        .find(|l| l.contains("ALL_HANDLER_NAMES"))
+        .expect("ALL_HANDLER_NAMES line present");
+    let comma_count = line.matches(',').count();
+    // One workflow ⇒ zero commas inside the array literal.
+    assert_eq!(
+        comma_count, 0,
+        "workflow_only ALL_HANDLER_NAMES should contain exactly one entry, got: {line}"
+    );
 }
 
 #[test]

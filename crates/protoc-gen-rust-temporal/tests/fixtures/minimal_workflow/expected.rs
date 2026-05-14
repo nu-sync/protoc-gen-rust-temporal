@@ -98,6 +98,7 @@ pub mod jobs_v1_job_service_temporal {
         pub const QUERY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.GetStatus"];
         pub const UPDATE_NAMES: &'static [&'static str] = &["jobs.v1.JobService.Reconfigure"];
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.ProcessChunk"];
+        pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["jobs.v1.JobService.RunJob", "jobs.v1.JobService.CancelJob", "jobs.v1.JobService.GetStatus", "jobs.v1.JobService.Reconfigure", "jobs.v1.JobService.ProcessChunk"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }

@@ -62,6 +62,7 @@ pub mod aliases_v1_alias_service_temporal {
         pub const SOURCE_FILE: &'static str = "input.proto";
         pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["aliases.v1.AliasService.Run"];
+        pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["aliases.v1.AliasService.Run"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }

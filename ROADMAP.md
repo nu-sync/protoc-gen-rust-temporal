@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::ALL_HANDLER_NAMES` aggregate-of-
+  aggregates const): every generated `<Service>Client` whose service
+  declares at least one handler now exposes
+  `pub const ALL_HANDLER_NAMES: &'static [&'static str]` — the union
+  of WORKFLOW_NAMES + SIGNAL_NAMES + QUERY_NAMES + UPDATE_NAMES +
+  ACTIVITY_NAMES in that emit order. Lets generic worker setup /
+  diagnostic code spell `MyClient::ALL_HANDLER_NAMES` once instead of
+  concatenating the five per-kind lists at the call site. Useful as a
+  worker-registration sanity check
+  (`assert_eq!(MyClient::ALL_HANDLER_NAMES.len(), worker.handler_count())`)
+  and for tracing/debug dumps. Skip-emit when the service declares no
+  handlers — keeps an empty-service Client clean. Computed at codegen
+  so it's a true `const &'static [&'static str]`, not a method that
+  allocates. Two new positive tests:
+  `client_exposes_service_level_name_aggregates` extended to assert
+  the aggregate exists with the correct ordered concatenation;
+  `workflow_only_service_emits_all_handler_names_with_just_workflows`
+  pins that empty per-kind lists contribute nothing (no stray entries,
+  no double-listing). 16 fixture goldens reblessed. 206 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::same_execution_as()` strict-equality
   comparator): every generated `<Wf>Handle` now exposes a strict-
   equality sibling to `same_workflow_as`. Where `same_workflow_as`

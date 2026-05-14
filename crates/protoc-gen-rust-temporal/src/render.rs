@@ -680,6 +680,20 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
     emit(out, "QUERY_NAMES", &q_names);
     emit(out, "UPDATE_NAMES", &u_names);
     emit(out, "ACTIVITY_NAMES", &act_names);
+    // Aggregate of every registered name across all handler kinds. Lets
+    // generic worker setup / diagnostic code spell
+    // `MyServiceClient::ALL_HANDLER_NAMES` instead of concatenating the
+    // five per-kind lists itself. Useful as a registration sanity check
+    // (`assert_eq!(MyClient::ALL_HANDLER_NAMES.len(), worker.handler_count())`)
+    // and for tracing/debug dumps. Skip-emit when the service declares
+    // no handlers at all — keeps an empty-service Client clean.
+    let mut all_names: Vec<&str> = Vec::new();
+    all_names.extend(wf_names.iter().copied());
+    all_names.extend(sig_names.iter().copied());
+    all_names.extend(q_names.iter().copied());
+    all_names.extend(u_names.iter().copied());
+    all_names.extend(act_names.iter().copied());
+    emit(out, "ALL_HANDLER_NAMES", &all_names);
     // Identity triple always emits, so the trailing newline is always
     // needed to separate the const block from the `new()` ctor below.
     let _ = writeln!(out);

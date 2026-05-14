@@ -54,6 +54,7 @@ pub mod act_v1_worker_only_service_temporal {
         pub const SOURCE_FILE: &'static str = "input.proto";
         pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["act.v1.WorkerOnlyService.ProcessChunk", "act.v1.WorkerOnlyService.Cleanup"];
+        pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["act.v1.WorkerOnlyService.ProcessChunk", "act.v1.WorkerOnlyService.Cleanup"];
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
