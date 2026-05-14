@@ -2772,6 +2772,35 @@ fn start_options_exposes_has_field_set_reflective_predicate() {
 }
 
 #[test]
+fn start_options_implements_display_with_set_count_summary() {
+    // R6 ergonomics — `<Wf>StartOptions` impls `Display` printing a
+    // one-line summary distinct from the verbose Debug derive.
+    // Format: `RunJobStartOptions { set: 3/9 [workflow_id, task_queue, run_timeout] }`.
+    // Designed for tracing spans / structured logs where Debug would
+    // dominate the output. Re-uses `set_field_names()` (per-instance
+    // subset) and `FIELD_NAMES.len()` (schema size = 9).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("impl ::std::fmt::Display for RunJobStartOptions {"),
+        "missing Display impl on RunJobStartOptions: {source}"
+    );
+    // Body re-uses the existing set_field_names() introspector.
+    assert!(
+        source.contains("            let names = self.set_field_names();"),
+        "Display body must call set_field_names(): {source}"
+    );
+    // Format string surfaces the set/total count + comma-joined field
+    // names.
+    assert!(
+        source.contains(
+            "::std::write!(f, \"RunJobStartOptions {{ set: {}/{} [{}] }}\", names.len(), Self::FIELD_NAMES.len(), names.join(\", \"))"
+        ),
+        "Display body must format `Name {{ set: count/total [names] }}`: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_field_names_static_const() {
     // R6 ergonomics — `<Wf>StartOptions::FIELD_NAMES: &'static [&'static str]`
     // is the full schema of the nine field names in declaration order.

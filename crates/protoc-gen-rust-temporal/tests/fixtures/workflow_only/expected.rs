@@ -214,6 +214,13 @@ pub mod solo_v1_solo_service_temporal {
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
+    impl ::std::fmt::Display for DoWorkStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "DoWorkStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
+    }
+
     impl DoWorkStartOptions {
         pub fn default_execution_timeout() -> Duration {
             Duration::from_secs(3600)

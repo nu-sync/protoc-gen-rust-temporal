@@ -1939,6 +1939,27 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
+    // `Display` impl — one-line summary distinct from the verbose
+    // multi-line Debug derive. Format:
+    //     `RunStartOptions { set: 3/9 [workflow_id, task_queue, run_timeout] }`
+    // Designed for tracing spans / structured logs where Debug would
+    // dominate the output. Re-uses `set_field_names()` (per-instance
+    // subset) and `FIELD_NAMES.len()` (schema size = 9). When the
+    // set is empty, prints `RunStartOptions { set: 0/9 [] }`.
+    let _ = writeln!(out, "    impl ::std::fmt::Display for {opts_struct} {{");
+    let _ = writeln!(
+        out,
+        "        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {{"
+    );
+    let _ = writeln!(out, "            let names = self.set_field_names();");
+    let _ = writeln!(
+        out,
+        "            ::std::write!(f, \"{opts_struct} {{{{ set: {{}}/{{}} [{{}}] }}}}\", names.len(), Self::FIELD_NAMES.len(), names.join(\", \"))"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out);
+
     let mut defaults: Vec<(&'static str, String, &'static str)> = Vec::new();
     if let Some(p) = wf.id_reuse_policy {
         defaults.push((

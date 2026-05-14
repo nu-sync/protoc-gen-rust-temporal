@@ -215,6 +215,13 @@ pub mod aliases_v1_alias_service_temporal {
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
+    impl ::std::fmt::Display for RunStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "RunStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
+    }
+
     impl RunStartOptions {
         pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.workflow_id = Some(v.into());

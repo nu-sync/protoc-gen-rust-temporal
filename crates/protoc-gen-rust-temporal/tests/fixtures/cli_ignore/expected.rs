@@ -298,6 +298,13 @@ pub mod cli_v1_report_service_temporal {
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
+    impl ::std::fmt::Display for GenerateStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "GenerateStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
+    }
+
     impl GenerateStartOptions {
         pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.workflow_id = Some(v.into());
@@ -601,6 +608,13 @@ pub mod cli_v1_report_service_temporal {
         pub task_timeout: Option<Duration>,
         pub enable_eager_workflow_start: Option<bool>,
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
+    }
+
+    impl ::std::fmt::Display for InternalStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "InternalStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
     }
 
     impl InternalStartOptions {

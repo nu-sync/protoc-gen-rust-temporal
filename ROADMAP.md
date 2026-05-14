@@ -802,6 +802,24 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `Display` impl on `<Wf>StartOptions` with set/total
+  summary): every `<Wf>StartOptions` struct now also impls `Display`,
+  printing a one-line summary distinct from the verbose multi-line
+  Debug derive. Format:
+  ```
+  RunJobStartOptions { set: 3/9 [workflow_id, task_queue, run_timeout] }
+  ```
+  Designed for tracing spans / structured logs where Debug would
+  dominate the output. Re-uses `set_field_names()` (per-instance
+  subset) and `FIELD_NAMES.len()` (schema size = 9). When the set
+  is empty, prints `RunJobStartOptions { set: 0/9 [] }`. One new
+  positive parse_validate test
+  (`start_options_implements_display_with_set_count_summary`) pins
+  the impl, the body's `set_field_names()` call, and the format
+  string's `Name {{ set: count/total [names] }}` shape. 16 fixture
+  goldens reblessed (every StartOptions gains the impl). 251
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::random_workflow_id_with_prefix(prefix)`):
   prefixed UUID-id helper, sibling of the existing
   `random_workflow_id()` static. Returns a UUID-based workflow id

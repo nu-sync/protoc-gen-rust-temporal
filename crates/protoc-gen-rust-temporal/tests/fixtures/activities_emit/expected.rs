@@ -241,6 +241,13 @@ pub mod acts_v1_chunk_service_temporal {
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
+    impl ::std::fmt::Display for RunBatchStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "RunBatchStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
+    }
+
     impl RunBatchStartOptions {
         pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.workflow_id = Some(v.into());

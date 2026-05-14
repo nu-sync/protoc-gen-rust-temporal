@@ -304,6 +304,13 @@ pub mod multi_v1_multi_service_temporal {
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
+    impl ::std::fmt::Display for AlphaStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "AlphaStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
+    }
+
     impl AlphaStartOptions {
         pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.workflow_id = Some(v.into());
@@ -607,6 +614,13 @@ pub mod multi_v1_multi_service_temporal {
         pub task_timeout: Option<Duration>,
         pub enable_eager_workflow_start: Option<bool>,
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
+    }
+
+    impl ::std::fmt::Display for BetaStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "BetaStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
     }
 
     impl BetaStartOptions {
