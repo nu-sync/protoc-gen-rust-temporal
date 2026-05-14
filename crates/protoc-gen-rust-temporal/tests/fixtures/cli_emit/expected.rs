@@ -923,6 +923,7 @@ pub mod cli_v1_report_service_temporal {
 #[allow(clippy::all, unused_imports, dead_code)]
 pub mod report_service_cli {
     use crate::temporal_runtime;
+    use temporal_runtime::clap;
     use crate::cli::v1::*;
 
     #[derive(Debug, temporal_runtime::clap::Parser)]

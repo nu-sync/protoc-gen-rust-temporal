@@ -5155,6 +5155,7 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
     let _ = writeln!(out, "#[allow(clippy::all, unused_imports, dead_code)]");
     let _ = writeln!(out, "pub mod {cli_mod} {{");
     let _ = writeln!(out, "    use crate::temporal_runtime;");
+    let _ = writeln!(out, "    use temporal_runtime::clap;");
     let _ = writeln!(out, "    use {proto_mod}::*;");
     let _ = writeln!(out);
 
