@@ -406,7 +406,7 @@ pub mod solo_v1_solo_service_temporal {
 
     impl ::std::fmt::Display for DoWorkHandle {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.workflow_id_with_run())
         }
     }
 

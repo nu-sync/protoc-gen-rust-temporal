@@ -3238,9 +3238,12 @@ fn handle_exposes_into_inner_consuming_accessor() {
 #[test]
 fn handle_struct_implements_display() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Display` impl
-    // producing a concise `<WorkflowName>(<workflow_id>)` form for
-    // log lines like `info!("handling {handle}")` where the
-    // structured Debug form would be too verbose.
+    // producing a concise `<WorkflowName>(<workflow_id>:<run_id>)`
+    // form (or `<WorkflowName>(<workflow_id>)` for attach handles
+    // where run_id is None) for log lines like
+    // `info!("handling {handle}")` where the structured Debug form
+    // would be too verbose. Re-uses `workflow_id_with_run()` so the
+    // composite-identity accessor and Display stay in sync.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3248,8 +3251,8 @@ fn handle_struct_implements_display() {
         "missing Display impl: {source}"
     );
     assert!(
-        source.contains("write!(f, \"{}({})\", Self::WORKFLOW_NAME, self.inner.workflow_id())"),
-        "Display body must format `<name>(<id>)` from the const + bridge accessor: {source}"
+        source.contains("write!(f, \"{}({})\", Self::WORKFLOW_NAME, self.workflow_id_with_run())"),
+        "Display body must format `<name>(<composite>)` via workflow_id_with_run(): {source}"
     );
 }
 

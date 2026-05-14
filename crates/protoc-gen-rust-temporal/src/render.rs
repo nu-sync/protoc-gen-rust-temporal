@@ -2555,9 +2555,13 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
-    // Manual `Display` impl — concise `<WorkflowName>(<workflow_id>)`
-    // form for log lines like `info!("handling {handle}")` where the
-    // structured Debug form would be too verbose.
+    // Manual `Display` impl — concise
+    // `<WorkflowName>(<workflow_id>:<run_id>)` form (or just
+    // `<WorkflowName>(<workflow_id>)` for attach handles where run_id
+    // is None) for log lines like `info!("handling {handle}")` where
+    // the structured Debug form would be too verbose. Re-uses
+    // `workflow_id_with_run()` so the format stays in sync with the
+    // composite-identity accessor.
     let _ = writeln!(out, "    impl ::std::fmt::Display for {handle_struct} {{");
     let _ = writeln!(
         out,
@@ -2565,7 +2569,7 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     );
     let _ = writeln!(
         out,
-        "            write!(f, \"{{}}({{}})\", Self::WORKFLOW_NAME, self.inner.workflow_id())"
+        "            write!(f, \"{{}}({{}})\", Self::WORKFLOW_NAME, self.workflow_id_with_run())"
     );
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");

@@ -479,7 +479,7 @@ pub mod multi_v1_multi_service_temporal {
 
     impl ::std::fmt::Display for AlphaHandle {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.workflow_id_with_run())
         }
     }
 
@@ -839,7 +839,7 @@ pub mod multi_v1_multi_service_temporal {
 
     impl ::std::fmt::Display for BetaHandle {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            write!(f, "{}({})", Self::WORKFLOW_NAME, self.inner.workflow_id())
+            write!(f, "{}({})", Self::WORKFLOW_NAME, self.workflow_id_with_run())
         }
     }
 

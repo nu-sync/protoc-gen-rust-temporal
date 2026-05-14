@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::Display` enriched with run_id via
+  composite-identity accessor): the existing Handle Display impl that
+  printed `<WorkflowName>(<workflow_id>)` now prints
+  `<WorkflowName>(<workflow_id>:<run_id>)` when both ids are known
+  (or stays as `<WorkflowName>(<workflow_id>)` for attach handles
+  where run_id is None). Body forwards to
+  `Self::workflow_id_with_run()` from the prior turn so the
+  composite-identity accessor and Display stay in lockstep — one
+  source of truth for the format. Lets `info!("handling {handle}")`
+  surface the run_id naturally in log lines without callers needing
+  to spell `info!("handling {} (run={:?})", handle, handle.run_id())`.
+  The existing test `handle_struct_implements_display` updated to
+  pin the new body shape (one-line edit). 16 fixture goldens
+  reblessed (every Handle Display body changed). 255 parse_validate
+  tests green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::workflow_id_with_run()` composite
   identity key): every `<Wf>Handle` now exposes
   `pub fn workflow_id_with_run(&self) -> String` that returns
