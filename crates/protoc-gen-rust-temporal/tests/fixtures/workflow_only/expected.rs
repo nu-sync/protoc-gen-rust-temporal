@@ -280,6 +280,11 @@ pub mod solo_v1_solo_service_temporal {
             self.workflow_id = Some(temporal_runtime::random_workflow_id());
             self
         }
+        /// Set `workflow_id` to `<prefix><uuid>` via the bridge's `random_workflow_id()`.
+        pub fn with_random_workflow_id_prefix(mut self, prefix: impl ::std::fmt::Display) -> Self {
+            self.workflow_id = Some(::std::format!("{}{}", prefix, temporal_runtime::random_workflow_id()));
+            self
+        }
         /// Fill `workflow_id` with a random UUID if not already set.
         /// No-op when `workflow_id` is already `Some`.
         pub fn workflow_id_or_random(mut self) -> Self {

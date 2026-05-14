@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::with_random_workflow_id_prefix(prefix)`):
+  prefixed-random sibling of `with_random_workflow_id`. Sets
+  `workflow_id` to `<prefix><uuid>` via the bridge's
+  `random_workflow_id()`. Sugar over the two-step
+  `opts.with_workflow_id(MyClient::random_workflow_id_with_prefix(p))`
+  pattern. Useful for namespacing test ids by environment / tenant /
+  test name without spelling out the Client constant. Takes
+  `impl ::std::fmt::Display` so callers can pass `&str`, `String`,
+  or any other Display implementor (test ids, integers for shard
+  numbers, etc.). One new positive parse_validate test
+  (`start_options_exposes_with_random_workflow_id_prefix_chain`)
+  pins the fn signature and the `<prefix><uuid>` format-call body.
+  16 fixture goldens reblessed (every StartOptions gains the method).
+  275 parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::TASK_QUEUE_COUNT` const):
   derived at compile time from `Self::TASK_QUEUES.len()`. Pairs with
   HANDLER_COUNT and MESSAGE_TYPE_COUNT for service-level cardinality

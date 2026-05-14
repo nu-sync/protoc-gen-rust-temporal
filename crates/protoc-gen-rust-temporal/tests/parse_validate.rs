@@ -2861,6 +2861,29 @@ fn start_options_exposes_workflow_id_or_random_conditional() {
 }
 
 #[test]
+fn start_options_exposes_with_random_workflow_id_prefix_chain() {
+    // R6 ergonomics — `<Wf>StartOptions::with_random_workflow_id_prefix(prefix)`
+    // sugar for the two-step
+    //     opts.with_workflow_id(MyClient::random_workflow_id_with_prefix(p))
+    // pattern. Useful for namespacing test ids by environment /
+    // tenant / test name without spelling out the Client constant.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub fn with_random_workflow_id_prefix(mut self, prefix: impl ::std::fmt::Display) -> Self {"
+        ),
+        "missing with_random_workflow_id_prefix fn signature: {source}"
+    );
+    assert!(
+        source.contains(
+            "self.workflow_id = Some(::std::format!(\"{}{}\", prefix, temporal_runtime::random_workflow_id()));"
+        ),
+        "body must format `<prefix><uuid>` and assign: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_with_random_workflow_id_chain() {
     // R6 ergonomics — `<Wf>StartOptions::with_random_workflow_id(self)`
     // sugar for setting `workflow_id` to a UUID via the bridge's

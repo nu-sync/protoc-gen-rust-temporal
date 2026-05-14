@@ -2681,6 +2681,24 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "            self");
     let _ = writeln!(out, "        }}");
+    // Prefixed-random sibling. Sugar over the two-step
+    //     opts.with_workflow_id(MyClient::random_workflow_id_with_prefix(p))
+    // pattern. Useful for namespacing test ids by environment / tenant
+    // / test name without spelling out the Client constant.
+    let _ = writeln!(
+        out,
+        "        /// Set `workflow_id` to `<prefix><uuid>` via the bridge's `random_workflow_id()`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn with_random_workflow_id_prefix(mut self, prefix: impl ::std::fmt::Display) -> Self {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.workflow_id = Some(::std::format!(\"{{}}{{}}\", prefix, temporal_runtime::random_workflow_id()));"
+    );
+    let _ = writeln!(out, "            self");
+    let _ = writeln!(out, "        }}");
     // `workflow_id_or_random` — conditional sibling. Sets
     // `workflow_id` to a UUID only when currently `None`. Pattern:
     // "use the caller's override if present, else fall back to
