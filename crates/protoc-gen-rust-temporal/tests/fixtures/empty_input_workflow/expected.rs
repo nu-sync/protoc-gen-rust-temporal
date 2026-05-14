@@ -164,6 +164,16 @@ pub mod empty_v1_nop_service_temporal {
             }
         }
 
+        /// Attach to multiple running `empty.v1.NopService.Tick` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.tick_handle(id)).collect()`.
+        pub fn tick_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<TickHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.tick_handle(id)).collect()
+        }
+
         /// Start a new `empty.v1.NopService.Tick` workflow and block on its result.
         /// Sugar for `client.tick(...).await?.result().await`.
         pub async fn tick_and_wait(

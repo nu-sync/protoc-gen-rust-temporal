@@ -3387,6 +3387,35 @@ fn client_exposes_handler_count_const_derived_from_aggregate() {
 }
 
 #[test]
+fn client_exposes_bulk_workflow_handles_helper() {
+    // R6 ergonomics — `<Service>Client::<wf>_handles<I, S>(ids)`
+    // bulk-attach helper. Constructs `Vec<<Wf>Handle>` from any
+    // iterator of `Into<String>` items. Saves the manual
+    // `ids.into_iter().map(|id| client.<wf>_handle(id)).collect()`
+    // chain at every call site that operates on a list of known
+    // workflow ids (batch query, batch cancel, fan-out polling).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub fn run_job_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunJobHandle>"
+        ),
+        "missing run_job_handles fn signature: {source}"
+    );
+    // Where-clause bounds: I: IntoIterator + S: Into<String>.
+    assert!(
+        source.contains("            I: IntoIterator<Item = S>,")
+            && source.contains("            S: Into<String>,"),
+        "where-clause bounds must be IntoIterator<S> + S: Into<String>: {source}"
+    );
+    // Body forwards each id to the singular `<wf>_handle`.
+    assert!(
+        source.contains("workflow_ids.into_iter().map(|id| self.run_job_handle(id)).collect()"),
+        "body must forward each id to the singular handle method: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflow_and_wait_convenience() {
     // R6 ergonomics — `<Service>Client::<wf>_and_wait(...)` combines
     // start + result in one async call. Saves the two-line

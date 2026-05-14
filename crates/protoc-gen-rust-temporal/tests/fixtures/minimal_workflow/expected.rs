@@ -219,6 +219,16 @@ pub mod jobs_v1_job_service_temporal {
             }
         }
 
+        /// Attach to multiple running `jobs.v1.JobService.RunJob` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.run_job_handle(id)).collect()`.
+        pub fn run_job_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunJobHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.run_job_handle(id)).collect()
+        }
+
         /// Start a new `jobs.v1.JobService.RunJob` workflow and block on its result.
         /// Sugar for `client.run_job(...).await?.result().await`.
         pub async fn run_job_and_wait(

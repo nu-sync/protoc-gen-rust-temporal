@@ -193,6 +193,16 @@ pub mod cli_v1_report_service_temporal {
             }
         }
 
+        /// Attach to multiple running `cli.v1.ReportService.Generate` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.generate_handle(id)).collect()`.
+        pub fn generate_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<GenerateHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.generate_handle(id)).collect()
+        }
+
         /// Start a new `cli.v1.ReportService.Generate` workflow and block on its result.
         /// Sugar for `client.generate(...).await?.result().await`.
         pub async fn generate_and_wait(
@@ -245,6 +255,16 @@ pub mod cli_v1_report_service_temporal {
             InternalHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
+        }
+
+        /// Attach to multiple running `cli.v1.ReportService.Internal` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.internal_handle(id)).collect()`.
+        pub fn internal_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<InternalHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.internal_handle(id)).collect()
         }
 
         /// Start a new `cli.v1.ReportService.Internal` workflow and block on its result.

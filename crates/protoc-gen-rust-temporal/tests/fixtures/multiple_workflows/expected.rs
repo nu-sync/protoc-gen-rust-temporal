@@ -199,6 +199,16 @@ pub mod multi_v1_multi_service_temporal {
             }
         }
 
+        /// Attach to multiple running `multi.v1.MultiService.Alpha` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.alpha_handle(id)).collect()`.
+        pub fn alpha_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<AlphaHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.alpha_handle(id)).collect()
+        }
+
         /// Start a new `multi.v1.MultiService.Alpha` workflow and block on its result.
         /// Sugar for `client.alpha(...).await?.result().await`.
         pub async fn alpha_and_wait(
@@ -251,6 +261,16 @@ pub mod multi_v1_multi_service_temporal {
             BetaHandle {
                 inner: temporal_runtime::attach_handle(&self.client, workflow_id.into()),
             }
+        }
+
+        /// Attach to multiple running `multi.v1.MultiService.Beta` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.beta_handle(id)).collect()`.
+        pub fn beta_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<BetaHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.beta_handle(id)).collect()
         }
 
         /// Start a new `multi.v1.MultiService.Beta` workflow and block on its result.

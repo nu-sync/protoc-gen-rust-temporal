@@ -198,6 +198,16 @@ pub mod eoqu_v1_eoqu_service_temporal {
             }
         }
 
+        /// Attach to multiple running `eoqu.v1.EoquService.Run` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.run_handle(id)).collect()`.
+        pub fn run_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.run_handle(id)).collect()
+        }
+
         /// Start a new `eoqu.v1.EoquService.Run` workflow and block on its result.
         /// Sugar for `client.run(...).await?.result().await`.
         pub async fn run_and_wait(

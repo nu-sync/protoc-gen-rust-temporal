@@ -173,6 +173,16 @@ pub mod solo_v1_solo_service_temporal {
             }
         }
 
+        /// Attach to multiple running `solo.v1.SoloService.DoWork` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.do_work_handle(id)).collect()`.
+        pub fn do_work_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<DoWorkHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.do_work_handle(id)).collect()
+        }
+
         /// Start a new `solo.v1.SoloService.DoWork` workflow and block on its result.
         /// Sugar for `client.do_work(...).await?.result().await`.
         pub async fn do_work_and_wait(

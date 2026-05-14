@@ -174,6 +174,16 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
             }
         }
 
+        /// Attach to multiple running `workerwf.v1.WorkerWorkflowService.Run` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.run_handle(id)).collect()`.
+        pub fn run_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.run_handle(id)).collect()
+        }
+
         /// Start a new `workerwf.v1.WorkerWorkflowService.Run` workflow and block on its result.
         /// Sugar for `client.run(...).await?.result().await`.
         pub async fn run_and_wait(

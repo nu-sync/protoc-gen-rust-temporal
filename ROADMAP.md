@@ -802,6 +802,23 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::<wf>_handles<I, S>(ids)` bulk-
+  attach helper): every workflow on the Client now also exposes a
+  bulk variant of the existing `<wf>_handle(id)` attach method.
+  Constructs `Vec<<Wf>Handle>` from any iterator of `Into<String>`
+  items. Saves the manual
+  `ids.into_iter().map(|id| client.<wf>_handle(id)).collect()` chain
+  at every call site that operates on a list of known workflow ids
+  (batch query, batch cancel, fan-out polling, status-page
+  rendering). Generic over `I: IntoIterator<Item = S>` and
+  `S: Into<String>` so callers can pass `Vec<String>`, `&[&str]`,
+  iterators yielding `&str`, etc. uniformly. One new positive
+  parse_validate test
+  (`client_exposes_bulk_workflow_handles_helper`) pins the fn
+  signature, the where-clause bounds, and the body's per-id forward
+  to the singular `<wf>_handle` method. 16 fixture goldens reblessed
+  (every workflow gains the bulk method). 249 parse_validate tests
+  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::has_handler(name)` predicate):
   predicate sibling of `lookup_handler_kind` for cleaner conditional
   reads:

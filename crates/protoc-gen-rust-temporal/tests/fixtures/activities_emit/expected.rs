@@ -200,6 +200,16 @@ pub mod acts_v1_chunk_service_temporal {
             }
         }
 
+        /// Attach to multiple running `acts.v1.ChunkService.RunBatch` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.run_batch_handle(id)).collect()`.
+        pub fn run_batch_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunBatchHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.run_batch_handle(id)).collect()
+        }
+
         /// Start a new `acts.v1.ChunkService.RunBatch` workflow and block on its result.
         /// Sugar for `client.run_batch(...).await?.result().await`.
         pub async fn run_batch_and_wait(

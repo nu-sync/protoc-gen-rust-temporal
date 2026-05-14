@@ -1532,6 +1532,35 @@ fn render_client_workflow_methods(out: &mut String, svc: &ServiceModel, wf: &Wor
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
 
+    // R6 — bulk-attach helper. Constructs `Vec<<Wf>Handle>` from any
+    // iterator of `Into<String>` items. Saves the manual `ids.into_iter()
+    // .map(|id| client.<wf>_handle(id)).collect()` chain at every call
+    // site that operates on a list of known workflow ids (batch query,
+    // batch cancel, fan-out polling).
+    let _ = writeln!(
+        out,
+        "        /// Attach to multiple running `{}` workflows by id.",
+        wf.registered_name
+    );
+    let _ = writeln!(
+        out,
+        "        /// Sugar for `ids.into_iter().map(|id| client.{method_snake}_handle(id)).collect()`."
+    );
+    let _ = writeln!(
+        out,
+        "        pub fn {method_snake}_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<{handle_struct}>"
+    );
+    let _ = writeln!(out, "        where");
+    let _ = writeln!(out, "            I: IntoIterator<Item = S>,");
+    let _ = writeln!(out, "            S: Into<String>,");
+    let _ = writeln!(out, "        {{");
+    let _ = writeln!(
+        out,
+        "            workflow_ids.into_iter().map(|id| self.{method_snake}_handle(id)).collect()"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out);
+
     // R6 — `<wf>_and_wait` convenience: start the workflow and block
     // on its result in one call. Saves the two-line
     // `let h = client.<wf>(opts, input).await?; h.result().await`

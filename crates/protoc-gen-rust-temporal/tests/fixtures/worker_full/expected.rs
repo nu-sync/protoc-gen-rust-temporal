@@ -215,6 +215,16 @@ pub mod workerfull_v1_orchestration_service_temporal {
             }
         }
 
+        /// Attach to multiple running `workerfull.v1.OrchestrationService.Run` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.run_handle(id)).collect()`.
+        pub fn run_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.run_handle(id)).collect()
+        }
+
         /// Start a new `workerfull.v1.OrchestrationService.Run` workflow and block on its result.
         /// Sugar for `client.run(...).await?.result().await`.
         pub async fn run_and_wait(
