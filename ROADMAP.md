@@ -802,6 +802,20 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::Display` enriched with active
+  namespace): the existing Client Display impl that printed just the
+  fully-qualified service name now prints
+  `<package>.<service>@<namespace>` — pulling the active Temporal
+  namespace via the bridge `client.namespace()` accessor. Surfaces
+  the namespace in log lines like `info!("starting {client}")` so
+  multi-namespace processes (e.g. dual-region apps that run the same
+  service against `prod-us` and `prod-eu`) distinguish their
+  clients in tracing output. Per-fmt namespace lookup allocates an
+  owned String — acceptable cost for log/trace paths. Existing test
+  `client_struct_implements_display` updated to pin the new body
+  shape (one-line edit). 16 fixture goldens reblessed (every Client
+  Display body changed). 255 parse_validate tests green; workspace
+  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::Display` enriched with run_id via
   composite-identity accessor): the existing Handle Display impl that
   printed `<WorkflowName>(<workflow_id>)` now prints

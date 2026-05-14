@@ -3112,9 +3112,12 @@ fn start_options_exposes_with_field_builders() {
 #[test]
 fn client_struct_implements_display() {
     // R6 ergonomics — `<Service>Client` carries a manual `Display`
-    // impl producing the fully-qualified service name (same as the
-    // `FULLY_QUALIFIED_SERVICE_NAME` const). Lets `info!("starting
-    // {client}")` produce a concise readable token.
+    // impl producing `<package>.<service>@<namespace>` — the FQN
+    // const followed by the active Temporal namespace pulled via the
+    // bridge `client.namespace()` accessor. Surfaces the namespace
+    // in log lines like `info!("starting {client}")` so multi-
+    // namespace processes (e.g. dual-region apps) distinguish their
+    // clients in tracing output.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3122,8 +3125,10 @@ fn client_struct_implements_display() {
         "missing Display impl: {source}"
     );
     assert!(
-        source.contains("f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)"),
-        "Display body must write the FQN const directly: {source}"
+        source.contains(
+            "write!(f, \"{}@{}\", Self::FULLY_QUALIFIED_SERVICE_NAME, self.client.namespace())"
+        ),
+        "Display body must format `<fqn>@<namespace>` via the FQN const + bridge accessor: {source}"
     );
 }
 

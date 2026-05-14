@@ -1007,10 +1007,16 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
 
-    // Manual `Display` impl — concise `<package>.<service>` form
-    // matching the `FULLY_QUALIFIED_SERVICE_NAME` const. Lets log
-    // lines like `info!("starting {client}")` produce a single
-    // readable token.
+    // Manual `Display` impl — concise `<package>.<service>@<namespace>`
+    // form. The `<package>.<service>` part matches the
+    // `FULLY_QUALIFIED_SERVICE_NAME` const; the `@<namespace>` suffix
+    // surfaces the active Temporal namespace so log lines like
+    // `info!("starting {client}")` distinguish multi-namespace
+    // processes (e.g. dual-region apps that run the same service
+    // against `prod-us` and `prod-eu`). Pulls the namespace via the
+    // bridge `client.namespace()` accessor — owned String, so the
+    // call allocates per fmt() invocation; that's acceptable for
+    // log/trace output.
     let _ = writeln!(out, "    impl ::std::fmt::Display for {client_struct} {{");
     let _ = writeln!(
         out,
@@ -1018,7 +1024,7 @@ fn render_client_struct(out: &mut String, svc: &ServiceModel, client_struct: &st
     );
     let _ = writeln!(
         out,
-        "            f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)"
+        "            write!(f, \"{{}}@{{}}\", Self::FULLY_QUALIFIED_SERVICE_NAME, self.client.namespace())"
     );
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");

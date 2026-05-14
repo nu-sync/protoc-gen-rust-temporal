@@ -86,7 +86,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
 
     impl ::std::fmt::Display for OrchestrationServiceClient {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-            f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)
+            write!(f, "{}@{}", Self::FULLY_QUALIFIED_SERVICE_NAME, self.client.namespace())
         }
     }
 
