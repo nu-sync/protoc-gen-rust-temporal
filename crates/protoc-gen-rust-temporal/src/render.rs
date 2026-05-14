@@ -1564,6 +1564,40 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
             let _ = writeln!(out, "            {value}");
             let _ = writeln!(out, "        }}");
         }
+        // Aggregate `proto_defaults() -> Self` returning the options
+        // struct with every proto-declared default already filled in.
+        // Distinct from `Default::default()` (which leaves everything
+        // None — caller passes through to runtime defaults). Lets
+        // callers spell `MyOpts::proto_defaults().with_workflow_id(...)`
+        // to start from the proto-baked baseline.
+        let _ = writeln!(out, "        pub fn proto_defaults() -> Self {{");
+        let _ = writeln!(out, "            let mut opts = Self::default();");
+        if wf.id_reuse_policy.is_some() {
+            let _ = writeln!(
+                out,
+                "            opts.id_reuse_policy = Some(Self::default_id_reuse_policy());"
+            );
+        }
+        if wf.execution_timeout.is_some() {
+            let _ = writeln!(
+                out,
+                "            opts.execution_timeout = Some(Self::default_execution_timeout());"
+            );
+        }
+        if wf.run_timeout.is_some() {
+            let _ = writeln!(
+                out,
+                "            opts.run_timeout = Some(Self::default_run_timeout());"
+            );
+        }
+        if wf.task_timeout.is_some() {
+            let _ = writeln!(
+                out,
+                "            opts.task_timeout = Some(Self::default_task_timeout());"
+            );
+        }
+        let _ = writeln!(out, "            opts");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

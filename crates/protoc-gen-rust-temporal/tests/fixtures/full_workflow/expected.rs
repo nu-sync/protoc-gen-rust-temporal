@@ -237,6 +237,14 @@ pub mod full_v1_full_service_temporal {
         pub fn default_task_timeout() -> Duration {
             Duration::from_secs(60)
         }
+        pub fn proto_defaults() -> Self {
+            let mut opts = Self::default();
+            opts.id_reuse_policy = Some(Self::default_id_reuse_policy());
+            opts.execution_timeout = Some(Self::default_execution_timeout());
+            opts.run_timeout = Some(Self::default_run_timeout());
+            opts.task_timeout = Some(Self::default_task_timeout());
+            opts
+        }
     }
 
     impl RunStartOptions {

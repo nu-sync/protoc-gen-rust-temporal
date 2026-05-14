@@ -2608,6 +2608,36 @@ fn workflow_alias_duplicate_within_list_fails_at_parse() {
 }
 
 #[test]
+fn start_options_exposes_proto_defaults_constructor() {
+    // R6 ergonomics — `<Wf>StartOptions::proto_defaults() -> Self`
+    // returns the options struct with every proto-declared default
+    // already filled in. Distinct from `Default::default()` which
+    // leaves everything None. Lets callers spell:
+    //     `MyOpts::proto_defaults().with_workflow_id("...")`
+    // to start from the proto-baked baseline.
+    // Only emitted when at least one `default_*` exists.
+    let services = parse_and_validate("full_workflow");
+    let opts_fixture = load_fixture_options("full_workflow");
+    let source = render::render(&services[0], &opts_fixture);
+    assert!(
+        source.contains("pub fn proto_defaults() -> Self {"),
+        "missing proto_defaults constructor: {source}"
+    );
+    assert!(
+        source.contains("let mut opts = Self::default();"),
+        "proto_defaults must start from Self::default(): {source}"
+    );
+    // Body should fold in at least one declared default.
+    assert!(
+        source.contains("Self::default_run_timeout()")
+            || source.contains("Self::default_execution_timeout()")
+            || source.contains("Self::default_task_timeout()")
+            || source.contains("Self::default_id_reuse_policy()"),
+        "proto_defaults body must reference at least one default_* fn: {source}"
+    );
+}
+
+#[test]
 fn start_options_exposes_is_empty_predicate() {
     // R6 ergonomics — `<Wf>StartOptions::is_empty(&self) -> bool`
     // returns true when no field is set. Lets callers detect the

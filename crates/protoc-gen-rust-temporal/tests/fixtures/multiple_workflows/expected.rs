@@ -417,6 +417,11 @@ pub mod multi_v1_multi_service_temporal {
         pub fn default_run_timeout() -> Duration {
             Duration::from_secs(900)
         }
+        pub fn proto_defaults() -> Self {
+            let mut opts = Self::default();
+            opts.run_timeout = Some(Self::default_run_timeout());
+            opts
+        }
     }
 
     impl BetaStartOptions {

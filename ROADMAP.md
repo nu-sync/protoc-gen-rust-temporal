@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::proto_defaults()` aggregate constructor):
+  every `<Wf>StartOptions` whose workflow declares at least one
+  default-bearing field (`id_reuse_policy`, `execution_timeout`,
+  `run_timeout`, `task_timeout`) now exposes
+  `proto_defaults() -> Self` returning the options struct with
+  every proto-declared default already filled in. Distinct from
+  `Default::default()` (which leaves everything `None` so runtime
+  resolution kicks in). Lets callers spell:
+  ```
+  let opts = MyOpts::proto_defaults().with_workflow_id("custom-id");
+  ```
+  to start from the proto-baked baseline and override only the
+  caller-specific fields. Folds the existing per-field
+  `default_*()` static helpers (which already existed) into one
+  aggregate. One new positive parse_validate test pins the fn
+  signature, the `Self::default()` start, and at least one
+  `Self::default_*()` fold. Several fixture goldens reblessed
+  (every workflow with declared defaults gained the constructor).
+  200 parse_validate tests green — milestone passed. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::is_empty()` predicate):
   every generated `<Wf>StartOptions` struct now exposes
   `is_empty(&self) -> bool` returning true when no field is set.
