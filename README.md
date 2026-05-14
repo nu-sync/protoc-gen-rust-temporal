@@ -1,6 +1,5 @@
 # protoc-gen-rust-temporal
 
-[![status](https://img.shields.io/badge/status-Phase%205%20validated-green)](./SPEC.md)
 [![crates.io](https://img.shields.io/crates/v/protoc-gen-rust-temporal.svg)](https://crates.io/crates/protoc-gen-rust-temporal)
 [![docs.rs](https://docs.rs/protoc-gen-rust-temporal/badge.svg)](https://docs.rs/protoc-gen-rust-temporal)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
