@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::merge_in(&mut self, other)`
+  non-consuming merge sibling): every `<Wf>StartOptions` struct now
+  exposes `pub fn merge_in(&mut self, other: Self)` that mutates self
+  in place by overwriting any field where `other` is `Some`, leaving
+  `None` fields alone. Pairs with the consuming `merge` for use cases
+  where the caller has a long-lived options struct and wants to splat
+  env-driven overrides without rebuilding via
+  `opts = opts.merge(other)`. Same per-field semantics as `merge`
+  (other wins on Some, None leaves self alone). One new positive
+  parse_validate test
+  (`start_options_exposes_merge_in_mutating_method`) pins the fn
+  signature and the per-field guarded assignment for every one of
+  the nine fields. 16 fixture goldens reblessed (every StartOptions
+  gains the method). 240 parse_validate tests green; workspace
+  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — fix example `jobs-proto` build-script marker
   + restore stub-runtime parity for activity adapter): the
   `jobs-proto` build script checked for a marker at

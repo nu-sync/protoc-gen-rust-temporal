@@ -290,6 +290,19 @@ pub mod eoqu_v1_eoqu_service_temporal {
             self.retry_policy = other.retry_policy.or(self.retry_policy);
             self
         }
+        /// Apply `other` over self in place. Fields where `other` is `Some` win;
+        /// `None` fields in `other` leave self's existing value untouched.
+        pub fn merge_in(&mut self, other: Self) {
+            if other.workflow_id.is_some() { self.workflow_id = other.workflow_id; }
+            if other.task_queue.is_some() { self.task_queue = other.task_queue; }
+            if other.id_reuse_policy.is_some() { self.id_reuse_policy = other.id_reuse_policy; }
+            if other.id_conflict_policy.is_some() { self.id_conflict_policy = other.id_conflict_policy; }
+            if other.execution_timeout.is_some() { self.execution_timeout = other.execution_timeout; }
+            if other.run_timeout.is_some() { self.run_timeout = other.run_timeout; }
+            if other.task_timeout.is_some() { self.task_timeout = other.task_timeout; }
+            if other.enable_eager_workflow_start.is_some() { self.enable_eager_workflow_start = other.enable_eager_workflow_start; }
+            if other.retry_policy.is_some() { self.retry_policy = other.retry_policy; }
+        }
         pub fn is_empty(&self) -> bool {
             self.workflow_id.is_none()
                 && self.task_queue.is_none()

@@ -2870,6 +2870,41 @@ fn start_options_exposes_set_field_names_introspector() {
 }
 
 #[test]
+fn start_options_exposes_merge_in_mutating_method() {
+    // R6 ergonomics — `<Wf>StartOptions::merge_in(&mut self, other)` is
+    // the non-consuming sibling of `merge`. Mutates self in place by
+    // overwriting any field where `other` is `Some`, leaving `None`
+    // fields alone. Pairs with `merge` for use cases where the caller
+    // has a long-lived options struct and wants to splat env-driven
+    // overrides without rebuilding via `opts = opts.merge(other)`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn merge_in(&mut self, other: Self) {"),
+        "missing merge_in fn signature: {source}"
+    );
+    // Each field must be guarded by `if other.<f>.is_some()` and assign
+    // self.<f> = other.<f>.
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let line = format!("if other.{field}.is_some() {{ self.{field} = other.{field}; }}");
+        assert!(
+            source.contains(&line),
+            "merge_in body missing fold for `{field}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn start_options_exposes_merge_method() {
     // R6 ergonomics — `<Wf>StartOptions::merge(other)` layers two
     // option structs together with `other`'s `Some`-fields winning.

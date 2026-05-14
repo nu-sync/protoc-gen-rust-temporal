@@ -2069,6 +2069,39 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "            self");
     let _ = writeln!(out, "        }}");
+    // `merge_in` — non-consuming sibling of `merge`. Mutates self in
+    // place by overwriting any field where `other` is `Some`, leaving
+    // `None` fields alone. Pairs with `merge` for use cases where the
+    // caller has a long-lived options struct and wants to splat
+    // env-driven overrides without rebuilding:
+    //     opts.merge_in(env_overrides);  // vs `opts = opts.merge(...)`
+    // Same per-field semantics as `merge` (other wins on Some).
+    let _ = writeln!(
+        out,
+        "        /// Apply `other` over self in place. Fields where `other` is `Some` win;"
+    );
+    let _ = writeln!(
+        out,
+        "        /// `None` fields in `other` leave self's existing value untouched."
+    );
+    let _ = writeln!(out, "        pub fn merge_in(&mut self, other: Self) {{");
+    for field in [
+        "workflow_id",
+        "task_queue",
+        "id_reuse_policy",
+        "id_conflict_policy",
+        "execution_timeout",
+        "run_timeout",
+        "task_timeout",
+        "enable_eager_workflow_start",
+        "retry_policy",
+    ] {
+        let _ = writeln!(
+            out,
+            "            if other.{field}.is_some() {{ self.{field} = other.{field}; }}"
+        );
+    }
+    let _ = writeln!(out, "        }}");
     // `is_empty` — true when no field is set. Lets callers detect
     // the "use proto-declared defaults for everything" state for
     // diagnostic logging or test assertions, without manually
