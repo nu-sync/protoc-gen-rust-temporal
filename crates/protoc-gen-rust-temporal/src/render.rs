@@ -326,6 +326,30 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
                 tpl.escape_default()
             );
         }
+        // Static accessor for the proto-declared default wait policy.
+        // Parallel of `<Wf>StartOptions::default_id_reuse_policy()` and
+        // `<wf>_default_child_options()`. Lets callers explicitly opt
+        // into the proto default rather than relying on inline folding
+        // at the call site — useful when one site wants the default
+        // and another site wants to override, both spelled clearly:
+        //     handle.<update>(input, Some(<update>_default_wait_policy())).await
+        // vs
+        //     handle.<update>(input, Some(temporal_runtime::WaitPolicy::Accepted)).await
+        // Skip-emit when the proto omits a default (the inline call-site
+        // resolution then leaves the caller's `None` as `None` and the
+        // SDK picks its own default).
+        if let Some(p) = u.default_wait_policy {
+            let helper_fn = format!("{}_default_wait_policy", u.rpc_method.to_snake_case());
+            let variant = match p {
+                crate::model::WaitPolicyKind::Admitted => "Admitted",
+                crate::model::WaitPolicyKind::Accepted => "Accepted",
+                crate::model::WaitPolicyKind::Completed => "Completed",
+            };
+            let _ = writeln!(
+                out,
+                "    pub fn {helper_fn}() -> temporal_runtime::WaitPolicy {{ temporal_runtime::WaitPolicy::{variant} }}"
+            );
+        }
     }
     for act in &svc.activities {
         let in_const = format!(

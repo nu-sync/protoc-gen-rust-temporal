@@ -3009,6 +3009,66 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn update_default_wait_policy_helper_emits_when_proto_declares_it() {
+    // R6 ergonomics — `<update>_default_wait_policy() -> WaitPolicy` is
+    // a module-level static accessor parallel to
+    // `<Wf>StartOptions::default_id_reuse_policy()` and
+    // `<wf>_default_child_options()`. Lets callers opt into the
+    // proto-declared default explicitly:
+    //     handle.<update>(input, Some(<update>_default_wait_policy())).await
+    // instead of relying on inline call-site folding (which still
+    // happens; the helper just exposes the value as a discoverable
+    // static). Skip-emit when proto omits a default so the surface
+    // doesn't grow noise functions returning the SDK's hard-coded
+    // fallback. Test exercises both arms.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wp.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              update: [
+                { ref: "WithDefault" },
+                { ref: "WithoutDefault" }
+              ]
+            };
+          }
+          rpc WithDefault(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = { wait_for_stage: WAIT_POLICY_ACCEPTED };
+          }
+          rpc WithoutDefault(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+
+    // Declared default ⇒ helper emits, returning the matching variant.
+    assert!(
+        source.contains(
+            "pub fn with_default_default_wait_policy() -> temporal_runtime::WaitPolicy { temporal_runtime::WaitPolicy::Accepted }"
+        ),
+        "expected with_default_default_wait_policy() helper returning WaitPolicy::Accepted: {source}"
+    );
+
+    // Proto omits a default ⇒ no helper emits. Mirrors the skip-emit
+    // policy on `<Wf>StartOptions::default_*` helpers.
+    assert!(
+        !source.contains("pub fn without_default_default_wait_policy"),
+        "no helper should emit for an update without a declared wait_policy default: {source}"
+    );
+}
+
+#[test]
 fn handle_struct_re_exposes_workflow_aliases_const_when_declared() {
     // R6 ergonomics — `WORKFLOW_ALIASES` was previously only on the
     // Definition trait, forcing diagnostic code that wanted to enumerate

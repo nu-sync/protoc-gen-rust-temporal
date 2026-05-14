@@ -743,6 +743,31 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<update>_default_wait_policy()` static accessor):
+  every update declaring `wait_for_stage` (or the deprecated
+  `wait_policy`) at the proto level now gets a module-level static
+  accessor `pub fn <update>_default_wait_policy() -> WaitPolicy`
+  returning the proto-declared variant. Parallel of
+  `<Wf>StartOptions::default_id_reuse_policy()` /
+  `<wf>_default_child_options()` — lets callers spell:
+  ```
+  handle.<update>(input, Some(<update>_default_wait_policy())).await
+  ```
+  to opt into the proto default explicitly, distinct from the inline
+  call-site folding that already happens (which still applies — the
+  helper just exposes the value as a discoverable static, useful
+  when one site wants the default and another wants to override
+  with the same code shape). Skip-emit when the proto omits the
+  default — the inline resolver's hard-coded `Completed` fallback
+  is a separate decision and shouldn't bake itself into a static
+  helper that pretends it came from the proto. One new positive
+  parse_validate test
+  (`update_default_wait_policy_helper_emits_when_proto_declares_it`)
+  uses inline proto with two updates, one declaring
+  `wait_for_stage: WAIT_POLICY_ACCEPTED` and one declaring nothing,
+  pinning both arms of the emit guard. No fixture goldens reblessed
+  (no existing fixture proto declares wait_for_stage). 216
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `WORKFLOW_ALIASES` re-exposed inherently on Handle
   + child-workflow marker): companion ship to the ID_TEMPLATE pair from
   the prior two turns. `WORKFLOW_ALIASES: &'static [&'static str]` was
