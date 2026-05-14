@@ -4460,6 +4460,39 @@ fn handle_exposes_client_passthrough() {
 }
 
 #[test]
+fn handle_exposes_diagnostic_summary_one_liner() {
+    // R6 ergonomics — `<Wf>Handle::diagnostic_summary(&self)` is the
+    // handle-side parallel of the prior turn's
+    // `<Service>Client::diagnostic_summary()`. Pre-formatted one-line
+    // tracing/diagnostic combining workflow_name, active namespace,
+    // and the composite-identity workflow_id_with_run(). Format:
+    //     "<workflow_name>@<namespace> <workflow_id>[:<run_id>]"
+    // Useful for handle-specific bug reports.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn diagnostic_summary(&self) -> String {"),
+        "missing diagnostic_summary fn signature: {source}"
+    );
+    // Format string must be `<wfname>@<namespace> <composite>`.
+    assert!(
+        source.contains("                \"{}@{} {}\","),
+        "format string must be `<wfname>@<namespace> <composite>`: {source}"
+    );
+    // Each canonical source position.
+    for arg in [
+        "                Self::WORKFLOW_NAME,",
+        "                self.inner.client().namespace(),",
+        "                self.workflow_id_with_run(),",
+    ] {
+        assert!(
+            source.contains(arg),
+            "diagnostic_summary body missing source `{arg}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn handle_exposes_workflow_id_with_run_composite_key() {
     // R6 ergonomics — `<Wf>Handle::workflow_id_with_run(&self)`
     // returns a composite `<workflow_id>:<run_id>` string when both

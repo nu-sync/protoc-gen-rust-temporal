@@ -556,6 +556,16 @@ pub mod cli_v1_report_service_temporal {
                 None => self.inner.workflow_id().to_string(),
             }
         }
+        /// One-line diagnostic summary suitable for handle-specific bug reports / logs.
+        /// Format: `<workflow_name>@<namespace> <workflow_id>[:<run_id>]`.
+        pub fn diagnostic_summary(&self) -> String {
+            ::std::format!(
+                "{}@{} {}",
+                Self::WORKFLOW_NAME,
+                self.inner.client().namespace(),
+                self.workflow_id_with_run(),
+            )
+        }
 
         pub fn client(&self) -> &temporal_runtime::TemporalClient {
             self.inner.client()
@@ -898,6 +908,16 @@ pub mod cli_v1_report_service_temporal {
                 Some(run) => ::std::format!("{}:{}", self.inner.workflow_id(), run),
                 None => self.inner.workflow_id().to_string(),
             }
+        }
+        /// One-line diagnostic summary suitable for handle-specific bug reports / logs.
+        /// Format: `<workflow_name>@<namespace> <workflow_id>[:<run_id>]`.
+        pub fn diagnostic_summary(&self) -> String {
+            ::std::format!(
+                "{}@{} {}",
+                Self::WORKFLOW_NAME,
+                self.inner.client().namespace(),
+                self.workflow_id_with_run(),
+            )
         }
 
         pub fn client(&self) -> &temporal_runtime::TemporalClient {

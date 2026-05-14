@@ -2842,6 +2842,33 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     );
     let _ = writeln!(out, "            }}");
     let _ = writeln!(out, "        }}");
+    // `diagnostic_summary` — handle-side parallel of the Client
+    // method. Pre-formatted one-line tracing/diagnostic string
+    // combining workflow_name, active namespace, and the
+    // composite-identity workflow_id_with_run(). Format:
+    //     "<workflow_name>@<namespace> <workflow_id>[:<run_id>]"
+    // Useful for handle-specific bug reports (paste this single line
+    // into the issue template) and for log lines that need both the
+    // typed identity and the runtime context in one shot. Pulls each
+    // source from its canonical spot so the output stays in lockstep
+    // with WORKFLOW_NAME, the bridge namespace accessor, and the
+    // workflow_id_with_run() composite key.
+    let _ = writeln!(
+        out,
+        "        /// One-line diagnostic summary suitable for handle-specific bug reports / logs."
+    );
+    let _ = writeln!(
+        out,
+        "        /// Format: `<workflow_name>@<namespace> <workflow_id>[:<run_id>]`."
+    );
+    let _ = writeln!(out, "        pub fn diagnostic_summary(&self) -> String {{");
+    let _ = writeln!(out, "            ::std::format!(");
+    let _ = writeln!(out, "                \"{{}}@{{}} {{}}\",");
+    let _ = writeln!(out, "                Self::WORKFLOW_NAME,");
+    let _ = writeln!(out, "                self.inner.client().namespace(),");
+    let _ = writeln!(out, "                self.workflow_id_with_run(),");
+    let _ = writeln!(out, "            )");
+    let _ = writeln!(out, "        }}");
     let _ = writeln!(out);
     // Borrow the bound `TemporalClient` — passthrough to the
     // bridge handle's `client()` accessor. Lets callers construct

@@ -802,6 +802,27 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::diagnostic_summary()` handle-side
+  parallel of the Client one-liner): every `<Wf>Handle` now exposes
+  `pub fn diagnostic_summary(&self) -> String` returning a pre-
+  formatted one-line tracing/diagnostic combining workflow_name,
+  active namespace, and the composite-identity
+  `workflow_id_with_run()`. Format:
+  ```
+  <workflow_name>@<namespace> <workflow_id>[:<run_id>]
+  ```
+  e.g. `jobs.v1.JobService.RunJob@my-namespace job-123:run-abc`. Useful
+  for handle-specific bug reports (paste this single line into the
+  issue) and for log lines that need both the typed identity and the
+  runtime context in one shot. Pulls each source from its canonical
+  spot — WORKFLOW_NAME const, bridge `client.namespace()` per-call,
+  workflow_id_with_run() composite — so the output stays in lockstep
+  with each underlying surface. One new positive parse_validate test
+  (`handle_exposes_diagnostic_summary_one_liner`) pins the fn
+  signature, the format string shape, and each canonical source
+  reference. 16 fixture goldens reblessed (every Handle gains the
+  method). 257 parse_validate tests green; workspace clippy clean.
+  No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::diagnostic_summary()` one-line
   bug-report helper): every `<Service>Client` now exposes
   `pub fn diagnostic_summary(&self) -> String` returning a pre-
