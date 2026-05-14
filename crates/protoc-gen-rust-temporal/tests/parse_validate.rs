@@ -3807,6 +3807,31 @@ fn client_exposes_registered_names_by_kind_pairs_const() {
 }
 
 #[test]
+fn client_exposes_signal_input_types_lookup_const() {
+    // R6 ergonomics — `<Service>Client::SIGNAL_INPUT_TYPES` is the
+    // signal-side parity of WORKFLOW_INPUT_TYPES. Maps each signal's
+    // registered name to its input proto type FQN. Useful for signal
+    // payload codecs that need to deserialize by name. Signals are
+    // always Empty-output (rejected at validate otherwise), so there
+    // is no SIGNAL_OUTPUT_TYPES counterpart.
+    //
+    // `minimal_workflow` declares `CancelJob(CancelJobInput)`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.CancelJob\", \"jobs.v1.CancelJobInput\")];"
+        ),
+        "SIGNAL_INPUT_TYPES must map CancelJob → CancelJobInput: {source}"
+    );
+    // Sanity: no SIGNAL_OUTPUT_TYPES (signals are always Empty-output).
+    assert!(
+        !source.contains("SIGNAL_OUTPUT_TYPES"),
+        "no SIGNAL_OUTPUT_TYPES should emit (signals are always Empty-output): {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflow_input_output_type_lookup_consts() {
     // R6 ergonomics — `<Service>Client::WORKFLOW_INPUT_TYPES` and
     // `WORKFLOW_OUTPUT_TYPES` are `&'static [(&'static str, &'static

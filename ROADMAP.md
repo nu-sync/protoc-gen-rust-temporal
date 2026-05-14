@@ -802,6 +802,20 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::SIGNAL_INPUT_TYPES` lookup
+  table): signal-side parity of the prior turn's
+  `WORKFLOW_INPUT_TYPES`. Maps each signal's registered name to its
+  input proto type FQN. Useful for signal payload codecs that need
+  to deserialize by name. Signals are always Empty-output (rejected
+  at validate otherwise), so there is no SIGNAL_OUTPUT_TYPES
+  counterpart. Skip-emit when no signals declared. One new positive
+  parse_validate test
+  (`client_exposes_signal_input_types_lookup_const`) pins the
+  CancelJob → CancelJobInput mapping on `minimal_workflow` and
+  asserts SIGNAL_OUTPUT_TYPES does NOT emit (signals are always
+  Empty-output). 16 fixture goldens reblessed (every Client with
+  at least one signal gains the const). 265 parse_validate tests
+  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::WORKFLOW_INPUT_TYPES` /
   `WORKFLOW_OUTPUT_TYPES` lookup tables): every `<Service>Client`
   whose service has at least one workflow now exposes a pair of

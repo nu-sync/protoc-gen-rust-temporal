@@ -102,6 +102,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi"), ("multi.v1.MultiService.Beta", "multi-beta")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi.v1.AlphaInput"), ("multi.v1.MultiService.Beta", "multi.v1.BetaInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Alpha", "multi.v1.AlphaOutput"), ("multi.v1.MultiService.Beta", "multi.v1.BetaOutput")];
+        pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("multi.v1.MultiService.Ping", "google.protobuf.Empty")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "multi.v1.MultiService.Alpha"), ("workflow", "multi.v1.MultiService.Beta"), ("signal", "multi.v1.MultiService.Ping")];
 
         /// Look up which handler kind a registered name belongs to.

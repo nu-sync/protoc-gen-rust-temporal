@@ -981,6 +981,28 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
         );
     }
+    // `SIGNAL_INPUT_TYPES` — parity with WORKFLOW_INPUT_TYPES for
+    // signal payload codecs. Signals are always Empty-output (rejected
+    // at validate otherwise), so there is no SIGNAL_OUTPUT_TYPES
+    // counterpart. Skip-emit when no signals declared.
+    if !svc.signals.is_empty() {
+        let joined_in = svc
+            .signals
+            .iter()
+            .map(|s| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    s.registered_name.escape_default(),
+                    s.input_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_in}];"
+        );
+    }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with
     // both dimensions instead of probing per-name. Same kind labels
