@@ -59,8 +59,8 @@ tempfile = "3"
 pretty_assertions = "1"
 
 [patch.crates-io]
-temporalio-client = { path = "../sdk-core/crates/client" }
-temporalio-common = { path = "../sdk-core/crates/common" }
-temporalio-sdk = { path = "../sdk-core/crates/sdk" }
-temporalio-sdk-core = { path = "../sdk-core/crates/sdk-core" }
-temporalio-macros = { path = "../sdk-core/crates/macros" }
+temporalio-client = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
+temporalio-common = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
+temporalio-sdk = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
+temporalio-sdk-core = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
+temporalio-macros = { git = "https://github.com/wcygan/sdk-core.git", rev = "760cf1f31cf47c71dd4b058990cdbe8513f7e1b7" }
