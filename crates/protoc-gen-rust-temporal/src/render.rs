@@ -2148,6 +2148,40 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
     let _ = writeln!(out, "            self.inner.run_id().hash(state);");
     let _ = writeln!(out, "        }}");
     let _ = writeln!(out, "    }}");
+    // `Ord` / `PartialOrd` based on the same `(workflow_id, run_id)`
+    // lex order as `Eq`/`Hash`. Pairs with the prior turn's
+    // PartialEq/Eq/Hash to make handles usable as `BTreeMap` /
+    // `BTreeSet` keys — useful for stable sorted iteration in tests
+    // (snapshot determinism) and for ordered indexing of handles by
+    // their identity. The comparison is on the bridge accessors
+    // (`workflow_id() : &str` and `run_id() : Option<&str>`) so it
+    // matches the semantics other comparison surfaces use.
+    let _ = writeln!(
+        out,
+        "    impl ::std::cmp::PartialOrd for {handle_struct} {{"
+    );
+    let _ = writeln!(
+        out,
+        "        fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {{"
+    );
+    let _ = writeln!(out, "            Some(self.cmp(other))");
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
+    let _ = writeln!(out, "    impl ::std::cmp::Ord for {handle_struct} {{");
+    let _ = writeln!(
+        out,
+        "        fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {{"
+    );
+    let _ = writeln!(
+        out,
+        "            self.inner.workflow_id().cmp(other.inner.workflow_id())"
+    );
+    let _ = writeln!(
+        out,
+        "                .then_with(|| self.inner.run_id().cmp(&other.inner.run_id()))"
+    );
+    let _ = writeln!(out, "        }}");
+    let _ = writeln!(out, "    }}");
     let _ = writeln!(out);
     // Continue the inherent impl block where the rest of the
     // handle methods live. Reopen by re-emitting the impl header

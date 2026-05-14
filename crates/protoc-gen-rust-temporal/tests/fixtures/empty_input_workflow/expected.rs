@@ -281,6 +281,17 @@ pub mod empty_v1_nop_service_temporal {
             self.inner.run_id().hash(state);
         }
     }
+    impl ::std::cmp::PartialOrd for TickHandle {
+        fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl ::std::cmp::Ord for TickHandle {
+        fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+            self.inner.workflow_id().cmp(other.inner.workflow_id())
+                .then_with(|| self.inner.run_id().cmp(&other.inner.run_id()))
+        }
+    }
 
     impl TickHandle {
         pub fn workflow_id(&self) -> &str {

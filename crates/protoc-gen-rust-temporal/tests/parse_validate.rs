@@ -4337,6 +4337,42 @@ fn marker_structs_implement_display_printing_registered_name() {
 }
 
 #[test]
+fn handle_implements_ord_partial_ord_via_workflow_run_id_lex() {
+    // R6 ergonomics — `<Wf>Handle` impls `PartialOrd` / `Ord` based on
+    // `(workflow_id, run_id)` lex ordering, matching the
+    // PartialEq/Eq/Hash semantics from the prior turn. Pairs to make
+    // handles usable as `BTreeMap` / `BTreeSet` keys for stable
+    // sorted iteration in tests (snapshot determinism) and for
+    // ordered indexing of handles by their identity.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    // PartialOrd impl forwards to Ord (standard pattern when Ord is
+    // total).
+    assert!(
+        source.contains("impl ::std::cmp::PartialOrd for RunJobHandle {"),
+        "PartialOrd impl must emit on RunJobHandle: {source}"
+    );
+    assert!(
+        source.contains("fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {"),
+        "PartialOrd signature must emit: {source}"
+    );
+    assert!(
+        source.contains("Some(self.cmp(other))"),
+        "PartialOrd must forward to Ord::cmp: {source}"
+    );
+    // Ord impl with the lex body (workflow_id then run_id).
+    assert!(
+        source.contains("impl ::std::cmp::Ord for RunJobHandle {"),
+        "Ord impl must emit on RunJobHandle: {source}"
+    );
+    assert!(
+        source.contains("self.inner.workflow_id().cmp(other.inner.workflow_id())")
+            && source.contains(".then_with(|| self.inner.run_id().cmp(&other.inner.run_id()))"),
+        "Ord body must lex-compare workflow_id THEN run_id: {source}"
+    );
+}
+
+#[test]
 fn handle_implements_partial_eq_eq_and_hash_via_workflow_run_id() {
     // R6 ergonomics — `<Wf>Handle` impls `PartialEq` / `Eq` / `Hash`
     // by `(workflow_id, run_id)` structural equality. Lets handles

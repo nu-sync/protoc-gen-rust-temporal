@@ -743,6 +743,25 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle` impls `PartialOrd` / `Ord` lex by
+  `(workflow_id, run_id)`): completes the comparison-trait suite on
+  the typed Handle, pairing with the prior turn's PartialEq/Eq/Hash
+  ship. Lets handles serve as `BTreeMap` / `BTreeSet` keys, useful
+  for stable sorted iteration in tests (snapshot determinism) and
+  for ordered indexing of handles by their identity. PartialOrd
+  forwards to `Ord::cmp` (standard pattern when ordering is total);
+  Ord lex-compares `workflow_id()` first, then `run_id()` (an
+  `Option<&str>` whose `None < Some` ordering is consistent with
+  attach-handle semantics — attach-style handles sort before any
+  start-style handle for the same workflow id). Same justification
+  for hand-rolling as the Eq/Hash ship: bridge `WorkflowHandle`
+  carries an opaque `TemporalClient` that doesn't impl these traits.
+  One new positive parse_validate test
+  (`handle_implements_ord_partial_ord_via_workflow_run_id_lex`) pins
+  PartialOrd→Ord forwarding and the Ord body's
+  `workflow_id().cmp` / `then_with(|| run_id().cmp)` shape. 16
+  fixture goldens reblessed (every Handle gains both impls). 228
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `Display` impl on activity / signal /
   child-workflow markers): every marker struct (zero-sized typed
   identifier for an activity / signal / child workflow) now impls

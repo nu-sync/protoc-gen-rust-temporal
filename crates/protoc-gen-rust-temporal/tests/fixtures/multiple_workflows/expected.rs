@@ -358,6 +358,17 @@ pub mod multi_v1_multi_service_temporal {
             self.inner.run_id().hash(state);
         }
     }
+    impl ::std::cmp::PartialOrd for AlphaHandle {
+        fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl ::std::cmp::Ord for AlphaHandle {
+        fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+            self.inner.workflow_id().cmp(other.inner.workflow_id())
+                .then_with(|| self.inner.run_id().cmp(&other.inner.run_id()))
+        }
+    }
 
     impl AlphaHandle {
         pub fn workflow_id(&self) -> &str {
@@ -594,6 +605,17 @@ pub mod multi_v1_multi_service_temporal {
         fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
             self.inner.workflow_id().hash(state);
             self.inner.run_id().hash(state);
+        }
+    }
+    impl ::std::cmp::PartialOrd for BetaHandle {
+        fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl ::std::cmp::Ord for BetaHandle {
+        fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+            self.inner.workflow_id().cmp(other.inner.workflow_id())
+                .then_with(|| self.inner.run_id().cmp(&other.inner.run_id()))
         }
     }
 
