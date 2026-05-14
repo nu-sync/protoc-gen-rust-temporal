@@ -129,6 +129,7 @@ pub mod full_v1_full_service_temporal {
         pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.Reconfigure", "full.v1.ReconfigureOutput")];
         pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.DoChunk", "full.v1.ChunkInput")];
         pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("full.v1.FullService.DoChunk", "full.v1.ChunkOutput")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["full.v1.RunInput", "full.v1.RunOutput", "full.v1.CancelInput", "full.v1.BootstrapInput", "google.protobuf.Empty", "full.v1.StatusOutput", "full.v1.ReconfigureInput", "full.v1.ReconfigureOutput", "full.v1.ChunkInput", "full.v1.ChunkOutput"];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "full.v1.FullService.Run"), ("signal", "full.v1.FullService.Cancel"), ("signal", "full.v1.FullService.Bootstrap"), ("query", "full.v1.FullService.Status"), ("update", "full.v1.FullService.Reconfigure"), ("activity", "full.v1.FullService.DoChunk")];
 
         /// Look up which handler kind a registered name belongs to.

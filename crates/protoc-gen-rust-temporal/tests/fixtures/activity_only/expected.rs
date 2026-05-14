@@ -68,6 +68,7 @@ pub mod act_v1_worker_only_service_temporal {
         pub const HANDLER_SUMMARY: &'static str = "2 activities";
         pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("act.v1.WorkerOnlyService.ProcessChunk", "act.v1.ChunkInput"), ("act.v1.WorkerOnlyService.Cleanup", "act.v1.CleanupInput")];
         pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("act.v1.WorkerOnlyService.ProcessChunk", "act.v1.ChunkOutput"), ("act.v1.WorkerOnlyService.Cleanup", "act.v1.CleanupOutput")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["act.v1.ChunkInput", "act.v1.ChunkOutput", "act.v1.CleanupInput", "act.v1.CleanupOutput"];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("activity", "act.v1.WorkerOnlyService.ProcessChunk"), ("activity", "act.v1.WorkerOnlyService.Cleanup")];
 
         /// Look up which handler kind a registered name belongs to.

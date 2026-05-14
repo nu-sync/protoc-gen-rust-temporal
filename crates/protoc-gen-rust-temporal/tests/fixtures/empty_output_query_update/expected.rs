@@ -104,6 +104,7 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const QUERY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("eoqu.v1.EoquService.Ack", "google.protobuf.Empty"), ("eoqu.v1.EoquService.AckEmpty", "google.protobuf.Empty")];
         pub const UPDATE_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("eoqu.v1.EoquService.Touch", "eoqu.v1.TouchInput"), ("eoqu.v1.EoquService.TouchEmpty", "google.protobuf.Empty"), ("eoqu.v1.EoquService.TouchEmptyStart", "eoqu.v1.TouchInput")];
         pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("eoqu.v1.EoquService.Touch", "google.protobuf.Empty"), ("eoqu.v1.EoquService.TouchEmpty", "google.protobuf.Empty"), ("eoqu.v1.EoquService.TouchEmptyStart", "google.protobuf.Empty")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["eoqu.v1.RunInput", "eoqu.v1.RunOutput", "eoqu.v1.AckInput", "google.protobuf.Empty", "eoqu.v1.TouchInput"];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "eoqu.v1.EoquService.Run"), ("query", "eoqu.v1.EoquService.Ack"), ("query", "eoqu.v1.EoquService.AckEmpty"), ("update", "eoqu.v1.EoquService.Touch"), ("update", "eoqu.v1.EoquService.TouchEmpty"), ("update", "eoqu.v1.EoquService.TouchEmptyStart")];
 
         /// Look up which handler kind a registered name belongs to.

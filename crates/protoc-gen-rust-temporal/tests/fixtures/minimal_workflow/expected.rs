@@ -126,6 +126,7 @@ pub mod jobs_v1_job_service_temporal {
         pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.Reconfigure", "jobs.v1.ReconfigureOutput")];
         pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.ProcessChunk", "jobs.v1.ChunkInput")];
         pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.ProcessChunk", "jobs.v1.ChunkOutput")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["jobs.v1.JobInput", "jobs.v1.JobOutput", "jobs.v1.CancelJobInput", "google.protobuf.Empty", "jobs.v1.JobStatusOutput", "jobs.v1.ReconfigureInput", "jobs.v1.ReconfigureOutput", "jobs.v1.ChunkInput", "jobs.v1.ChunkOutput"];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "jobs.v1.JobService.RunJob"), ("signal", "jobs.v1.JobService.CancelJob"), ("query", "jobs.v1.JobService.GetStatus"), ("update", "jobs.v1.JobService.Reconfigure"), ("activity", "jobs.v1.JobService.ProcessChunk")];
 
         /// Look up which handler kind a registered name belongs to.

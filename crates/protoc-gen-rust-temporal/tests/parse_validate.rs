@@ -3784,6 +3784,51 @@ fn client_lookup_handler_kind_emits_only_present_kind_probes() {
 }
 
 #[test]
+fn client_exposes_all_message_types_deduped_aggregate() {
+    // R6 ergonomics — `<Service>Client::ALL_MESSAGE_TYPES: &'static
+    // [&'static str]` is the deduped union of every distinct proto
+    // message FQN across every handler input and output. Useful for
+    // codecs that want to register every type the service touches in
+    // one pass without iterating each per-kind table. Order: workflow
+    // I/O, signal input, query I/O, update I/O, activity I/O. Empty
+    // appears once even when many handlers use it (dedup).
+    //
+    // `minimal_workflow` declares one of each kind, with
+    // `google.protobuf.Empty` as both the GetStatus query input AND
+    // the CancelJob signal-output target — Empty must appear exactly
+    // once.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    let line = source
+        .lines()
+        .find(|l| l.contains("ALL_MESSAGE_TYPES"))
+        .expect("ALL_MESSAGE_TYPES const present");
+    // Each declared payload type appears exactly once.
+    for ty in [
+        "jobs.v1.JobInput",
+        "jobs.v1.JobOutput",
+        "jobs.v1.CancelJobInput",
+        "google.protobuf.Empty",
+        "jobs.v1.JobStatusOutput",
+        "jobs.v1.ReconfigureInput",
+        "jobs.v1.ReconfigureOutput",
+        "jobs.v1.ChunkInput",
+        "jobs.v1.ChunkOutput",
+    ] {
+        assert!(
+            line.contains(&format!("\"{ty}\"")),
+            "ALL_MESSAGE_TYPES missing entry `{ty}`: {line}"
+        );
+    }
+    // `google.protobuf.Empty` appears exactly once (dedup).
+    let empty_count = line.matches("\"google.protobuf.Empty\"").count();
+    assert_eq!(
+        empty_count, 1,
+        "`google.protobuf.Empty` must be deduped to one entry, found {empty_count}: {line}"
+    );
+}
+
+#[test]
 fn client_exposes_registered_names_by_kind_pairs_const() {
     // R6 ergonomics — `<Service>Client::REGISTERED_NAMES_BY_KIND`
     // is a `&'static [(&'static str, &'static str)]` of `(kind, name)`

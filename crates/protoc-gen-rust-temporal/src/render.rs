@@ -1120,6 +1120,76 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
         );
     }
+    // `ALL_MESSAGE_TYPES` — distinct proto message FQNs across every
+    // handler input and output. Useful for codecs / payload routers
+    // that want to register every type the service touches in one
+    // pass without iterating each per-kind table. Order: workflow
+    // inputs/outputs, signal inputs, query inputs/outputs, update
+    // inputs/outputs, activity inputs/outputs (declaration order
+    // within each). Deduped — `google.protobuf.Empty` appears once
+    // even if many handlers use it. Skip-emit when no handlers.
+    if !all_names.is_empty() {
+        let mut all_types: Vec<&str> = Vec::new();
+        let mut seen_types: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+        // Inline dedup-push (closure formulations trip up borrow
+        // checker on two `&mut` upvalues). Five handler kinds × at
+        // most 2 directions each.
+        for wf in &svc.workflows {
+            for t in [
+                wf.input_type.full_name.as_str(),
+                wf.output_type.full_name.as_str(),
+            ] {
+                if seen_types.insert(t) {
+                    all_types.push(t);
+                }
+            }
+        }
+        for s in &svc.signals {
+            let t = s.input_type.full_name.as_str();
+            if seen_types.insert(t) {
+                all_types.push(t);
+            }
+        }
+        for q in &svc.queries {
+            for t in [
+                q.input_type.full_name.as_str(),
+                q.output_type.full_name.as_str(),
+            ] {
+                if seen_types.insert(t) {
+                    all_types.push(t);
+                }
+            }
+        }
+        for u in &svc.updates {
+            for t in [
+                u.input_type.full_name.as_str(),
+                u.output_type.full_name.as_str(),
+            ] {
+                if seen_types.insert(t) {
+                    all_types.push(t);
+                }
+            }
+        }
+        for a in &svc.activities {
+            for t in [
+                a.input_type.full_name.as_str(),
+                a.output_type.full_name.as_str(),
+            ] {
+                if seen_types.insert(t) {
+                    all_types.push(t);
+                }
+            }
+        }
+        let joined = all_types
+            .iter()
+            .map(|t| format!("\"{}\"", t.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with
     // both dimensions instead of probing per-name. Same kind labels

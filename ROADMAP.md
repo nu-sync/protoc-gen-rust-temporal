@@ -802,6 +802,30 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::ALL_MESSAGE_TYPES` deduped
+  aggregate): caps the per-kind input/output type tables shipped over
+  the prior four turns with a single `&'static [&'static str]`
+  containing every distinct proto message FQN across every handler
+  input and output. Useful for codecs that want to register every
+  type the service touches in one pass without iterating each
+  per-kind table:
+  ```
+  for ty in MyClient::ALL_MESSAGE_TYPES {
+      codec.register_type(ty)?;
+  }
+  ```
+  Order: workflow I/O, signal input, query I/O, update I/O, activity
+  I/O (declaration order within each). Deduped via a BTreeSet —
+  `google.protobuf.Empty` appears once even when many handlers use
+  it, since it's the canonical Empty type FQN. Skip-emit when no
+  handlers (matches ALL_HANDLER_NAMES skip-guard). One new positive
+  parse_validate test
+  (`client_exposes_all_message_types_deduped_aggregate`) verifies
+  every declared payload type appears AND that
+  `google.protobuf.Empty` appears exactly once (dedup proof). 16
+  fixture goldens reblessed (every Client gains the const). 269
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::ACTIVITY_INPUT_TYPES` /
   `ACTIVITY_OUTPUT_TYPES` lookup tables): completes the per-kind
   input/output type table set across all five handler kinds

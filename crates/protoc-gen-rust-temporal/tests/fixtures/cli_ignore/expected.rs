@@ -97,6 +97,7 @@ pub mod cli_v1_report_service_temporal {
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "reports"), ("cli.v1.ReportService.Internal", "reports")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "cli.v1.GenerateInput"), ("cli.v1.ReportService.Internal", "cli.v1.InternalInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "cli.v1.GenerateOutput"), ("cli.v1.ReportService.Internal", "cli.v1.InternalOutput")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["cli.v1.GenerateInput", "cli.v1.GenerateOutput", "cli.v1.InternalInput", "cli.v1.InternalOutput"];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "cli.v1.ReportService.Generate"), ("workflow", "cli.v1.ReportService.Internal")];
 
         /// Look up which handler kind a registered name belongs to.

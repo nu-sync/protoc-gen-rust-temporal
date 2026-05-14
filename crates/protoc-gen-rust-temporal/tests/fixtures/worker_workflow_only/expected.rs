@@ -78,6 +78,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("workerwf.v1.WorkerWorkflowService.Run", "worker-workflows")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerwf.v1.WorkerWorkflowService.Run", "workerwf.v1.WorkInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerwf.v1.WorkerWorkflowService.Run", "workerwf.v1.WorkOutput")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["workerwf.v1.WorkInput", "workerwf.v1.WorkOutput"];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "workerwf.v1.WorkerWorkflowService.Run")];
 
         /// Look up which handler kind a registered name belongs to.
