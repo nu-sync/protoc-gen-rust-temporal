@@ -422,6 +422,12 @@ pub mod multi_v1_multi_service_temporal {
             opts.run_timeout = Some(Self::default_run_timeout());
             opts
         }
+        pub fn with_proto_defaults(mut self) -> Self {
+            if self.run_timeout.is_none() {
+                self.run_timeout = Some(Self::default_run_timeout());
+            }
+            self
+        }
     }
 
     impl BetaStartOptions {

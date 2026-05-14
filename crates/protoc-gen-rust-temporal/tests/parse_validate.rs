@@ -6198,6 +6198,50 @@ fn workflow_id_conflict_policy_flows_into_start_options() {
 }
 
 #[test]
+fn start_options_exposes_with_proto_defaults_chainable_underlay() {
+    // R6 ergonomics — `<Wf>StartOptions::with_proto_defaults(self) -> Self`
+    // is the chain-style underlay sibling of `proto_defaults()`. Where
+    // `proto_defaults()` discards current state (must be the *first* call
+    // in a chain), `with_proto_defaults()` only fills fields that are
+    // still `None` (can be the *last* call without overwriting user-set
+    // fields). Lets callers spell:
+    //     `MyOpts::default().with_workflow_id("x").with_proto_defaults()`
+    // without remembering call ordering.
+    let services = parse_and_validate("full_workflow");
+    let opts_fixture = load_fixture_options("full_workflow");
+    let source = render::render(&services[0], &opts_fixture);
+    assert!(
+        source.contains("pub fn with_proto_defaults(mut self) -> Self {"),
+        "missing with_proto_defaults fn signature: {source}"
+    );
+    // Underlay must guard each fold with `is_none()` so user-set fields
+    // survive — that is the whole point of the method versus
+    // `proto_defaults()`.
+    assert!(
+        source.contains("if self.id_reuse_policy.is_none() {")
+            || source.contains("if self.execution_timeout.is_none() {")
+            || source.contains("if self.run_timeout.is_none() {")
+            || source.contains("if self.task_timeout.is_none() {"),
+        "with_proto_defaults must guard each fold with is_none(): {source}"
+    );
+}
+
+#[test]
+fn with_proto_defaults_omitted_when_no_defaults_declared() {
+    // Mirror of `proto_defaults()`'s emit guard: if the workflow declares
+    // no default-bearing fields, neither method should emit. The
+    // `if !defaults.is_empty()` block in `render_start_options` must
+    // gate both consistently — otherwise tooling that enumerates option
+    // helpers would spuriously list a no-op `with_proto_defaults()`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("with_proto_defaults"),
+        "with_proto_defaults must not emit when no defaults declared: {source}"
+    );
+}
+
+#[test]
 fn proto_defaults_folds_id_conflict_policy_and_eager_start() {
     // R6 ergonomics — `<Wf>StartOptions::proto_defaults()` previously folded
     // only id_reuse_policy + the three timeouts. id_conflict_policy and

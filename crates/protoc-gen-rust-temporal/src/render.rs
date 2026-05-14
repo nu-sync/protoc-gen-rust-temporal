@@ -1630,6 +1630,70 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
         }
         let _ = writeln!(out, "            opts");
         let _ = writeln!(out, "        }}");
+        // Chain-style underlay: fold proto defaults underneath any field
+        // the caller left `None`. Distinct from `proto_defaults()`, which
+        // discards current state and so must be the *first* call in a
+        // chain. `with_proto_defaults()` can be called *last* and any
+        // user-set field is preserved. Lets callers write:
+        //     `MyOpts::default().with_workflow_id("x").with_proto_defaults()`
+        // without remembering ordering.
+        let _ = writeln!(
+            out,
+            "        pub fn with_proto_defaults(mut self) -> Self {{"
+        );
+        if wf.id_reuse_policy.is_some() {
+            let _ = writeln!(out, "            if self.id_reuse_policy.is_none() {{");
+            let _ = writeln!(
+                out,
+                "                self.id_reuse_policy = Some(Self::default_id_reuse_policy());"
+            );
+            let _ = writeln!(out, "            }}");
+        }
+        if wf.id_conflict_policy.is_some() {
+            let _ = writeln!(out, "            if self.id_conflict_policy.is_none() {{");
+            let _ = writeln!(
+                out,
+                "                self.id_conflict_policy = Some(Self::default_id_conflict_policy());"
+            );
+            let _ = writeln!(out, "            }}");
+        }
+        if wf.execution_timeout.is_some() {
+            let _ = writeln!(out, "            if self.execution_timeout.is_none() {{");
+            let _ = writeln!(
+                out,
+                "                self.execution_timeout = Some(Self::default_execution_timeout());"
+            );
+            let _ = writeln!(out, "            }}");
+        }
+        if wf.run_timeout.is_some() {
+            let _ = writeln!(out, "            if self.run_timeout.is_none() {{");
+            let _ = writeln!(
+                out,
+                "                self.run_timeout = Some(Self::default_run_timeout());"
+            );
+            let _ = writeln!(out, "            }}");
+        }
+        if wf.task_timeout.is_some() {
+            let _ = writeln!(out, "            if self.task_timeout.is_none() {{");
+            let _ = writeln!(
+                out,
+                "                self.task_timeout = Some(Self::default_task_timeout());"
+            );
+            let _ = writeln!(out, "            }}");
+        }
+        if wf.enable_eager_workflow_start {
+            let _ = writeln!(
+                out,
+                "            if self.enable_eager_workflow_start.is_none() {{"
+            );
+            let _ = writeln!(
+                out,
+                "                self.enable_eager_workflow_start = Some(Self::default_enable_eager_workflow_start());"
+            );
+            let _ = writeln!(out, "            }}");
+        }
+        let _ = writeln!(out, "            self");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

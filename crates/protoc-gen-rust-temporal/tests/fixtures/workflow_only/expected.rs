@@ -167,6 +167,12 @@ pub mod solo_v1_solo_service_temporal {
             opts.execution_timeout = Some(Self::default_execution_timeout());
             opts
         }
+        pub fn with_proto_defaults(mut self) -> Self {
+            if self.execution_timeout.is_none() {
+                self.execution_timeout = Some(Self::default_execution_timeout());
+            }
+            self
+        }
     }
 
     impl DoWorkStartOptions {

@@ -743,6 +743,31 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>StartOptions::with_proto_defaults(self)`
+  chain-style underlay): every `<Wf>StartOptions` whose workflow
+  declares at least one default-bearing field now exposes a sibling
+  to `proto_defaults()`. Where `proto_defaults()` discards current
+  state and so must be the *first* call in a chain,
+  `with_proto_defaults()` only fills fields that are still `None`,
+  so it can be the *last* call in a chain without overwriting
+  user-set fields. Lets callers spell:
+  ```
+  let opts = MyOpts::default()
+      .with_workflow_id("custom-id")
+      .with_proto_defaults();
+  ```
+  without remembering the call ordering rule. Folds the same six
+  defaults `proto_defaults()` covers (id_reuse_policy,
+  id_conflict_policy, execution_timeout, run_timeout, task_timeout,
+  enable_eager_workflow_start), each guarded by a corresponding
+  `is_none()` check. Two new positive parse_validate tests:
+  `start_options_exposes_with_proto_defaults_chainable_underlay`
+  pins fn signature + at least one is_none-guarded fold;
+  `with_proto_defaults_omitted_when_no_defaults_declared` pins
+  emit-guard parity with `proto_defaults()` (both gated by the
+  same `if !defaults.is_empty()` block). Three goldens reblessed
+  (`full_workflow`, `workflow_only`, `multiple_workflows`). 204
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `proto_defaults()` folds `id_conflict_policy` +
   `enable_eager_workflow_start`): the aggregate `proto_defaults()`
   constructor previously only folded `id_reuse_policy` and the three
