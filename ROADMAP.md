@@ -802,6 +802,20 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::ACTIVITIES_WITH_RETRY_POLICY`
+  classifier const): activity-side parity of WORKFLOWS_WITH_RETRY_POLICY.
+  Lists registered names of activities that declare a proto-level
+  retry policy on their default_options. Useful for the same tooling
+  reasons as the workflow variant (distinguishing handlers with
+  built-in retry expectations from those that rely on server
+  defaults). Skip-emit when no activity declares a retry policy.
+  One new positive parse_validate test
+  (`client_exposes_activities_with_retry_policy_classifier`) uses
+  inline proto with two activities (one with retry_policy, one
+  without) plus the skip-guard on `minimal_workflow`. 280
+  parse_validate tests green; workspace clippy clean. No fixture
+  goldens reblessed (no existing fixture has an activity declaring
+  a retry policy). No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_RETRY_POLICY`
   classifier const): completes the classifier-trio (id-template +
   aliases + retry-policy). Lists registered names of workflows that

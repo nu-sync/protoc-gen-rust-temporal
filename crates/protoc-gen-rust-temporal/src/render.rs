@@ -1022,6 +1022,32 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const WORKFLOWS_WITH_RETRY_POLICY: &'static [&'static str] = &[{joined}];"
         );
     }
+    // `ACTIVITIES_WITH_RETRY_POLICY` — activity-side parity. Lists
+    // registered names of activities that declare a proto-level
+    // retry policy on their default_options. Useful for the same
+    // tooling reasons as the workflow variant.
+    let act_with_retry: Vec<&str> = svc
+        .activities
+        .iter()
+        .filter(|act| {
+            act.default_options
+                .as_ref()
+                .and_then(|s| s.retry_policy.as_ref())
+                .is_some()
+        })
+        .map(|act| act.registered_name.as_str())
+        .collect();
+    if !act_with_retry.is_empty() {
+        let joined = act_with_retry
+            .iter()
+            .map(|n| format!("\"{}\"", n.escape_default()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const ACTIVITIES_WITH_RETRY_POLICY: &'static [&'static str] = &[{joined}];"
+        );
+    }
     // `ACTIVITY_TASK_QUEUE_TABLE` — activity-side parity of
     // WORKFLOW_TASK_QUEUE_TABLE. Maps each activity that declares its
     // own task queue to that queue. Activities without an explicit

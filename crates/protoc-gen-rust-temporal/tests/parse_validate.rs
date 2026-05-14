@@ -4115,6 +4115,58 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
+fn client_exposes_activities_with_retry_policy_classifier() {
+    // R6 ergonomics — `<Service>Client::ACTIVITIES_WITH_RETRY_POLICY`
+    // is the activity-side parity of WORKFLOWS_WITH_RETRY_POLICY.
+    // Lists registered names of activities that declare a proto-level
+    // retry policy on their default_options.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package actretry.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = { task_queue: "tq" };
+          }
+          rpc Retried(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+              retry_policy: { max_attempts: 5 }
+            };
+          }
+          rpc Plain(In) returns (Out) {
+            option (temporal.v1.activity) = {
+              start_to_close_timeout: { seconds: 30 }
+            };
+          }
+        }
+        message In  {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    // Only Retried (declares retry_policy) should appear.
+    assert!(
+        source.contains(
+            "pub const ACTIVITIES_WITH_RETRY_POLICY: &'static [&'static str] = &[\"actretry.v1.Svc.Retried\"];"
+        ),
+        "ACTIVITIES_WITH_RETRY_POLICY must list Retried but not Plain: {source}"
+    );
+
+    // Skip-guard: minimal_workflow's ProcessChunk activity has no
+    // default_options at all, so no retry policy.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("ACTIVITIES_WITH_RETRY_POLICY"),
+        "const must omit when no activity declares retry policy: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_workflows_with_retry_policy_classifier() {
     // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_RETRY_POLICY`
     // lists registered names of workflows that declare a proto-level
