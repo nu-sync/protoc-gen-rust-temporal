@@ -4481,6 +4481,25 @@ fn marker_structs_implement_display_printing_registered_name() {
 }
 
 #[test]
+fn module_level_wire_format_version_const_emits_v1_pin() {
+    // R6 ergonomics — every generated `<service>_temporal` module now
+    // carries `pub const WIRE_FORMAT_VERSION: &str = "v1"`, the
+    // pinned wire-format version of the Payload triple
+    // `(encoding="binary/protobuf", messageType, data)`. Pairs with
+    // `CLUDDEN_SCHEMA_DIGEST` (schema commit) and the existing Client
+    // `GENERATED_BY_PLUGIN_VERSION` const to give consumers a complete
+    // codegen-version triple. Lets cross-language compat tooling spot
+    // when a future v2 ever lands; today the value is hard-pinned at
+    // "v1" because WIRE-FORMAT.md says so.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const WIRE_FORMAT_VERSION: &str = \"v1\";"),
+        "WIRE_FORMAT_VERSION must be the v1 pin: {source}"
+    );
+}
+
+#[test]
 fn module_level_cludden_schema_digest_const_emits_with_bsr_prefix() {
     // R6 ergonomics — every generated `<service>_temporal` module now
     // carries `pub const CLUDDEN_SCHEMA_DIGEST: &str = "..."`, the

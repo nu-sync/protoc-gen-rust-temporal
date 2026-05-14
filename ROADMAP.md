@@ -743,6 +743,24 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — module-level `WIRE_FORMAT_VERSION` const pins the
+  `(encoding, messageType, data)` Payload triple version): every
+  generated `<service>_temporal` module now carries
+  `pub const WIRE_FORMAT_VERSION: &str = "v1"`, the pinned wire-format
+  version of the wrapper Payload triple
+  `(encoding="binary/protobuf", messageType, data)`. Pairs with last
+  turn's `CLUDDEN_SCHEMA_DIGEST` (schema commit) and the existing
+  Client `GENERATED_BY_PLUGIN_VERSION` const to give consumers a
+  complete codegen-version triple. Lets cross-language compat tooling
+  spot when a future v2 ever lands; today the value is hard-pinned at
+  "v1" because WIRE-FORMAT.md says so. Matches the wire-format
+  invariant called out in CLAUDE.md / `WIRE-FORMAT.md` — keep the
+  string in lockstep if that doc ever bumps. One new positive
+  parse_validate test
+  (`module_level_wire_format_version_const_emits_v1_pin`) pins the
+  exact "v1" value. 16 fixture goldens reblessed (every fixture
+  carries the new const). 234 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R6 — module-level `CLUDDEN_SCHEMA_DIGEST` const exposes
   the BSR commit used at codegen time): every generated module now
   carries `pub const CLUDDEN_SCHEMA_DIGEST: &str = "..."`, the

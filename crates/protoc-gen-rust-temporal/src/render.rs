@@ -248,6 +248,13 @@ fn render_constants(out: &mut String, svc: &ServiceModel) {
         "    pub const CLUDDEN_SCHEMA_DIGEST: &str = \"{}\";",
         env!("CLUDDEN_SCHEMA_COMMIT").escape_default()
     );
+    // Wire-format pin. The wrapper Payload triple
+    // `(encoding="binary/protobuf", messageType, data)` is byte-
+    // identical with the TS sibling and cludden's Go runtime; the
+    // version stamp lets runtime negotiation / compat tooling spot
+    // when a future v2 ever lands. WIRE-FORMAT.md is the source of
+    // truth — keep this string in sync if that doc ever bumps.
+    let _ = writeln!(out, "    pub const WIRE_FORMAT_VERSION: &str = \"v1\";");
     for wf in &svc.workflows {
         let const_name = format!("{}_WORKFLOW_NAME", wf.rpc_method.to_shouty_snake_case());
         let _ = writeln!(

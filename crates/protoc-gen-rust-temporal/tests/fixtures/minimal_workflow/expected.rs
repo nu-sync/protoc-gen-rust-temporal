@@ -45,6 +45,7 @@ pub mod jobs_v1_job_service_temporal {
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "jobs.v1.JobService";
     pub const SOURCE_FILE: &str = "input.proto";
     pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
+    pub const WIRE_FORMAT_VERSION: &str = "v1";
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
     pub const RUN_JOB_INPUT_TYPE: &str = "jobs.v1.JobInput";
     pub const RUN_JOB_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";

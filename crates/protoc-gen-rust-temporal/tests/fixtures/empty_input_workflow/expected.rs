@@ -26,6 +26,7 @@ pub mod empty_v1_nop_service_temporal {
     pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "empty.v1.NopService";
     pub const SOURCE_FILE: &str = "input.proto";
     pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
+    pub const WIRE_FORMAT_VERSION: &str = "v1";
     pub const TICK_WORKFLOW_NAME: &str = "empty.v1.NopService.Tick";
     pub const TICK_INPUT_TYPE: &str = "google.protobuf.Empty";
     pub const TICK_OUTPUT_TYPE: &str = "google.protobuf.Empty";
