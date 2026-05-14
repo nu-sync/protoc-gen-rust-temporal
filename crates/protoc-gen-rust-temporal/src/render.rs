@@ -794,6 +794,72 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         }
     }
     emit(out, "TASK_QUEUES", &task_queues);
+    // `lookup_handler_kind(name) -> Option<&'static str>` — generic
+    // dispatch helper that scans the per-kind name aggregates and
+    // returns "workflow" / "signal" / "query" / "update" / "activity"
+    // for the first matching list. `None` for unknown names. Lets
+    // generic middleware (codecs, tracing tag emitters, registry
+    // validators) classify a handler-name string without iterating
+    // each per-kind const itself. Skip-emit when the service declares
+    // no handlers — `match` over zero arms would be a compile error
+    // and the function would always return `None` anyway.
+    if !all_names.is_empty() {
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "        /// Look up which handler kind a registered name belongs to."
+        );
+        let _ = writeln!(
+            out,
+            "        /// Returns `\"workflow\"` / `\"signal\"` / `\"query\"` / `\"update\"` / `\"activity\"`,"
+        );
+        let _ = writeln!(
+            out,
+            "        /// or `None` if the name doesn't match any handler this service registers."
+        );
+        let _ = writeln!(
+            out,
+            "        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {{"
+        );
+        // Order matters when handler kinds collide on a name (rare —
+        // validate.rs rejects most collisions, but cross-kind ones
+        // can theoretically slip when a name is registered in two
+        // independent kinds at codegen). We probe in declaration
+        // order: workflows first, activities last. The same order
+        // ALL_HANDLER_NAMES uses.
+        if !wf_names.is_empty() {
+            let _ = writeln!(
+                out,
+                "            if Self::WORKFLOW_NAMES.contains(&name) {{ return Some(\"workflow\"); }}"
+            );
+        }
+        if !sig_names.is_empty() {
+            let _ = writeln!(
+                out,
+                "            if Self::SIGNAL_NAMES.contains(&name) {{ return Some(\"signal\"); }}"
+            );
+        }
+        if !q_names.is_empty() {
+            let _ = writeln!(
+                out,
+                "            if Self::QUERY_NAMES.contains(&name) {{ return Some(\"query\"); }}"
+            );
+        }
+        if !u_names.is_empty() {
+            let _ = writeln!(
+                out,
+                "            if Self::UPDATE_NAMES.contains(&name) {{ return Some(\"update\"); }}"
+            );
+        }
+        if !act_names.is_empty() {
+            let _ = writeln!(
+                out,
+                "            if Self::ACTIVITY_NAMES.contains(&name) {{ return Some(\"activity\"); }}"
+            );
+        }
+        let _ = writeln!(out, "            None");
+        let _ = writeln!(out, "        }}");
+    }
     // Identity triple always emits, so the trailing newline is always
     // needed to separate the const block from the `new()` ctor below.
     let _ = writeln!(out);

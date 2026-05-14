@@ -67,6 +67,14 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
 
+        /// Look up which handler kind a registered name belongs to.
+        /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
+        /// or `None` if the name doesn't match any handler this service registers.
+        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {
+            if Self::ACTIVITY_NAMES.contains(&name) { return Some("activity"); }
+            None
+        }
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

@@ -88,6 +88,14 @@ pub mod cli_v1_report_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["cli.v1.ReportService.Generate", "cli.v1.ReportService.Internal"];
         pub const TASK_QUEUES: &'static [&'static str] = &["reports"];
 
+        /// Look up which handler kind a registered name belongs to.
+        /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
+        /// or `None` if the name doesn't match any handler this service registers.
+        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {
+            if Self::WORKFLOW_NAMES.contains(&name) { return Some("workflow"); }
+            None
+        }
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

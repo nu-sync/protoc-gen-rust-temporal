@@ -109,6 +109,18 @@ pub mod full_v1_full_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["full.v1.FullService.Run", "full.v1.FullService.Cancel", "full.v1.FullService.Bootstrap", "full.v1.FullService.Status", "full.v1.FullService.Reconfigure", "full.v1.FullService.DoChunk"];
         pub const TASK_QUEUES: &'static [&'static str] = &["full"];
 
+        /// Look up which handler kind a registered name belongs to.
+        /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
+        /// or `None` if the name doesn't match any handler this service registers.
+        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {
+            if Self::WORKFLOW_NAMES.contains(&name) { return Some("workflow"); }
+            if Self::SIGNAL_NAMES.contains(&name) { return Some("signal"); }
+            if Self::QUERY_NAMES.contains(&name) { return Some("query"); }
+            if Self::UPDATE_NAMES.contains(&name) { return Some("update"); }
+            if Self::ACTIVITY_NAMES.contains(&name) { return Some("activity"); }
+            None
+        }
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

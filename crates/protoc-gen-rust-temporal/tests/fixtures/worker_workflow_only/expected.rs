@@ -69,6 +69,14 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-workflows"];
 
+        /// Look up which handler kind a registered name belongs to.
+        /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
+        /// or `None` if the name doesn't match any handler this service registers.
+        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {
+            if Self::WORKFLOW_NAMES.contains(&name) { return Some("workflow"); }
+            None
+        }
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

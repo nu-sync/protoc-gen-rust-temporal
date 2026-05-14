@@ -89,6 +89,16 @@ pub mod eoqu_v1_eoqu_service_temporal {
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["eoqu.v1.EoquService.Run", "eoqu.v1.EoquService.Ack", "eoqu.v1.EoquService.AckEmpty", "eoqu.v1.EoquService.Touch", "eoqu.v1.EoquService.TouchEmpty", "eoqu.v1.EoquService.TouchEmptyStart"];
         pub const TASK_QUEUES: &'static [&'static str] = &["eoqu"];
 
+        /// Look up which handler kind a registered name belongs to.
+        /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
+        /// or `None` if the name doesn't match any handler this service registers.
+        pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {
+            if Self::WORKFLOW_NAMES.contains(&name) { return Some("workflow"); }
+            if Self::QUERY_NAMES.contains(&name) { return Some("query"); }
+            if Self::UPDATE_NAMES.contains(&name) { return Some("update"); }
+            None
+        }
+
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }
         }

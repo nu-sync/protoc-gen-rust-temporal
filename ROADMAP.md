@@ -743,6 +743,28 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::lookup_handler_kind(name)`
+  generic dispatch helper): every `<Service>Client` now exposes
+  `pub fn lookup_handler_kind(name: &str) -> Option<&'static str>`
+  that scans the per-kind name aggregates (`WORKFLOW_NAMES` /
+  `SIGNAL_NAMES` / `QUERY_NAMES` / `UPDATE_NAMES` / `ACTIVITY_NAMES`)
+  and returns the matching kind string (`"workflow"` / `"signal"` /
+  `"query"` / `"update"` / `"activity"`), or `None` for unknown names.
+  Lets generic middleware (codecs, tracing tag emitters, registry
+  validators) classify a handler-name string without iterating each
+  per-kind const itself. Probe order matches `ALL_HANDLER_NAMES`'
+  declaration order (workflows first, activities last) for
+  deterministic kind resolution if a name ever appears in multiple
+  aggregates. Each per-kind probe arm is gated on the corresponding
+  aggregate being non-empty (skipped probes would reference consts
+  that don't exist on the Client). Skip-emit when the service has
+  zero handlers entirely. Two new positive parse_validate tests:
+  `client_exposes_lookup_handler_kind_dispatch_helper` exercises the
+  full multi-kind case;
+  `client_lookup_handler_kind_emits_only_present_kind_probes` pins
+  the per-kind emit-guard parity using `activity_only`. 16 fixture
+  goldens reblessed (every Client gains the helper). 232
+  parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — module-level `PACKAGE` / `SERVICE_NAME` /
   `FULLY_QUALIFIED_SERVICE_NAME` / `SOURCE_FILE` consts mirror the
   per-Client ones): every generated `<service>_temporal` module now

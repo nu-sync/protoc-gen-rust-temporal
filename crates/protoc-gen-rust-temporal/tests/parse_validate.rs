@@ -3128,6 +3128,106 @@ fn cli_command_exposes_handler_name_accessor() {
 }
 
 #[test]
+fn client_exposes_lookup_handler_kind_dispatch_helper() {
+    // R6 ergonomics — `<Service>Client::lookup_handler_kind(name) ->
+    // Option<&'static str>` is a generic dispatch helper that scans
+    // the per-kind name aggregates and returns "workflow" / "signal"
+    // / "query" / "update" / "activity" for the first matching list.
+    // Lets generic middleware (codecs, tracing tag emitters, registry
+    // validators) classify a handler-name string without iterating
+    // each per-kind const itself.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package lhk.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+          rpc DoWork(In) returns (Out) {
+            option (temporal.v1.activity) = { start_to_close_timeout: { seconds: 30 } };
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {"),
+        "missing lookup_handler_kind fn signature: {source}"
+    );
+    // Each per-kind probe arm with the matching kind string.
+    for (probe, kind) in [
+        ("Self::WORKFLOW_NAMES.contains(&name)", "workflow"),
+        ("Self::SIGNAL_NAMES.contains(&name)", "signal"),
+        ("Self::QUERY_NAMES.contains(&name)", "query"),
+        ("Self::UPDATE_NAMES.contains(&name)", "update"),
+        ("Self::ACTIVITY_NAMES.contains(&name)", "activity"),
+    ] {
+        let arm = format!("if {probe} {{ return Some(\"{kind}\"); }}");
+        assert!(
+            source.contains(&arm),
+            "missing dispatch arm `{arm}`: {source}"
+        );
+    }
+    // Trailing fallthrough returns None.
+    assert!(
+        source.contains("            None\n"),
+        "lookup_handler_kind must fall through to None: {source}"
+    );
+}
+
+#[test]
+fn client_lookup_handler_kind_emits_only_present_kind_probes() {
+    // Each per-kind probe arm is gated on the corresponding name
+    // aggregate being non-empty (matching the per-kind aggregate's
+    // own emit guard). For `activity_only` the only emitted probe
+    // is the activity arm — probing absent kinds would reference
+    // consts that don't exist on the Client.
+    let services = parse_and_validate("activity_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn lookup_handler_kind(name: &str) -> Option<&'static str> {"),
+        "lookup_handler_kind must emit even for single-kind services: {source}"
+    );
+    assert!(
+        source.contains("if Self::ACTIVITY_NAMES.contains(&name) { return Some(\"activity\"); }"),
+        "single-kind service must emit the activity probe: {source}"
+    );
+    for absent in [
+        "Self::WORKFLOW_NAMES.contains",
+        "Self::SIGNAL_NAMES.contains",
+        "Self::QUERY_NAMES.contains",
+        "Self::UPDATE_NAMES.contains",
+    ] {
+        assert!(
+            !source.contains(absent),
+            "single-kind service must not probe absent aggregate `{absent}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn client_exposes_task_queues_aggregate_const() {
     // R6 ergonomics — `<Service>Client::TASK_QUEUES: &'static [&'static str]`
     // is the union of every distinct task queue used across the
