@@ -60,7 +60,7 @@ pub mod workerwf_v1_worker_workflow_service_temporal {
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "workerwf.v1.WorkerWorkflowService";
         pub const SOURCE_FILE: &'static str = "input.proto";
         pub const DEFAULT_TASK_QUEUE: &'static str = "worker-workflows";
-        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.2";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workerwf.v1.WorkerWorkflowService.Run"];
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-workflows"];

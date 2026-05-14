@@ -10,6 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  VENDORED_SCHEMA: "1"
 
 jobs:
   build:
@@ -38,12 +39,6 @@ jobs:
       - name: Install cross compiler (Linux aarch64)
         if: matrix.cross_apt
         run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cross_apt }}
-
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          version: "27.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Rust
         run: rustup target add ${{ matrix.target }}
@@ -104,11 +99,6 @@ jobs:
     if: ${{ !contains(github.ref_name, '-') }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          version: "27.x"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: Swatinem/rust-cache@v2
       # Publish helper crates first. The plugin binary does not depend on the
       # bridge directly, but the README recommends it as the default consumer

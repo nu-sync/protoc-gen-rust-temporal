@@ -1,10 +1,10 @@
 //! Integration tests for the `parse + validate` pipeline.
 //!
-//! Each test invokes the real `protoc` binary (the same one `prost-build`
-//! uses at workspace build time) against a fixture `.proto`, then feeds the
+//! Each test invokes `protoc` against a fixture `.proto`, then feeds the
 //! resulting `FileDescriptorSet` into a `DescriptorPool` and runs the
-//! plugin's parse + validate stages. That mirrors what the plugin sees in
-//! production when `protoc` invokes it as a child process.
+//! plugin's parse + validate stages. By default tests use the vendored
+//! `protoc` binary, while `PROTOC=/path/to/protoc` can override it for
+//! targeted compatibility checks.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -23,10 +23,15 @@ fn fixture_path(name: &str) -> PathBuf {
 }
 
 fn protoc_binary() -> PathBuf {
-    if let Ok(p) = std::env::var("PROTOC") {
-        return PathBuf::from(p);
-    }
-    PathBuf::from("protoc")
+    std::env::var_os("PROTOC")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            protoc_bin_vendored::protoc_bin_path().expect("vendored protoc not available")
+        })
+}
+
+fn protoc_include_path() -> PathBuf {
+    protoc_bin_vendored::include_path().expect("vendored protobuf includes not available")
 }
 
 /// Compile `proto_root/input.proto` with cludden's schema reachable on the
@@ -42,11 +47,12 @@ fn compile_fixture_at(proto_root: &Path, file: &str) -> (DescriptorPool, HashSet
     let status = Command::new(protoc_binary())
         .arg(format!("-I{}", proto_root.display()))
         .arg(format!("-I{}", annotations.display()))
+        .arg(format!("-I{}", protoc_include_path().display()))
         .arg(format!("--descriptor_set_out={}", fds_path.display()))
         .arg("--include_imports")
         .arg(file)
         .status()
-        .expect("invoke protoc — install protoc or set $PROTOC");
+        .expect("invoke protoc");
     assert!(status.success(), "protoc failed: {status}");
 
     let bytes = std::fs::read(&fds_path).expect("read fds");
@@ -6170,6 +6176,7 @@ fn annotation_schema_as_target_is_a_noop() {
     let fds_path = tmp.path().join("out.fds");
     let status = Command::new(protoc_binary())
         .arg(format!("-I{}", annotations.display()))
+        .arg(format!("-I{}", protoc_include_path().display()))
         .arg(format!("--descriptor_set_out={}", fds_path.display()))
         .arg("--include_imports")
         .arg("temporal/v1/temporal.proto")

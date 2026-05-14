@@ -30,6 +30,7 @@ prost-types = "0.13"
 prost-wkt-types = "0.7"
 prost-reflect = "0.14"
 prost-build = "0.13"
+protoc-bin-vendored = "3.2"
 heck = "0.5"
 temporal-proto-runtime = { path = "crates/temporal-proto-runtime", features = ["sdk"] }
 temporal-proto-runtime-bridge = { path = "crates/temporal-proto-runtime-bridge", features = ["worker"] }

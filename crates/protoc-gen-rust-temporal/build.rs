@@ -62,10 +62,19 @@ fn main() -> Result<()> {
     let temporal_proto = proto_root.join("temporal/v1/temporal.proto");
     let enums_dir = proto_root.join("temporal/api/enums/v1");
 
+    let protoc = protoc_bin_vendored::protoc_bin_path().expect("vendored protoc not available");
+    let protoc_include =
+        protoc_bin_vendored::include_path().expect("vendored protobuf includes not available");
+
     let mut config = prost_build::Config::new();
+    config.protoc_executable(protoc);
     config.compile_protos(
         &[temporal_proto.to_str().unwrap()],
-        &[proto_root.to_str().unwrap(), enums_dir.to_str().unwrap()],
+        &[
+            proto_root.to_str().unwrap(),
+            enums_dir.to_str().unwrap(),
+            protoc_include.to_str().unwrap(),
+        ],
     )?;
 
     Ok(())

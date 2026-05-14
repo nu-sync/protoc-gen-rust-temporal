@@ -35,7 +35,13 @@ fn plugin_binary() -> PathBuf {
 fn protoc() -> PathBuf {
     std::env::var_os("PROTOC")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("protoc"))
+        .unwrap_or_else(|| {
+            protoc_bin_vendored::protoc_bin_path().expect("vendored protoc not available")
+        })
+}
+
+fn protoc_include_path() -> PathBuf {
+    protoc_bin_vendored::include_path().expect("vendored protobuf includes not available")
 }
 
 #[test]
@@ -64,6 +70,7 @@ fn minimal_workflow_via_protoc_matches_in_process_render() {
         ))
         .arg(format!("-I{}", fixture_dir.display()))
         .arg(format!("-I{}", annotations.display()))
+        .arg(format!("-I{}", protoc_include_path().display()))
         .arg(format!("--rust-temporal_out={}", out_dir.display()))
         .arg("input.proto")
         .status()
@@ -123,6 +130,7 @@ fn validation_errors_surface_through_protoc() {
             "-I{}",
             crate_root().join(ANNOTATIONS_DIR).display()
         ))
+        .arg(format!("-I{}", protoc_include_path().display()))
         .arg(format!("--rust-temporal_out={}", out_dir.display()))
         .arg("input.proto")
         .output()
@@ -161,6 +169,7 @@ fn render_in_process(fixture_dir: &Path) -> String {
     let status = Command::new(protoc())
         .arg(format!("-I{}", fixture_dir.display()))
         .arg(format!("-I{}", annotations.display()))
+        .arg(format!("-I{}", protoc_include_path().display()))
         .arg(format!("--descriptor_set_out={}", fds_path.display()))
         .arg("--include_imports")
         .arg("input.proto")

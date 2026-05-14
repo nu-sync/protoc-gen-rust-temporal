@@ -59,7 +59,7 @@ pub mod solo_v1_solo_service_temporal {
         pub const SERVICE_NAME: &'static str = "SoloService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "solo.v1.SoloService";
         pub const SOURCE_FILE: &'static str = "input.proto";
-        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.2";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["solo.v1.SoloService.DoWork"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["solo.v1.SoloService.DoWork"];
         pub const TASK_QUEUES: &'static [&'static str] = &["solo-tq"];

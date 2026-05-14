@@ -23,7 +23,8 @@ Run commands from `examples/job-queue/` unless noted.
 - `just up`, `just worker`, and `just api` start Temporal, the worker, and the API.
 - `just demo` runs the scripted E2E flow; `just down` stops managed processes.
 
-Required tools for regeneration are `buf`, `protoc`, and `protoc-gen-prost`.
+Required tools for regeneration are `buf` and `protoc-gen-prost`; the Rust
+plugin itself uses vendored `protoc` for its own build/test codegen.
 
 ## Coding Style & Naming Conventions
 

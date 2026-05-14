@@ -56,8 +56,8 @@ remain hand-written against `temporalio-sdk`.
 ```bash
 # Full workspace check (matches CI):
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings    # requires protoc on PATH
-cargo test --workspace --all-targets                     # requires protoc on PATH
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-targets
 
 # Single integration test:
 cargo test -p protoc-gen-rust-temporal --test parse_validate
@@ -82,8 +82,10 @@ for f in compat-tests/fixtures/*.rust.payload.json; do
 done
 ```
 
-`protoc` must be on `PATH` for the test suite and clippy — fixtures shell out
-to the real `protoc` to build descriptor sets. Override with `PROTOC=/path/to/protoc`.
+Rust build scripts and Rust integration tests use `protoc-bin-vendored` by
+default. Override fixture-driven `protoc` invocations with
+`PROTOC=/path/to/protoc` when checking compatibility with a specific binary.
+The Go compat arm still needs `protoc` on `PATH` for `--go_out`.
 
 `buf` must be on `PATH` for the plugin's `cargo build` — the build script runs
 `buf export` against cludden's BSR module to pull the annotation schema (see
@@ -162,8 +164,8 @@ payloads, so the decode path is uniform.
 
 Two layers, both required to stay green:
 
-- **`tests/parse_validate.rs`** — shells out to `protoc` to produce a
-  `FileDescriptorSet` from each fixture, runs the pipeline in-process.
+- **`tests/parse_validate.rs`** — uses vendored `protoc` to produce a
+  `FileDescriptorSet` from each fixture, then runs the pipeline in-process.
   Cheap, gives precise error messages, exercises validation paths.
 - **`tests/protoc_invoke.rs`** — invokes the compiled plugin binary
   through `protoc --plugin=...` and diffs on-disk output against the

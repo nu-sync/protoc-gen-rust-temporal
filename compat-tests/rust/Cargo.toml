@@ -21,3 +21,4 @@ temporal-proto-runtime = { path = "../../crates/temporal-proto-runtime" }
 
 [build-dependencies]
 prost-build = { workspace = true }
+protoc-bin-vendored = { workspace = true }

@@ -52,7 +52,7 @@ pub mod act_v1_worker_only_service_temporal {
         pub const SERVICE_NAME: &'static str = "WorkerOnlyService";
         pub const FULLY_QUALIFIED_SERVICE_NAME: &'static str = "act.v1.WorkerOnlyService";
         pub const SOURCE_FILE: &'static str = "input.proto";
-        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
+        pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.2";
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["act.v1.WorkerOnlyService.ProcessChunk", "act.v1.WorkerOnlyService.Cleanup"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["act.v1.WorkerOnlyService.ProcessChunk", "act.v1.WorkerOnlyService.Cleanup"];
         pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["act.v1.ChunkInput", "act.v1.ChunkOutput", "act.v1.CleanupInput", "act.v1.CleanupOutput"];

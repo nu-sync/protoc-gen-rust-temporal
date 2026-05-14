@@ -23,7 +23,7 @@ This document is **pinned to a plugin version**. Each row notes the
 plugin version in which the call site was introduced; nothing here is
 removed without a major bump (post-1.0) or a deprecation cycle (pre-1.0).
 
-Current pin: **protoc-gen-rust-temporal 0.1.1**.
+Current pin: **protoc-gen-rust-temporal 0.1.2**.
 
 ## Roadmap relationship
 

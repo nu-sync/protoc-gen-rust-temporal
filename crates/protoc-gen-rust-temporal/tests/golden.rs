@@ -25,7 +25,13 @@ fn fixture_path(name: &str) -> PathBuf {
 fn protoc_binary() -> PathBuf {
     std::env::var_os("PROTOC")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("protoc"))
+        .unwrap_or_else(|| {
+            protoc_bin_vendored::protoc_bin_path().expect("vendored protoc not available")
+        })
+}
+
+fn protoc_include_path() -> PathBuf {
+    protoc_bin_vendored::include_path().expect("vendored protobuf includes not available")
 }
 
 fn compile_fixture(name: &str) -> (DescriptorPool, HashSet<String>) {
@@ -37,6 +43,7 @@ fn compile_fixture(name: &str) -> (DescriptorPool, HashSet<String>) {
     let status = Command::new(protoc_binary())
         .arg(format!("-I{}", fixture_dir.display()))
         .arg(format!("-I{}", annotations.display()))
+        .arg(format!("-I{}", protoc_include_path().display()))
         .arg(format!("--descriptor_set_out={}", fds_path.display()))
         .arg("--include_imports")
         .arg("input.proto")
