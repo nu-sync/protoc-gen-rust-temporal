@@ -947,6 +947,23 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         }
         let _ = writeln!(out, "            None");
         let _ = writeln!(out, "        }}");
+        // `has_handler(name) -> bool` — predicate sibling of
+        // `lookup_handler_kind`. Reads more naturally in conditionals:
+        //     if MyClient::has_handler("foo") { ... }
+        // Sugar over `lookup_handler_kind(...).is_some()`. Same emit
+        // guard (gated on at least one kind being present, since
+        // `lookup_handler_kind` is the referent).
+        let _ = writeln!(
+            out,
+            "        /// `true` if `name` is registered on this service (any kind)."
+        );
+        let _ = writeln!(
+            out,
+            "        /// Sugar over [`Self::lookup_handler_kind`]`(name).is_some()`."
+        );
+        let _ = writeln!(out, "        pub fn has_handler(name: &str) -> bool {{");
+        let _ = writeln!(out, "            Self::lookup_handler_kind(name).is_some()");
+        let _ = writeln!(out, "        }}");
     }
     // Identity triple always emits, so the trailing newline is always
     // needed to separate the const block from the `new()` ctor below.

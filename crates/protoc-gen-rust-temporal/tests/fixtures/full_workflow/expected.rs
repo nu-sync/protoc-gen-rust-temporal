@@ -129,6 +129,11 @@ pub mod full_v1_full_service_temporal {
             if Self::ACTIVITY_NAMES.contains(&name) { return Some("activity"); }
             None
         }
+        /// `true` if `name` is registered on this service (any kind).
+        /// Sugar over [`Self::lookup_handler_kind`]`(name).is_some()`.
+        pub fn has_handler(name: &str) -> bool {
+            Self::lookup_handler_kind(name).is_some()
+        }
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }

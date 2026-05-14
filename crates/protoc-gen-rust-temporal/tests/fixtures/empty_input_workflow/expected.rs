@@ -73,6 +73,11 @@ pub mod empty_v1_nop_service_temporal {
             if Self::WORKFLOW_NAMES.contains(&name) { return Some("workflow"); }
             None
         }
+        /// `true` if `name` is registered on this service (any kind).
+        /// Sugar over [`Self::lookup_handler_kind`]`(name).is_some()`.
+        pub fn has_handler(name: &str) -> bool {
+            Self::lookup_handler_kind(name).is_some()
+        }
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
             Self { client }

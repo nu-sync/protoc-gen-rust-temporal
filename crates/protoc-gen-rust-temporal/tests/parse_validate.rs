@@ -3512,6 +3512,27 @@ fn client_exposes_lookup_handler_kind_dispatch_helper() {
 }
 
 #[test]
+fn client_exposes_has_handler_predicate_sibling_of_lookup() {
+    // R6 ergonomics — `<Service>Client::has_handler(name) -> bool` is
+    // a predicate sibling of `lookup_handler_kind`. Reads more
+    // naturally in conditionals:
+    //     if MyClient::has_handler("foo") { ... }
+    // Sugar over `lookup_handler_kind(...).is_some()`. Same emit
+    // guard (gated on at least one kind being present, since
+    // `lookup_handler_kind` is the referent).
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub fn has_handler(name: &str) -> bool {"),
+        "missing has_handler fn signature: {source}"
+    );
+    assert!(
+        source.contains("Self::lookup_handler_kind(name).is_some()"),
+        "has_handler body must forward to lookup_handler_kind(...).is_some(): {source}"
+    );
+}
+
+#[test]
 fn client_lookup_handler_kind_emits_only_present_kind_probes() {
     // Each per-kind probe arm is gated on the corresponding name
     // aggregate being non-empty (matching the per-kind aggregate's

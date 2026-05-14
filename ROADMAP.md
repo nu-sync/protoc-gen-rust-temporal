@@ -802,6 +802,21 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::has_handler(name)` predicate):
+  predicate sibling of `lookup_handler_kind` for cleaner conditional
+  reads:
+  ```
+  if MyClient::has_handler("foo") { ... }
+  ```
+  Sugar over `lookup_handler_kind(name).is_some()`. Same emit guard
+  (gated on at least one kind being present, since
+  `lookup_handler_kind` is the referent the body forwards to). One
+  new positive parse_validate test
+  (`client_exposes_has_handler_predicate_sibling_of_lookup`) pins
+  the fn signature and the body's forwarding shape. 16 fixture
+  goldens reblessed (every Client gains the predicate). 248
+  parse_validate tests green; workspace clippy clean. No bridge
+  signature change.
 - 2026-05-13 (R6 — per-kind count consts on `<Service>Client`):
   in addition to the aggregate `HANDLER_COUNT`, every present
   per-kind name aggregate now has a paired count const derived at
