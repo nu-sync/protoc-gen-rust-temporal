@@ -4614,6 +4614,46 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         }
         let _ = writeln!(out, "            }}");
         let _ = writeln!(out, "        }}");
+        // `--wait` flag accessor. Start/Attach Args structs carry a
+        // `pub wait: bool` field that controls whether the dispatch
+        // path blocks on workflow completion; the other variants don't
+        // model it. Returns `Some(args.wait)` only when the variant
+        // carries the flag, `None` otherwise. Lets middleware
+        // pre-route on the wait intent without unwrapping each
+        // variant's args inline. Folded into the same `impl Command`
+        // block as the other dispatch-tuple accessors. The outer
+        // `has_visible_cli_workflow` gate already ensures at least one
+        // usable workflow when this code runs, so the explicit catch-
+        // all `_ => None,` (for Cancel/Terminate/Signal/Query/Update)
+        // never matches an empty enum.
+        let _ = writeln!(
+            out,
+            "        /// Whether the `--wait` flag was set on this subcommand."
+        );
+        let _ = writeln!(
+            out,
+            "        /// `Some(true)` / `Some(false)` for `Start*` and `Attach*` (which model"
+        );
+        let _ = writeln!(
+            out,
+            "        /// the flag); `None` for all other verbs (which don't)."
+        );
+        let _ = writeln!(out, "        pub fn wait(&self) -> Option<bool> {{");
+        let _ = writeln!(out, "            match self {{");
+        for wf in &usable_workflows {
+            let pascal = wf.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Start{pascal}(args) => Some(args.wait),"
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Attach{pascal}(args) => Some(args.wait),"
+            );
+        }
+        let _ = writeln!(out, "                _ => None,");
+        let _ = writeln!(out, "            }}");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

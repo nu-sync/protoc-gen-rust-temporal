@@ -3325,6 +3325,70 @@ fn cli_command_exposes_workflow_id_accessor() {
 }
 
 #[test]
+fn cli_command_exposes_wait_accessor() {
+    // R6 ergonomics — `Command::wait(&self) -> Option<bool>` exposes
+    // the `--wait` flag from Start/Attach args. Other verbs return
+    // `None` (they don't model wait). Lets dispatch middleware
+    // pre-route on the wait intent without inline-unwrapping each
+    // variant's args.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wf.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn wait(&self) -> Option<bool> {"),
+        "missing wait fn signature: {source}"
+    );
+    // Start + Attach return Some(args.wait).
+    for variant in ["Self::StartRun(args)", "Self::AttachRun(args)"] {
+        let arm = format!("{variant} => Some(args.wait),");
+        assert!(
+            source.contains(&arm),
+            "missing wait-bearing arm `{arm}`: {source}"
+        );
+    }
+    // Catch-all fall-through must yield None for non-wait-bearing
+    // variants (Cancel/Terminate/Signal/Query/Update).
+    assert!(
+        source.contains("_ => None,"),
+        "missing catch-all `_ => None,` arm: {source}"
+    );
+}
+
+#[test]
 fn cli_command_handler_name_skipped_when_no_subcommand_variants() {
     // Skip-emit guard: when the service has no usable workflows AND no
     // signals/queries/updates, the Command enum has no variants and

@@ -695,6 +695,18 @@ pub mod report_service_cli {
                 Self::TerminateAggregate(args) => Some(&args.workflow_id),
             }
         }
+        /// Whether the `--wait` flag was set on this subcommand.
+        /// `Some(true)` / `Some(false)` for `Start*` and `Attach*` (which model
+        /// the flag); `None` for all other verbs (which don't).
+        pub fn wait(&self) -> Option<bool> {
+            match self {
+                Self::StartGenerate(args) => Some(args.wait),
+                Self::AttachGenerate(args) => Some(args.wait),
+                Self::StartAggregate(args) => Some(args.wait),
+                Self::AttachAggregate(args) => Some(args.wait),
+                _ => None,
+            }
+        }
     }
 
     impl Cli {

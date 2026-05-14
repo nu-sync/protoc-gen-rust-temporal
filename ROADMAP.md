@@ -743,6 +743,22 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Command::wait(&self) -> Option<bool>` `--wait`
+  flag accessor): exposes the `--wait` flag from `Start*` and
+  `Attach*` Args structs (which carry `pub wait: bool`) as a
+  uniformly-typed accessor on the Command enum. Lets dispatch
+  middleware pre-route on the wait intent (e.g., spawn a background
+  task for `Some(false)`, await inline for `Some(true)`, no-op for
+  `None`) without unwrapping each variant's args inline. Cancel /
+  Terminate / Signal / Query / Update don't model `wait`, so they
+  fall through the `_ => None` catch-all. Folded into the same
+  `impl Command` block as the dispatch-tuple trio (handler_name /
+  verb / workflow_id) so the four accessors live together. One new
+  positive parse_validate test (`cli_command_exposes_wait_accessor`)
+  using inline proto with all variant kinds, pinning Start/Attach
+  Some-wrapped arms and the `_ => None` catch-all. Two fixture
+  goldens reblessed (`cli_emit`, `cli_ignore`). 223 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `Command::workflow_id(&self)` third dispatch-tuple
   accessor): completes the dispatch-tuple trio on the CLI Command
   enum. Where `verb()` returns the action keyword and `handler_name()`
