@@ -802,6 +802,24 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::TASK_QUEUE_COUNT` const):
+  derived at compile time from `Self::TASK_QUEUES.len()`. Pairs with
+  HANDLER_COUNT and MESSAGE_TYPE_COUNT for service-level cardinality
+  assertions:
+  ```
+  assert_eq!(MyClient::TASK_QUEUE_COUNT, my_workers.queue_count());
+  ```
+  const-evaluable so it lands in `static`-sized array dimensioning.
+  Same emit guard as TASK_QUEUES (the const refers to it by name).
+  Completes the count-const trio (HANDLER_COUNT + MESSAGE_TYPE_COUNT
+  + TASK_QUEUE_COUNT) so generic worker / codec / queue-validation
+  setup can spell sanity assertions uniformly. One new positive
+  parse_validate test
+  (`client_exposes_task_queue_count_const_derived_from_aggregate`)
+  pins both the count line and verifies the TASK_QUEUES referent
+  still emits. 16 fixture goldens reblessed (every Client with at
+  least one task queue gains the const). 274 parse_validate tests
+  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::ACTIVITY_TASK_QUEUE_TABLE`
   activity-side parity): mirrors WORKFLOW_TASK_QUEUE_TABLE for
   activities. Maps each activity that declares its own task queue

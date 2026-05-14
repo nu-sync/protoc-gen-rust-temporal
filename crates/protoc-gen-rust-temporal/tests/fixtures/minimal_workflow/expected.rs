@@ -116,6 +116,7 @@ pub mod jobs_v1_job_service_temporal {
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const HANDLER_SUMMARY: &'static str = "1 workflow, 1 signal, 1 query, 1 update, 1 activity";
         pub const TASK_QUEUES: &'static [&'static str] = &["jobs"];
+        pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.RunJob", "jobs")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.RunJob", "jobs.v1.JobInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.RunJob", "jobs.v1.JobOutput")];

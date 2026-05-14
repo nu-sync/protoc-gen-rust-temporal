@@ -67,6 +67,7 @@ pub mod empty_v1_nop_service_temporal {
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const HANDLER_SUMMARY: &'static str = "1 workflow";
         pub const TASK_QUEUES: &'static [&'static str] = &["nop"];
+        pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("empty.v1.NopService.Tick", "nop")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("empty.v1.NopService.Tick", "google.protobuf.Empty")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("empty.v1.NopService.Tick", "google.protobuf.Empty")];

@@ -913,6 +913,17 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
         }
     }
     emit(out, "TASK_QUEUES", &task_queues);
+    // `TASK_QUEUE_COUNT` — derived from `Self::TASK_QUEUES.len()`.
+    // Pairs with HANDLER_COUNT and MESSAGE_TYPE_COUNT for service-
+    // level cardinality assertions:
+    //     assert_eq!(MyClient::TASK_QUEUE_COUNT, my_workers.queue_count());
+    // Same emit guard as TASK_QUEUES (the const refers to it by name).
+    if !task_queues.is_empty() {
+        let _ = writeln!(
+            out,
+            "        pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();"
+        );
+    }
     // `WORKFLOW_TASK_QUEUE_TABLE` — const lookup table mapping each
     // workflow's registered name to its effective task queue. Useful
     // for generic worker routing / queue-validation tooling that

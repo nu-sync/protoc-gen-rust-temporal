@@ -112,6 +112,7 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const ACTIVITY_COUNT: usize = Self::ACTIVITY_NAMES.len();
         pub const HANDLER_SUMMARY: &'static str = "1 workflow, 1 signal, 1 query, 1 update, 1 activity";
         pub const TASK_QUEUES: &'static [&'static str] = &["worker-full"];
+        pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "worker-full")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "workerfull.v1.RunInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "workerfull.v1.RunOutput")];

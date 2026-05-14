@@ -94,6 +94,7 @@ pub mod cli_v1_report_service_temporal {
         pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();
         pub const HANDLER_SUMMARY: &'static str = "2 workflows";
         pub const TASK_QUEUES: &'static [&'static str] = &["reports"];
+        pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();
         pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "reports"), ("cli.v1.ReportService.Internal", "reports")];
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "cli.v1.GenerateInput"), ("cli.v1.ReportService.Internal", "cli.v1.InternalInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("cli.v1.ReportService.Generate", "cli.v1.GenerateOutput"), ("cli.v1.ReportService.Internal", "cli.v1.InternalOutput")];

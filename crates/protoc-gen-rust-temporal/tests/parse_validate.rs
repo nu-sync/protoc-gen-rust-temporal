@@ -4144,6 +4144,25 @@ fn client_omits_workflow_task_queue_table_when_no_workflow_has_queue() {
 }
 
 #[test]
+fn client_exposes_task_queue_count_const_derived_from_aggregate() {
+    // R6 ergonomics — `<Service>Client::TASK_QUEUE_COUNT: usize` is
+    // derived at compile time from `Self::TASK_QUEUES.len()`. Pairs
+    // with HANDLER_COUNT and MESSAGE_TYPE_COUNT for service-level
+    // cardinality assertions.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();"),
+        "missing TASK_QUEUE_COUNT const derived from TASK_QUEUES: {source}"
+    );
+    // Sanity: TASK_QUEUES still emits as the const referent.
+    assert!(
+        source.contains("pub const TASK_QUEUES: &'static [&'static str]"),
+        "TASK_QUEUES must accompany TASK_QUEUE_COUNT (const referent): {source}"
+    );
+}
+
+#[test]
 fn client_exposes_task_queues_aggregate_const() {
     // R6 ergonomics — `<Service>Client::TASK_QUEUES: &'static [&'static str]`
     // is the union of every distinct task queue used across the
