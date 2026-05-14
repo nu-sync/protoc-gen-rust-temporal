@@ -1548,6 +1548,16 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
             "temporal_runtime::WorkflowIdReusePolicy",
         ));
     }
+    if let Some(p) = wf.id_conflict_policy {
+        defaults.push((
+            "default_id_conflict_policy",
+            format!(
+                "temporal_runtime::WorkflowIdConflictPolicy::{}",
+                p.rust_variant()
+            ),
+            "temporal_runtime::WorkflowIdConflictPolicy",
+        ));
+    }
     if let Some(d) = wf.execution_timeout {
         defaults.push(("default_execution_timeout", duration_literal(d), "Duration"));
     }
@@ -1556,6 +1566,16 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
     }
     if let Some(d) = wf.task_timeout {
         defaults.push(("default_task_timeout", duration_literal(d), "Duration"));
+    }
+    // Eager-start has a bare-bool proto default (no Option wrapping at the
+    // schema layer). Only emit the helper when the workflow explicitly opts
+    // in — `false` is the std `bool::default()` so a helper would be noise.
+    if wf.enable_eager_workflow_start {
+        defaults.push((
+            "default_enable_eager_workflow_start",
+            "true".to_string(),
+            "bool",
+        ));
     }
     if !defaults.is_empty() {
         let _ = writeln!(out, "    impl {opts_struct} {{");
@@ -1578,6 +1598,12 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
                 "            opts.id_reuse_policy = Some(Self::default_id_reuse_policy());"
             );
         }
+        if wf.id_conflict_policy.is_some() {
+            let _ = writeln!(
+                out,
+                "            opts.id_conflict_policy = Some(Self::default_id_conflict_policy());"
+            );
+        }
         if wf.execution_timeout.is_some() {
             let _ = writeln!(
                 out,
@@ -1594,6 +1620,12 @@ fn render_start_options(out: &mut String, wf: &WorkflowModel) {
             let _ = writeln!(
                 out,
                 "            opts.task_timeout = Some(Self::default_task_timeout());"
+            );
+        }
+        if wf.enable_eager_workflow_start {
+            let _ = writeln!(
+                out,
+                "            opts.enable_eager_workflow_start = Some(Self::default_enable_eager_workflow_start());"
             );
         }
         let _ = writeln!(out, "            opts");

@@ -6198,6 +6198,77 @@ fn workflow_id_conflict_policy_flows_into_start_options() {
 }
 
 #[test]
+fn proto_defaults_folds_id_conflict_policy_and_eager_start() {
+    // R6 ergonomics — `<Wf>StartOptions::proto_defaults()` previously folded
+    // only id_reuse_policy + the three timeouts. id_conflict_policy and
+    // enable_eager_workflow_start also have proto-declared defaults; both
+    // must be folded so callers spelling `proto_defaults()` get the same
+    // resolved-default state the start path bakes in.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package proto_defaults_extra.v1;
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              task_queue: "tq"
+              workflow_id_conflict_policy: WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING
+              enable_eager_start: true
+            };
+          }
+        }
+        message In {}
+        message Out {}
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let source = render::render(&services[0], &Default::default());
+
+    // Per-field accessors must exist for both new defaults.
+    assert!(
+        source.contains(
+            "pub fn default_id_conflict_policy() -> temporal_runtime::WorkflowIdConflictPolicy {"
+        ),
+        "missing default_id_conflict_policy helper: {source}"
+    );
+    assert!(
+        source.contains("pub fn default_enable_eager_workflow_start() -> bool {"),
+        "missing default_enable_eager_workflow_start helper: {source}"
+    );
+
+    // proto_defaults() must fold both into the returned struct.
+    assert!(
+        source.contains("opts.id_conflict_policy = Some(Self::default_id_conflict_policy());"),
+        "proto_defaults must fold id_conflict_policy: {source}"
+    );
+    assert!(
+        source.contains(
+            "opts.enable_eager_workflow_start = Some(Self::default_enable_eager_workflow_start());"
+        ),
+        "proto_defaults must fold enable_eager_workflow_start: {source}"
+    );
+}
+
+#[test]
+fn proto_defaults_skips_eager_start_when_proto_default_false() {
+    // The eager-start fold only fires when the proto explicitly opts in.
+    // `false` is `bool::default()` so emitting a helper / fold for it
+    // would just be noise — keep proto_defaults silent in that case.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("default_enable_eager_workflow_start"),
+        "no eager helper should emit when proto leaves enable_eager_start unset: {source}"
+    );
+    assert!(
+        !source.contains("opts.enable_eager_workflow_start = Some("),
+        "proto_defaults must not fold eager-start when proto omits it: {source}"
+    );
+}
+
+#[test]
 fn workflow_id_conflict_policy_absent_resolves_to_none() {
     // Without the proto field set, the model must hold `None` and the
     // start path should not bake in any default — `None` lets the server

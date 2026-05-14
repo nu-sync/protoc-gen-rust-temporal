@@ -743,6 +743,25 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `proto_defaults()` folds `id_conflict_policy` +
+  `enable_eager_workflow_start`): the aggregate `proto_defaults()`
+  constructor previously only folded `id_reuse_policy` and the three
+  timeouts, silently dropping the other two proto-declared defaults
+  even though their per-field `default_*()` helpers existed for one
+  (id_conflict_policy was in the resolution Vec). Both gaps closed:
+  `default_id_conflict_policy()` is now emitted whenever the workflow
+  declares one, `default_enable_eager_workflow_start()` is emitted
+  whenever the workflow opts in (`true` only — `false` is
+  `bool::default()` so a helper would just be noise), and
+  `proto_defaults()` folds both into the returned struct. Closes
+  the parity gap between the per-field resolution path
+  (`render_default_resolutions`) and the aggregate constructor.
+  Two new positive tests:
+  `proto_defaults_folds_id_conflict_policy_and_eager_start` (pins
+  both helpers + both folds when the workflow declares them) and
+  `proto_defaults_skips_eager_start_when_proto_default_false` (pins
+  the silence when proto omits the opt-in). 202 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::proto_defaults()` aggregate constructor):
   every `<Wf>StartOptions` whose workflow declares at least one
   default-bearing field (`id_reuse_policy`, `execution_timeout`,
