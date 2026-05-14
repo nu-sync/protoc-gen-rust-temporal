@@ -40,12 +40,6 @@ pub mod jobs_v1_job_service_temporal {
         const MESSAGE_TYPE: &'static str = "jobs.v1.PrepareWorkspaceInput";
     }
 
-    pub const PACKAGE: &str = "jobs.v1";
-    pub const SERVICE_NAME: &str = "JobService";
-    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = "jobs.v1.JobService";
-    pub const SOURCE_FILE: &str = "jobs/v1/jobs.proto";
-    pub const CLUDDEN_SCHEMA_DIGEST: &str = "buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607";
-    pub const WIRE_FORMAT_VERSION: &str = "v1";
     pub const RUN_JOB_WORKFLOW_NAME: &str = "jobs.v1.JobService.RunJob";
     pub const RUN_JOB_INPUT_TYPE: &str = "jobs.v1.JobInput";
     pub const RUN_JOB_OUTPUT_TYPE: &str = "jobs.v1.JobOutput";
@@ -106,8 +100,10 @@ pub mod jobs_v1_job_service_temporal {
         pub const QUERY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.GetStatus"];
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["jobs.v1.JobService.PrepareWorkspace", "jobs.v1.JobService.ExecuteCommand", "jobs.v1.JobService.CollectOutput"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["jobs.v1.JobService.RunJob", "jobs.v1.JobService.CancelJob", "jobs.v1.JobService.GetStatus", "jobs.v1.JobService.PrepareWorkspace", "jobs.v1.JobService.ExecuteCommand", "jobs.v1.JobService.CollectOutput"];
-        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["jobs"];
+        pub const WORKFLOW_TASK_QUEUE_TABLE: &'static [(&'static str, &'static str)] = &[("jobs.v1.JobService.RunJob", "jobs")];
+        pub const ALL_MESSAGE_TYPES: &'static [&'static str] = &["jobs.v1.JobInput", "jobs.v1.JobOutput", "jobs.v1.CancelJobInput", "jobs.v1.GetStatusInput", "jobs.v1.JobStatusOutput", "jobs.v1.PrepareWorkspaceInput", "google.protobuf.Empty"];
+        pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "jobs.v1.JobService.RunJob"), ("signal", "jobs.v1.JobService.CancelJob"), ("query", "jobs.v1.JobService.GetStatus"), ("activity", "jobs.v1.JobService.PrepareWorkspace"), ("activity", "jobs.v1.JobService.ExecuteCommand"), ("activity", "jobs.v1.JobService.CollectOutput")];
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,
@@ -118,6 +114,16 @@ pub mod jobs_v1_job_service_temporal {
             if Self::QUERY_NAMES.contains(&name) { return Some("query"); }
             if Self::ACTIVITY_NAMES.contains(&name) { return Some("activity"); }
             None
+        }
+        /// `true` if `name` is registered on this service (any kind).
+        /// Sugar over [`Self::lookup_handler_kind`]`(name).is_some()`.
+        pub fn has_handler(name: &str) -> bool {
+            Self::lookup_handler_kind(name).is_some()
+        }
+        /// `true` if `name` is one of the proto message FQNs this service uses.
+        /// Sugar over [`Self::ALL_MESSAGE_TYPES`]`.contains(&name)`.
+        pub fn has_message_type(name: &str) -> bool {
+            Self::ALL_MESSAGE_TYPES.contains(&name)
         }
 
         pub fn new(client: temporal_runtime::TemporalClient) -> Self {
@@ -207,6 +213,27 @@ pub mod jobs_v1_job_service_temporal {
             }
         }
 
+        /// Attach to multiple running `jobs.v1.JobService.RunJob` workflows by id.
+        /// Sugar for `ids.into_iter().map(|id| client.run_job_handle(id)).collect()`.
+        pub fn run_job_handles<I, S>(&self, workflow_ids: I) -> ::std::vec::Vec<RunJobHandle>
+        where
+            I: IntoIterator<Item = S>,
+            S: Into<String>,
+        {
+            workflow_ids.into_iter().map(|id| self.run_job_handle(id)).collect()
+        }
+
+        /// Start a new `jobs.v1.JobService.RunJob` workflow and block on its result.
+        /// Sugar for `client.run_job(...).await?.result().await`.
+        pub async fn run_job_and_wait(
+            &self,
+            input: JobInput,
+            opts: RunJobStartOptions,
+        ) -> Result<JobOutput> {
+            let handle = self.run_job(input, opts).await?;
+            handle.result().await
+        }
+
         /// Send the `jobs.v1.JobService.CancelJob` signal to a workflow by id.
         pub async fn cancel_job(&self, workflow_id: impl Into<String>, input: CancelJobInput) -> Result<()> {
             let inner = temporal_runtime::attach_handle(&self.client, workflow_id.into());
@@ -234,6 +261,13 @@ pub mod jobs_v1_job_service_temporal {
         pub retry_policy: Option<temporal_runtime::RetryPolicy>,
     }
 
+    impl ::std::fmt::Display for RunJobStartOptions {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            let names = self.set_field_names();
+            ::std::write!(f, "RunJobStartOptions {{ set: {}/{} [{}] }}", names.len(), Self::FIELD_NAMES.len(), names.join(", "))
+        }
+    }
+
     impl RunJobStartOptions {
         pub fn default_execution_timeout() -> Duration {
             Duration::from_secs(3600)
@@ -249,11 +283,31 @@ pub mod jobs_v1_job_service_temporal {
             }
             self
         }
+        /// In-place mutating sibling of [`Self::with_proto_defaults`].
+        /// Fills `None` fields with their proto-declared defaults; user-set fields are untouched.
+        pub fn fill_proto_defaults(&mut self) {
+            if self.execution_timeout.is_none() {
+                self.execution_timeout = Some(Self::default_execution_timeout());
+            }
+        }
     }
 
     impl RunJobStartOptions {
         pub fn with_workflow_id(mut self, v: impl ::std::convert::Into<String>) -> Self {
             self.workflow_id = Some(v.into());
+            self
+        }
+        /// Set `workflow_id` to a random UUID via the bridge's `random_workflow_id()`.
+        pub fn with_random_workflow_id(mut self) -> Self {
+            self.workflow_id = Some(temporal_runtime::random_workflow_id());
+            self
+        }
+        /// Fill `workflow_id` with a random UUID if not already set.
+        /// No-op when `workflow_id` is already `Some`.
+        pub fn workflow_id_or_random(mut self) -> Self {
+            if self.workflow_id.is_none() {
+                self.workflow_id = Some(temporal_runtime::random_workflow_id());
+            }
             self
         }
         pub fn with_task_queue(mut self, v: impl ::std::convert::Into<String>) -> Self {
@@ -304,6 +358,19 @@ pub mod jobs_v1_job_service_temporal {
             self.retry_policy = other.retry_policy.or(self.retry_policy);
             self
         }
+        /// Apply `other` over self in place. Fields where `other` is `Some` win;
+        /// `None` fields in `other` leave self's existing value untouched.
+        pub fn merge_in(&mut self, other: Self) {
+            if other.workflow_id.is_some() { self.workflow_id = other.workflow_id; }
+            if other.task_queue.is_some() { self.task_queue = other.task_queue; }
+            if other.id_reuse_policy.is_some() { self.id_reuse_policy = other.id_reuse_policy; }
+            if other.id_conflict_policy.is_some() { self.id_conflict_policy = other.id_conflict_policy; }
+            if other.execution_timeout.is_some() { self.execution_timeout = other.execution_timeout; }
+            if other.run_timeout.is_some() { self.run_timeout = other.run_timeout; }
+            if other.task_timeout.is_some() { self.task_timeout = other.task_timeout; }
+            if other.enable_eager_workflow_start.is_some() { self.enable_eager_workflow_start = other.enable_eager_workflow_start; }
+            if other.retry_policy.is_some() { self.retry_policy = other.retry_policy; }
+        }
         pub fn is_empty(&self) -> bool {
             self.workflow_id.is_none()
                 && self.task_queue.is_none()
@@ -331,19 +398,6 @@ pub mod jobs_v1_job_service_temporal {
         /// Reset every field to `None`. Equivalent to `*self = Self::default()`.
         pub fn clear(&mut self) {
             *self = Self::default();
-        }
-        /// Number of fields with `Some` values. Equivalent to `set_field_names().len()`,
-        /// but skips the Vec allocation.
-        pub fn set_field_count(&self) -> usize {
-            (self.workflow_id.is_some() as usize)
-                + (self.task_queue.is_some() as usize)
-                + (self.id_reuse_policy.is_some() as usize)
-                + (self.id_conflict_policy.is_some() as usize)
-                + (self.execution_timeout.is_some() as usize)
-                + (self.run_timeout.is_some() as usize)
-                + (self.task_timeout.is_some() as usize)
-                + (self.enable_eager_workflow_start.is_some() as usize)
-                + (self.retry_policy.is_some() as usize)
         }
         /// Names of fields with `Some` values, in declaration order. Empty iff [`Self::is_empty`].
         pub fn set_field_names(&self) -> ::std::vec::Vec<&'static str> {
@@ -440,7 +494,19 @@ pub mod jobs_v1_job_service_temporal {
         pub fn workflow_id_owned(&self) -> String {
             self.inner.workflow_id().to_string()
         }
-
+        /// Composite `<workflow_id>:<run_id>` identity. Falls back to just
+        /// `<workflow_id>` for attach-style handles where `run_id` is `None`.
+        pub fn workflow_id_with_run(&self) -> String {
+            match self.inner.run_id() {
+                Some(run) => ::std::format!("{}:{}", self.inner.workflow_id(), run),
+                None => self.inner.workflow_id().to_string(),
+            }
+        }
+        /// Structured `(workflow_id, run_id)` pair when both ids are known.
+        /// `None` for attach-style handles where `run_id` is `None`.
+        pub fn execution_pair(&self) -> Option<(String, String)> {
+            self.inner.run_id().map(|run| (self.inner.workflow_id().to_string(), run.to_string()))
+        }
         pub fn client(&self) -> &temporal_runtime::TemporalClient {
             self.inner.client()
         }
@@ -511,6 +577,16 @@ pub mod jobs_v1_job_service_temporal {
         /// Terminate the workflow — hard kill, no cancel handler runs.
         pub async fn terminate_workflow(&self, reason: &str) -> Result<()> {
             temporal_runtime::terminate_workflow(&self.inner, reason).await
+        }
+        /// Cooperative-or-hard stop dispatch: `force = false` calls [`Self::cancel_workflow`],
+        /// `force = true` calls [`Self::terminate_workflow`]. Saves the per-call-site
+        /// `if force { terminate } else { cancel }` ladder.
+        pub async fn stop(&self, reason: &str, force: bool) -> Result<()> {
+            if force {
+                self.terminate_workflow(reason).await
+            } else {
+                self.cancel_workflow(reason).await
+            }
         }
 
         /// Send the `jobs.v1.JobService.CancelJob` signal.

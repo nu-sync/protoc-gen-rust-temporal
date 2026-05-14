@@ -769,165 +769,6 @@ Progress:
   pinning the Some/None mix per arm. Two fixture goldens reblessed
   (`cli_emit`, `cli_ignore`). 238 parse_validate tests green. No
   bridge signature change.
-- 2026-05-13 (R6 — `<Wf>StartOptions::set_field_count()` allocation-
-  free counter): every `<Wf>StartOptions` struct now exposes
-  `pub fn set_field_count(&self) -> usize` summing
-  `field.is_some() as usize` directly per field. Skips the Vec
-  allocation `set_field_names().len()` would require — useful for
-  telemetry counters ("user customized N fields") and size-budget
-  assertions ("at most 3 overrides allowed in this config layer").
-  Pairs with `is_empty` (count == 0 ⇔ empty) and `set_field_names`
-  (count == names.len()). One new positive parse_validate test
-  (`start_options_exposes_set_field_count_for_telemetry`) pins the
-  fn signature, the kickoff first-addend, and the `+ (...)` sum
-  fragment for every remaining field. 16 fixture goldens reblessed
-  (every StartOptions gains the method). 237 parse_validate tests
-  green. No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::HANDLER_COUNT` const derived from
-  ALL_HANDLER_NAMES): every `<Service>Client` whose service has at
-  least one handler now exposes
-  `pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();`.
-  Compile-time evaluation (no runtime `.len()` call) — usable in
-  `static`-sized array dimensioning and other const contexts. Lets
-  assert-style code spell:
-  ```
-  assert_eq!(MyClient::HANDLER_COUNT, registered.len());
-  ```
-  for worker-registration sanity checks. Gated on the same emit
-  guard as ALL_HANDLER_NAMES — the const refers to it by name, so
-  emitting one without the other would not compile. One new positive
-  parse_validate test
-  (`client_exposes_handler_count_const_derived_from_aggregate`) pins
-  both the HANDLER_COUNT line and the presence of its
-  ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
-  Client gains the const). 236 parse_validate tests green. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS`
-  classifier const): lists registered names of workflows that declare
-  at least one of `parent_close_policy` or `wait_for_cancellation` —
-  the two fields that produce the existing
-  `<wf>_default_child_options()` factory. Mirrors that factory's emit
-  guard so a workflow appears in this const iff its child-options
-  factory was emitted under `workflows=true`. Useful for tooling
-  that wants to know which workflows expect specific child
-  semantics vs those accepting SDK defaults. Skip-emit when no
-  workflow declares either field. One new positive parse_validate
-  test (`client_exposes_workflows_with_default_child_options_classifier`)
-  uses inline proto with three workflows (one with policy, one with
-  wait, one with neither) verifying both child-options-bearing ones
-  appear; plus the skip-guard on `minimal_workflow`. 282
-  parse_validate tests green; workspace clippy clean. No fixture
-  goldens reblessed (no existing fixture declares either field).
-  No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_TIMEOUTS`
-  classifier const): lists registered names of workflows that declare
-  at least one of `execution_timeout` / `run_timeout` / `task_timeout`.
-  Useful for tooling that identifies workflows with proto-baked SLA
-  expectations vs those that rely on server defaults. Sibling of the
-  retry-policy / id-template / aliases classifiers. Skip-emit when no
-  workflow declares any timeout (the common case for short-lived
-  workflows). One new positive parse_validate test
-  (`client_exposes_workflows_with_timeouts_classifier`) covers both
-  the multi-workflow case (Beta declares run_timeout, Alpha doesn't)
-  and the skip-guard. 3 fixture goldens reblessed (full_workflow,
-  multiple_workflows, workflow_only — the three that declare any
-  timeout). 281 parse_validate tests green; workspace clippy clean.
-  No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::ACTIVITIES_WITH_RETRY_POLICY`
-  classifier const): activity-side parity of WORKFLOWS_WITH_RETRY_POLICY.
-  Lists registered names of activities that declare a proto-level
-  retry policy on their default_options. Useful for the same tooling
-  reasons as the workflow variant (distinguishing handlers with
-  built-in retry expectations from those that rely on server
-  defaults). Skip-emit when no activity declares a retry policy.
-  One new positive parse_validate test
-  (`client_exposes_activities_with_retry_policy_classifier`) uses
-  inline proto with two activities (one with retry_policy, one
-  without) plus the skip-guard on `minimal_workflow`. 280
-  parse_validate tests green; workspace clippy clean. No fixture
-  goldens reblessed (no existing fixture has an activity declaring
-  a retry policy). No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_RETRY_POLICY`
-  classifier const): completes the classifier-trio (id-template +
-  aliases + retry-policy). Lists registered names of workflows that
-  declare a proto-level retry policy
-  (`retry_policy: { max_attempts: 3, ... }`). Useful for tooling that
-  distinguishes workflows with built-in retry expectations from those
-  that rely on server defaults. Skip-emit when no workflow declares a
-  retry policy (the common case). One new positive parse_validate
-  test (`client_exposes_workflows_with_retry_policy_classifier`)
-  uses inline proto with two workflows (one with retry_policy, one
-  without) to verify only the policy-bearing one appears, plus the
-  skip-guard on `minimal_workflow`. 279 parse_validate tests green;
-  workspace clippy clean. No fixture goldens reblessed (no existing
-  fixture declares a workflow retry policy). No bridge signature
-  change.
-- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_ALIASES`
-  classifier const): sibling of WORKFLOWS_WITH_ID_TEMPLATE. Lists
-  registered names of workflows that declare alternate registration
-  names (`aliases: ["legacy_name"]`). Useful for tooling that audits
-  compat-name coverage during renames — e.g., "during the rename, are
-  all the renamed workflows still listed by their old names?".
-  Skip-emit when no workflow declares aliases (the common case).
-  One new positive parse_validate test
-  (`client_exposes_workflows_with_aliases_classifier`) covers both
-  the emit case (`workflow_aliases` fixture) and the skip-guard
-  (`minimal_workflow` has no aliased workflows). 2 fixture goldens
-  reblessed (the two alias-bearing fixtures). 278 parse_validate
-  tests green; workspace clippy clean. No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::WORKFLOWS_WITH_ID_TEMPLATE`
-  classifier const): every `<Service>Client` whose service has at
-  least one workflow declaring an `id` template now exposes
-  `pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str]`
-  listing those workflows' registered names. Useful for tooling that
-  distinguishes:
-  - workflows whose ids are synthesized from input fields (no
-    caller-supplied id needed — `id: "{{ .Field }}"`);
-  - workflows that require an explicit override or accept the
-    runtime-generated UUID (no `id:` declaration).
-  Skip-emit when no workflow declares an id template (the common
-  case). Two new positive parse_validate tests:
-  `client_exposes_workflows_with_id_template_const` exercises a
-  multi-workflow service where one declares an id and one doesn't
-  (only the one with id appears);
-  `client_omits_workflows_with_id_template_when_none_declare` pins
-  the skip-guard. 7 fixture goldens reblessed (every fixture whose
-  workflow declares an id template gains the const). 277
-  parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Wf>StartOptions::with_random_workflow_id_prefix(prefix)`):
-  prefixed-random sibling of `with_random_workflow_id`. Sets
-  `workflow_id` to `<prefix><uuid>` via the bridge's
-  `random_workflow_id()`. Sugar over the two-step
-  `opts.with_workflow_id(MyClient::random_workflow_id_with_prefix(p))`
-  pattern. Useful for namespacing test ids by environment / tenant /
-  test name without spelling out the Client constant. Takes
-  `impl ::std::fmt::Display` so callers can pass `&str`, `String`,
-  or any other Display implementor (test ids, integers for shard
-  numbers, etc.). One new positive parse_validate test
-  (`start_options_exposes_with_random_workflow_id_prefix_chain`)
-  pins the fn signature and the `<prefix><uuid>` format-call body.
-  16 fixture goldens reblessed (every StartOptions gains the method).
-  275 parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Service>Client::TASK_QUEUE_COUNT` const):
-  derived at compile time from `Self::TASK_QUEUES.len()`. Pairs with
-  HANDLER_COUNT and MESSAGE_TYPE_COUNT for service-level cardinality
-  assertions:
-  ```
-  assert_eq!(MyClient::TASK_QUEUE_COUNT, my_workers.queue_count());
-  ```
-  const-evaluable so it lands in `static`-sized array dimensioning.
-  Same emit guard as TASK_QUEUES (the const refers to it by name).
-  Completes the count-const trio (HANDLER_COUNT + MESSAGE_TYPE_COUNT
-  + TASK_QUEUE_COUNT) so generic worker / codec / queue-validation
-  setup can spell sanity assertions uniformly. One new positive
-  parse_validate test
-  (`client_exposes_task_queue_count_const_derived_from_aggregate`)
-  pins both the count line and verifies the TASK_QUEUES referent
-  still emits. 16 fixture goldens reblessed (every Client with at
-  least one task queue gains the const). 274 parse_validate tests
-  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::ACTIVITY_TASK_QUEUE_TABLE`
   activity-side parity): mirrors WORKFLOW_TASK_QUEUE_TABLE for
   activities. Maps each activity that declares its own task queue
@@ -948,20 +789,6 @@ Progress:
   workspace clippy clean. No fixture goldens reblessed (no existing
   fixture has an activity with a declared task queue). No bridge
   signature change.
-- 2026-05-13 (R6 — `<Service>Client::MESSAGE_TYPE_COUNT` const):
-  derived at compile time from `Self::ALL_MESSAGE_TYPES.len()`. Pairs
-  with HANDLER_COUNT for codec-coverage sanity assertions:
-  ```
-  assert_eq!(MyClient::MESSAGE_TYPE_COUNT, codec.registered_count());
-  ```
-  const-evaluable so it lands in `static`-sized array dimensioning.
-  Same emit guard as ALL_MESSAGE_TYPES (the const refers to it by
-  name). One new positive parse_validate test
-  (`client_exposes_message_type_count_const_derived_from_aggregate`)
-  pins both the count line and verifies the ALL_MESSAGE_TYPES
-  referent still emits. 16 fixture goldens reblessed (every Client
-  gains the const). 271 parse_validate tests green; workspace
-  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::has_message_type(name)`
   predicate): codec-side sibling of `has_handler`. Returns true iff
   `name` is one of the proto message FQNs this service touches
@@ -1002,115 +829,6 @@ Progress:
   fixture goldens reblessed (every Client gains the const). 269
   parse_validate tests green; workspace clippy clean. No bridge
   signature change.
-- 2026-05-13 (R6 — `<Service>Client::ACTIVITY_INPUT_TYPES` /
-  `ACTIVITY_OUTPUT_TYPES` lookup tables): completes the per-kind
-  input/output type table set across all five handler kinds
-  (workflow, signal-input-only, query, update, activity). Maps each
-  activity's registered name to its input / output proto type FQN.
-  Activities can have non-Empty input AND output, so both directions
-  emit. Useful for activity payload codecs. Skip-emit when no
-  activities declared. With this ship, every handler kind has a
-  consistent `<KIND>_<DIRECTION>_TYPES` table — payload routers can
-  dispatch on `(kind, name) → input_type / output_type` uniformly
-  across the entire generated surface. One new positive
-  parse_validate test
-  (`client_exposes_activity_input_output_type_lookup_consts`) pins
-  the ProcessChunk → ChunkInput / ChunkOutput mapping on
-  `minimal_workflow`. 16 fixture goldens reblessed (every Client
-  with at least one activity gains the two consts). 268
-  parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Service>Client::UPDATE_INPUT_TYPES` /
-  `UPDATE_OUTPUT_TYPES` lookup tables): update-side parity of the
-  workflow / query lookup tables. Maps each update's registered name
-  to its input / output proto type FQN. Updates can have non-Empty
-  input AND output, so both directions emit. Useful for update payload
-  codecs. Skip-emit when no updates declared. One new positive
-  parse_validate test
-  (`client_exposes_update_input_output_type_lookup_consts`) pins the
-  Reconfigure → ReconfigureInput / ReconfigureOutput mapping on
-  `minimal_workflow`. 16 fixture goldens reblessed (every Client with
-  at least one update gains the two consts). 267 parse_validate
-  tests green; workspace clippy clean. No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::QUERY_INPUT_TYPES` /
-  `QUERY_OUTPUT_TYPES` lookup tables): query-side parity of the
-  workflow / signal lookup tables. Maps each query's registered name
-  to its input / output proto type FQN. Queries can have non-Empty
-  output (unlike signals), so both directions emit. Useful for query
-  payload codecs that need to deserialize requests AND serialize
-  responses by query name. Skip-emit when no queries declared. One
-  new positive parse_validate test
-  (`client_exposes_query_input_output_type_lookup_consts`) pins the
-  GetStatus → Empty / JobStatusOutput mapping on `minimal_workflow`.
-  16 fixture goldens reblessed (every Client with at least one
-  query gains the two consts). 266 parse_validate tests green;
-  workspace clippy clean. No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::SIGNAL_INPUT_TYPES` lookup
-  table): signal-side parity of the prior turn's
-  `WORKFLOW_INPUT_TYPES`. Maps each signal's registered name to its
-  input proto type FQN. Useful for signal payload codecs that need
-  to deserialize by name. Signals are always Empty-output (rejected
-  at validate otherwise), so there is no SIGNAL_OUTPUT_TYPES
-  counterpart. Skip-emit when no signals declared. One new positive
-  parse_validate test
-  (`client_exposes_signal_input_types_lookup_const`) pins the
-  CancelJob → CancelJobInput mapping on `minimal_workflow` and
-  asserts SIGNAL_OUTPUT_TYPES does NOT emit (signals are always
-  Empty-output). 16 fixture goldens reblessed (every Client with
-  at least one signal gains the const). 265 parse_validate tests
-  green; workspace clippy clean. No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::WORKFLOW_INPUT_TYPES` /
-  `WORKFLOW_OUTPUT_TYPES` lookup tables): every `<Service>Client`
-  whose service has at least one workflow now exposes a pair of
-  `&'static [(&'static str, &'static str)]` lookup tables mapping
-  each workflow's registered name to its input / output proto type
-  FQN. Useful for codecs and payload routers that need to deserialize
-  workflow inputs by workflow name without per-rpc consts:
-  ```
-  for (wf, ty) in MyClient::WORKFLOW_INPUT_TYPES {
-      codec.register(wf, ty, …);
-  }
-  ```
-  Empty-input/output workflows surface `"google.protobuf.Empty"`
-  verbatim (the canonical Empty FQN) so callers don't need to special-
-  case Empty separately. Distinct from the per-rpc `<RPC>_INPUT_TYPE`
-  / `<RPC>_OUTPUT_TYPE` consts (one per workflow as separate names).
-  Skip-emit when no workflows declared. One new positive parse_validate
-  test (`client_exposes_workflow_input_output_type_lookup_consts`)
-  pins the RunJob → JobInput / JobOutput mapping on `minimal_workflow`
-  and verifies the Empty FQN appears for an empty-input workflow on
-  `empty_input_workflow`. 16 fixture goldens reblessed (every Client
-  with at least one workflow gains the two consts). 264
-  parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Service>Client::HANDLER_SUMMARY` natural-language
-  counts const): every `<Service>Client` whose service has at least
-  one handler now exposes
-  `pub const HANDLER_SUMMARY: &'static str` containing a pre-computed
-  natural-language summary of the per-kind counts with proper
-  singular vs plural inflection (`workflow`/`workflows`,
-  `signal`/`signals`, `query`/`queries`, `update`/`updates`,
-  `activity`/`activities`). Examples:
-  - `minimal_workflow` (1 of each kind):
-    `"1 workflow, 1 signal, 1 query, 1 update, 1 activity"`
-  - `multiple_workflows` (2 wf + 1 sig):
-    `"2 workflows, 1 signal"`
-  - `workflow_only` (1 wf):
-    `"1 workflow"`
-  Useful for `--help` output, startup log lines, and diagnostic
-  surfaces that want a human-readable counts string without runtime
-  formatting:
-  ```
-  println!("loaded service: {}", MyClient::HANDLER_SUMMARY);
-  ```
-  Singular/plural inflection is baked at codegen since counts are
-  const-known. Skip-emit when no kind is present (matches
-  ALL_HANDLER_NAMES skip-guard). One new positive parse_validate
-  test (`client_exposes_handler_summary_natural_language_const`)
-  exercises three fixtures covering all-kinds-singular,
-  plural+singular mix, and single-kind-only. 16 fixture goldens
-  reblessed (every Client gains the const). 263 parse_validate tests
-  green; workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::execution_pair() -> Option<(String, String)>`):
   every `<Wf>Handle` now exposes the structured-tuple sibling of
   `workflow_id_with_run()`. Returns `Some((workflow_id, run_id))`
@@ -1195,49 +913,6 @@ Progress:
   `self -> Self`). 16 fixture goldens reblessed (every StartOptions
   with declared defaults gains the method). 258 parse_validate
   tests green; workspace clippy clean. No bridge signature change.
-- 2026-05-13 (R6 — `<Wf>Handle::diagnostic_summary()` handle-side
-  parallel of the Client one-liner): every `<Wf>Handle` now exposes
-  `pub fn diagnostic_summary(&self) -> String` returning a pre-
-  formatted one-line tracing/diagnostic combining workflow_name,
-  active namespace, and the composite-identity
-  `workflow_id_with_run()`. Format:
-  ```
-  <workflow_name>@<namespace> <workflow_id>[:<run_id>]
-  ```
-  e.g. `jobs.v1.JobService.RunJob@my-namespace job-123:run-abc`. Useful
-  for handle-specific bug reports (paste this single line into the
-  issue) and for log lines that need both the typed identity and the
-  runtime context in one shot. Pulls each source from its canonical
-  spot — WORKFLOW_NAME const, bridge `client.namespace()` per-call,
-  workflow_id_with_run() composite — so the output stays in lockstep
-  with each underlying surface. One new positive parse_validate test
-  (`handle_exposes_diagnostic_summary_one_liner`) pins the fn
-  signature, the format string shape, and each canonical source
-  reference. 16 fixture goldens reblessed (every Handle gains the
-  method). 257 parse_validate tests green; workspace clippy clean.
-  No bridge signature change.
-- 2026-05-13 (R6 — `<Service>Client::diagnostic_summary()` one-line
-  bug-report helper): every `<Service>Client` now exposes
-  `pub fn diagnostic_summary(&self) -> String` returning a pre-
-  formatted one-line tracing/diagnostic string combining the four
-  canonical context sources:
-  ```
-  <fqn>@<namespace> <plugin_version> schema=<schema_digest>
-  ```
-  e.g. `jobs.v1.JobService@my-namespace protoc-gen-rust-temporal 0.1.1 schema=buf.build/cludden/protoc-gen-go-temporal:6d988a28...`.
-  Useful for: bug reports (paste this single line into the issue
-  template instead of digging up four separate facts), `--version`-
-  style startup log lines, sanity-check assertions in CI ("did the
-  right plugin produce this?"). Pulls each source from its canonical
-  spot (FULLY_QUALIFIED_SERVICE_NAME const, bridge `client.namespace()`
-  per-call, GENERATED_BY_PLUGIN_VERSION const, module-level
-  CLUDDEN_SCHEMA_DIGEST const) so the output stays in lockstep
-  with each underlying surface. One new positive parse_validate
-  test (`client_exposes_diagnostic_summary_one_liner`) pins the fn
-  signature, the format string shape, and each of the four positional
-  source references. 16 fixture goldens reblessed (every Client gains
-  the method). 256 parse_validate tests green; workspace clippy
-  clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>Handle::Debug` enriched with active
   namespace): paralleling the prior turn's Client Debug ship, the
   Handle Debug impl now also includes a `namespace` field pulled via
@@ -1354,10 +1029,7 @@ Progress:
   let id = MyClient::random_workflow_id();
   opts.with_workflow_id(id)
   ```
-  pattern common in test setups and one-shot CLI tooling. Pairs with
-  the existing `<Service>Client::random_workflow_id_with_prefix`
-  helper (one chains a UUID through the options builder, the other
-  generates a prefixed UUID via the typed Client static). Body calls
+  pattern common in test setups and one-shot CLI tooling. Body calls
   the bridge directly so consumers don't need the typed Client in
   scope. One new positive parse_validate test
   (`start_options_exposes_with_random_workflow_id_chain`) pins the
@@ -1382,25 +1054,6 @@ Progress:
   string's `Name {{ set: count/total [names] }}` shape. 16 fixture
   goldens reblessed (every StartOptions gains the impl). 251
   parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Service>Client::random_workflow_id_with_prefix(prefix)`):
-  prefixed UUID-id helper, sibling of the existing
-  `random_workflow_id()` static. Returns a UUID-based workflow id
-  with `prefix` prepended:
-  ```
-  MyClient::random_workflow_id_with_prefix("test-")
-  ⇒ "test-9f3e..."
-  ```
-  Useful for namespacing random ids by environment / tenant / test
-  name so dashboards can group them without parsing UUIDs. Takes
-  `impl ::std::fmt::Display` so callers can pass `&str`, `String`,
-  or any other Display implementor (test ids, integers for shard
-  numbers, etc.). Body forwards to `Self::random_workflow_id()`
-  via `format!`. One new positive parse_validate test
-  (`client_exposes_random_workflow_id_with_prefix_helper`) pins
-  the fn signature and the format-call body. 16 fixture goldens
-  reblessed (every Client gains the helper). 250 parse_validate
-  tests green — milestone — workspace clippy clean. No bridge
   signature change.
 - 2026-05-13 (R6 — `<Service>Client::<wf>_handles<I, S>(ids)` bulk-
   attach helper): every workflow on the Client now also exposes a
@@ -1434,27 +1087,6 @@ Progress:
   goldens reblessed (every Client gains the predicate). 248
   parse_validate tests green; workspace clippy clean. No bridge
   signature change.
-- 2026-05-13 (R6 — per-kind count consts on `<Service>Client`):
-  in addition to the aggregate `HANDLER_COUNT`, every present
-  per-kind name aggregate now has a paired count const derived at
-  compile time from `Self::<KIND>_NAMES.len()`: `WORKFLOW_COUNT`,
-  `SIGNAL_COUNT`, `QUERY_COUNT`, `UPDATE_COUNT`, `ACTIVITY_COUNT`.
-  Lets fine-grained sanity assertions stay readable
-  (`assert_eq!(MyClient::WORKFLOW_COUNT, my_workers.workflow_count())`)
-  and lets `static`-sized array dimensioning (`[Item; MyClient::WORKFLOW_COUNT]`)
-  work without manually unpacking the aggregate. Each per-kind count
-  is gated on the corresponding `<KIND>_NAMES` aggregate being
-  present (the const refers to it by name, so emitting one without
-  the other would not compile). Two new positive parse_validate
-  tests:
-  `client_exposes_per_kind_count_consts_derived_from_aggregates`
-  pins all five count consts on `minimal_workflow` (which declares
-  all five kinds);
-  `client_per_kind_count_consts_skip_absent_kinds` pins the skip-
-  emit guard for `workflow_only` (only WORKFLOW_COUNT emits).
-  16 fixture goldens reblessed (every Client gains the present
-  per-kind counts). 247 parse_validate tests green; workspace
-  clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::<wf>_and_wait()` start+wait
   convenience): every workflow on the Client now also exposes a
   `_and_wait` sibling of the existing `<wf>` start method that
@@ -1477,63 +1109,6 @@ Progress:
   empty-input case (`tick_and_wait(opts)` skips the input arg). 16
   fixture goldens reblessed (every workflow gains the method). 245
   parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — file header includes plugin version stamp): the
-  `// Code generated by protoc-gen-rust-temporal. DO NOT EDIT.`
-  banner now embeds the plugin's Cargo version inline:
-  `// Code generated by protoc-gen-rust-temporal vX.Y.Z. DO NOT EDIT.`.
-  Lets consumers spot at-a-glance which plugin build produced the
-  file (faster than reading `<module>::PLUGIN_VERSION`, which
-  requires opening a Rust scope) and matches the convention
-  `protoc-gen-go` and most other code generators use. Embedded via
-  `env!("CARGO_PKG_VERSION")` so it tracks the Cargo manifest. The
-  trailing `. DO NOT EDIT.` marker is preserved verbatim so existing
-  CI guards / linters that match on it keep working. One new
-  positive parse_validate test
-  (`file_header_includes_plugin_version_stamp`) pins both the
-  prefix shape (without anchoring on the X.Y.Z so re-pins don't
-  invalidate the test) and the trailing DO-NOT-EDIT marker. The
-  existing `minimal_workflow_render_smoke` smoke check updated to
-  match the new prefix. 16 fixture goldens reblessed (every fixture
-  carries the version-stamped header). 243 parse_validate tests
-  green; workspace clippy clean. No bridge signature change.
-- 2026-05-13 (R6 — module-level `PLUGIN_VERSION` const completes
-  the codegen-version triple at module scope): every generated
-  `<service>_temporal` module now carries
-  `pub const PLUGIN_VERSION: &str = "protoc-gen-rust-temporal X.Y.Z"`,
-  the module-level mirror of the existing per-Client
-  `GENERATED_BY_PLUGIN_VERSION` inherent const. Lets
-  `pub use module::*` glob imports surface the version without
-  dragging the Client into scope, and completes the codegen-version
-  triple at module scope alongside `CLUDDEN_SCHEMA_DIGEST` (schema
-  commit) and `WIRE_FORMAT_VERSION` (wire format pin). Useful for
-  bug reports — pasting `<module>::PLUGIN_VERSION` into the issue
-  template surfaces the exact build that produced the offending
-  code without needing to inspect the binary's build metadata.
-  Embedded at codegen via `env!("CARGO_PKG_VERSION")` so it tracks
-  the plugin's own Cargo version. One new positive parse_validate
-  test (`module_level_plugin_version_const_mirrors_client_const`)
-  pins both the prefix shape and verifies the Client inherent const
-  still emits alongside (no accidental replacement). 16 fixture
-  goldens reblessed (every fixture carries the new const). 242
-  parse_validate tests green; workspace clippy clean. No bridge
-  signature change.
-- 2026-05-13 (R6 — `<Wf>StartOptions::has_field_set(&self, name)`
-  reflective per-name predicate): completes the StartOptions
-  introspection trio with FIELD_NAMES (schema), set_field_names
-  (per-instance subset), and now has_field_set (per-name probe).
-  Returns true iff `name` matches one of the declared field names AND
-  that field is `Some`. Unknown names return false (no panic). Lets
-  dynamic config-merge UIs iterate FIELD_NAMES and probe per-name
-  to render the current state of each field — useful for building
-  diff displays ("3 of 9 fields are overridden") or
-  per-field-toggle UIs without enumerating each field at the call
-  site. One new positive parse_validate test
-  (`start_options_exposes_has_field_set_reflective_predicate`) pins
-  the fn signature, the per-field arm for every one of the nine
-  fields, AND the catch-all `_ => false` for unknown names. 16
-  fixture goldens reblessed (every StartOptions gains the method).
-  241 parse_validate tests green; workspace clippy clean. No bridge
   signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::merge_in(&mut self, other)`
   non-consuming merge sibling): every `<Wf>StartOptions` struct now
@@ -1579,9 +1154,9 @@ Progress:
   tooling — debug tables, config-merge UIs, serializer-coverage
   assertions ("does my serde codec cover every field?"). const-
   evaluable so it lands in `static` contexts. The order matches
-  `set_field_names`, `is_empty`, and `set_field_count` so tooling can
-  iterate with consistent semantics across the four introspection
-  surfaces. One new positive parse_validate test
+  `set_field_names` so tooling can iterate with consistent semantics
+  across the options introspection surfaces. One new positive
+  parse_validate test
   (`start_options_exposes_field_names_static_const`) pins the const
   declaration AND every field entry. 16 fixture goldens reblessed
   (every StartOptions gains the const). 238+1 = 239 parse_validate
@@ -1601,44 +1176,6 @@ Progress:
   pins the fn signature and the `*self = Self::default();` body. 16
   fixture goldens reblessed (every StartOptions gains the method).
   235 parse_validate tests green. No bridge signature change.
-- 2026-05-13 (R6 — module-level `WIRE_FORMAT_VERSION` const pins the
-  `(encoding, messageType, data)` Payload triple version): every
-  generated `<service>_temporal` module now carries
-  `pub const WIRE_FORMAT_VERSION: &str = "v1"`, the pinned wire-format
-  version of the wrapper Payload triple
-  `(encoding="binary/protobuf", messageType, data)`. Pairs with last
-  turn's `CLUDDEN_SCHEMA_DIGEST` (schema commit) and the existing
-  Client `GENERATED_BY_PLUGIN_VERSION` const to give consumers a
-  complete codegen-version triple. Lets cross-language compat tooling
-  spot when a future v2 ever lands; today the value is hard-pinned at
-  "v1" because WIRE-FORMAT.md says so. Matches the wire-format
-  invariant called out in CLAUDE.md / `WIRE-FORMAT.md` — keep the
-  string in lockstep if that doc ever bumps. One new positive
-  parse_validate test
-  (`module_level_wire_format_version_const_emits_v1_pin`) pins the
-  exact "v1" value. 16 fixture goldens reblessed (every fixture
-  carries the new const). 234 parse_validate tests green. No bridge
-  signature change.
-- 2026-05-13 (R6 — module-level `CLUDDEN_SCHEMA_DIGEST` const exposes
-  the BSR commit used at codegen time): every generated module now
-  carries `pub const CLUDDEN_SCHEMA_DIGEST: &str = "..."`, the
-  cludden BSR module path + commit hex (e.g.
-  `buf.build/cludden/protoc-gen-go-temporal:6d988a28838c46ebb99eaa042cf2a607`).
-  Captured at plugin build time via a `cargo:rustc-env=` directive in
-  `build.rs` that exposes the existing `CLUDDEN_BSR_COMMIT` constant
-  to the rest of the crate. Render then bakes it into every emitted
-  module via `env!("CLUDDEN_SCHEMA_COMMIT")`. Lets cross-language
-  reproducibility audits detect drift (Rust / TS / Go arms generated
-  from different schema commits will report different digests) and
-  surfaces the exact schema version in support tickets without
-  inspecting the plugin binary's build metadata. The full BSR module
-  path is preserved verbatim so tooling can dispatch directly to
-  `buf` if needed. One new positive parse_validate test
-  (`module_level_cludden_schema_digest_const_emits_with_bsr_prefix`)
-  pins the const's prefix shape (without anchoring on the exact hex,
-  which re-pins legitimately change). 16 fixture goldens reblessed
-  (every fixture carries the new const). 233 parse_validate tests
-  green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::lookup_handler_kind(name)`
   generic dispatch helper): every `<Service>Client` now exposes
   `pub fn lookup_handler_kind(name: &str) -> Option<&'static str>`
@@ -1661,24 +1198,6 @@ Progress:
   the per-kind emit-guard parity using `activity_only`. 16 fixture
   goldens reblessed (every Client gains the helper). 232
   parse_validate tests green. No bridge signature change.
-- 2026-05-13 (R6 — module-level `PACKAGE` / `SERVICE_NAME` /
-  `FULLY_QUALIFIED_SERVICE_NAME` / `SOURCE_FILE` consts mirror the
-  per-Client ones): every generated `<service>_temporal` module now
-  carries these four identity consts at module scope, in addition to
-  the existing inherent versions on `<Service>Client`. Lets consumer
-  code (proc macros, build scripts, dispatch tables, `pub use module::*`
-  glob imports) spell `<service_temporal_module>::PACKAGE` directly
-  without referencing `<Service>Client`. Module-level uses `&str`
-  (matching the existing per-workflow / per-handler module consts)
-  while the Client inherent ones use `&'static str` — both forms
-  coexist; module-level supplements rather than replaces. One new
-  positive parse_validate test
-  (`module_level_identity_consts_mirror_client_consts`) pins all four
-  module-level emit lines AND verifies the Client inherent PACKAGE
-  still emits alongside (no accidental replacement). 16 fixture
-  goldens reblessed (every fixture now has the four module consts at
-  the top of its constants block). 230 parse_validate tests green.
-  No bridge signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::set_field_names()` introspector):
   every `<Wf>StartOptions` struct now exposes
   `pub fn set_field_names(&self) -> Vec<&'static str>` returning the

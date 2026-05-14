@@ -2732,46 +2732,6 @@ fn start_options_exposes_is_empty_predicate() {
 }
 
 #[test]
-fn start_options_exposes_has_field_set_reflective_predicate() {
-    // R6 ergonomics — `<Wf>StartOptions::has_field_set(&self, name) ->
-    // bool` is a reflective per-name predicate. Returns true iff
-    // `name` matches one of the declared field names AND that field
-    // is `Some`. Unknown names return false (no panic). Pairs with
-    // `FIELD_NAMES` (schema) and `set_field_names` (per-instance
-    // subset) — useful for dynamic config-merge UIs that iterate
-    // FIELD_NAMES and probe per-name to render the current state.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub fn has_field_set(&self, name: &str) -> bool {"),
-        "missing has_field_set fn signature: {source}"
-    );
-    // Each known field must have an arm pulling `is_some()`.
-    for field in [
-        "workflow_id",
-        "task_queue",
-        "id_reuse_policy",
-        "id_conflict_policy",
-        "execution_timeout",
-        "run_timeout",
-        "task_timeout",
-        "enable_eager_workflow_start",
-        "retry_policy",
-    ] {
-        let arm = format!("\"{field}\" => self.{field}.is_some(),");
-        assert!(
-            source.contains(&arm),
-            "has_field_set body missing arm `{arm}`: {source}"
-        );
-    }
-    // Unknown-name fallthrough returns false.
-    assert!(
-        source.contains("                _ => false,"),
-        "has_field_set must fall through to false for unknown names: {source}"
-    );
-}
-
-#[test]
 fn start_options_implements_display_with_set_count_summary() {
     // R6 ergonomics — `<Wf>StartOptions` impls `Display` printing a
     // one-line summary distinct from the verbose Debug derive.
@@ -2861,38 +2821,13 @@ fn start_options_exposes_workflow_id_or_random_conditional() {
 }
 
 #[test]
-fn start_options_exposes_with_random_workflow_id_prefix_chain() {
-    // R6 ergonomics — `<Wf>StartOptions::with_random_workflow_id_prefix(prefix)`
-    // sugar for the two-step
-    //     opts.with_workflow_id(MyClient::random_workflow_id_with_prefix(p))
-    // pattern. Useful for namespacing test ids by environment /
-    // tenant / test name without spelling out the Client constant.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub fn with_random_workflow_id_prefix(mut self, prefix: impl ::std::fmt::Display) -> Self {"
-        ),
-        "missing with_random_workflow_id_prefix fn signature: {source}"
-    );
-    assert!(
-        source.contains(
-            "self.workflow_id = Some(::std::format!(\"{}{}\", prefix, temporal_runtime::random_workflow_id()));"
-        ),
-        "body must format `<prefix><uuid>` and assign: {source}"
-    );
-}
-
-#[test]
 fn start_options_exposes_with_random_workflow_id_chain() {
     // R6 ergonomics — `<Wf>StartOptions::with_random_workflow_id(self)`
     // sugar for setting `workflow_id` to a UUID via the bridge's
     // `random_workflow_id()`. Saves the two-step
     //     let id = MyClient::random_workflow_id();
     //     opts.with_workflow_id(id)
-    // common in test setups and one-shot CLI tooling. Pairs with the
-    // existing `<Service>Client::random_workflow_id_with_prefix`
-    // ship.
+    // common in test setups and one-shot CLI tooling.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -2924,44 +2859,6 @@ fn start_options_exposes_clear_mutating_reset() {
         source.contains("*self = Self::default();"),
         "clear body must canonical-reset via Self::default(): {source}"
     );
-}
-
-#[test]
-fn start_options_exposes_set_field_count_for_telemetry() {
-    // R6 ergonomics — `<Wf>StartOptions::set_field_count(&self) ->
-    // usize` is a direct sum of `field.is_some() as usize` per field,
-    // skipping the Vec allocation `set_field_names().len()` would
-    // require. Useful for telemetry counters and size-budget
-    // assertions ("at most 3 overrides allowed in this config layer").
-    // Pairs with `is_empty` (count == 0 ⇔ empty).
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub fn set_field_count(&self) -> usize {"),
-        "missing set_field_count fn signature: {source}"
-    );
-    // First addend kicks off the chain (no `+` prefix).
-    assert!(
-        source.contains("(self.workflow_id.is_some() as usize)"),
-        "first addend missing: {source}"
-    );
-    // Each subsequent field must contribute `+ (self.<f>.is_some() as usize)`.
-    for field in [
-        "task_queue",
-        "id_reuse_policy",
-        "id_conflict_policy",
-        "execution_timeout",
-        "run_timeout",
-        "task_timeout",
-        "enable_eager_workflow_start",
-        "retry_policy",
-    ] {
-        let line = format!("+ (self.{field}.is_some() as usize)");
-        assert!(
-            source.contains(&line),
-            "set_field_count body missing addend for `{field}`: {source}"
-        );
-    }
 }
 
 #[test]
@@ -3135,12 +3032,8 @@ fn start_options_exposes_with_field_builders() {
 #[test]
 fn client_struct_implements_display() {
     // R6 ergonomics — `<Service>Client` carries a manual `Display`
-    // impl producing `<package>.<service>@<namespace>` — the FQN
-    // const followed by the active Temporal namespace pulled via the
-    // bridge `client.namespace()` accessor. Surfaces the namespace
-    // in log lines like `info!("starting {client}")` so multi-
-    // namespace processes (e.g. dual-region apps) distinguish their
-    // clients in tracing output.
+    // impl producing the fully-qualified service name. Keeps log
+    // lines concise without exposing the opaque inner client.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3148,21 +3041,18 @@ fn client_struct_implements_display() {
         "missing Display impl: {source}"
     );
     assert!(
-        source.contains(
-            "write!(f, \"{}@{}\", Self::FULLY_QUALIFIED_SERVICE_NAME, self.client.namespace())"
-        ),
-        "Display body must format `<fqn>@<namespace>` via the FQN const + bridge accessor: {source}"
+        source.contains("f.write_str(Self::FULLY_QUALIFIED_SERVICE_NAME)"),
+        "Display body must write the FQN const: {source}"
     );
 }
 
 #[test]
 fn client_struct_implements_debug() {
     // R6 ergonomics — `<Service>Client` carries a manual `Debug`
-    // impl that prints `package`, `service`, `namespace`,
-    // `plugin_version` (`finish_non_exhaustive` since the inner
-    // client is opaque). Lets `tracing::info!(?client, ...)` emit
-    // useful structured output — including the active namespace —
-    // without dumping connection internals.
+    // impl that prints `package`, `service`, and `plugin_version`
+    // (`finish_non_exhaustive` since the inner client is opaque).
+    // Lets `tracing::info!(?client, ...)` emit useful structured
+    // output without dumping connection internals.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3176,10 +3066,6 @@ fn client_struct_implements_debug() {
     assert!(
         source.contains(".field(\"service\", &Self::SERVICE_NAME)"),
         "Debug impl must include service: {source}"
-    );
-    assert!(
-        source.contains(".field(\"namespace\", &self.client.namespace())"),
-        "Debug impl must include namespace via the bridge accessor: {source}"
     );
     assert!(
         source.contains(".field(\"plugin_version\", &Self::GENERATED_BY_PLUGIN_VERSION)"),
@@ -3271,12 +3157,9 @@ fn handle_exposes_into_inner_consuming_accessor() {
 #[test]
 fn handle_struct_implements_display() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Display` impl
-    // producing a concise `<WorkflowName>(<workflow_id>:<run_id>)`
-    // form (or `<WorkflowName>(<workflow_id>)` for attach handles
-    // where run_id is None) for log lines like
-    // `info!("handling {handle}")` where the structured Debug form
-    // would be too verbose. Re-uses `workflow_id_with_run()` so the
-    // composite-identity accessor and Display stay in sync.
+    // producing a concise `<WorkflowName>(<workflow_id>)` form for
+    // log lines like `info!("handling {handle}")` where the
+    // structured Debug form would be too verbose.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3284,20 +3167,18 @@ fn handle_struct_implements_display() {
         "missing Display impl: {source}"
     );
     assert!(
-        source.contains("write!(f, \"{}({})\", Self::WORKFLOW_NAME, self.workflow_id_with_run())"),
-        "Display body must format `<name>(<composite>)` via workflow_id_with_run(): {source}"
+        source.contains("write!(f, \"{}({})\", Self::WORKFLOW_NAME, self.inner.workflow_id())"),
+        "Display body must format `<name>(<workflow_id>)`: {source}"
     );
 }
 
 #[test]
 fn handle_struct_implements_debug() {
     // R6 ergonomics — `<Wf>Handle` carries a manual `Debug` impl
-    // that prints `workflow_name`, `namespace`, `workflow_id`,
-    // `run_id`. Bridge `WorkflowHandle` doesn't derive Debug (its
-    // inner SDK client is opaque), so a derive is unavailable; the
-    // manual impl gives logging frameworks a structured form. The
-    // `namespace` field parallels the Client Debug ship — handle and
-    // client surfaces share the same identity context.
+    // that prints `workflow_name`, `workflow_id`, and `run_id`.
+    // Bridge `WorkflowHandle` doesn't derive Debug (its inner SDK
+    // client is opaque), so a derive is unavailable; the manual impl
+    // gives logging frameworks a structured form.
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
     assert!(
@@ -3307,10 +3188,6 @@ fn handle_struct_implements_debug() {
     assert!(
         source.contains(".field(\"workflow_name\", &Self::WORKFLOW_NAME)"),
         "Debug impl must include workflow_name: {source}"
-    );
-    assert!(
-        source.contains(".field(\"namespace\", &self.inner.client().namespace())"),
-        "Debug impl must include namespace via the bridge client.namespace() chain: {source}"
     );
     assert!(
         source.contains(".field(\"workflow_id\", &self.inner.workflow_id())"),
@@ -3423,182 +3300,6 @@ fn cli_command_exposes_handler_name_accessor() {
             "missing handler arm `{arm}`: {source}"
         );
     }
-}
-
-#[test]
-fn client_exposes_per_kind_count_consts_derived_from_aggregates() {
-    // R6 ergonomics — in addition to the aggregate `HANDLER_COUNT`,
-    // every present per-kind aggregate now has a paired count const
-    // derived at compile time from `Self::<KIND>_NAMES.len()`. Lets
-    // fine-grained sanity assertions stay readable:
-    //     assert_eq!(MyClient::WORKFLOW_COUNT, my_workers.workflow_count());
-    // const-evaluable so they land in const contexts.
-    //
-    // `minimal_workflow` declares all five kinds (workflow / signal /
-    // query / update / activity), so all five count consts emit.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    for (count_const, kind_const) in [
-        ("WORKFLOW_COUNT", "WORKFLOW_NAMES"),
-        ("SIGNAL_COUNT", "SIGNAL_NAMES"),
-        ("QUERY_COUNT", "QUERY_NAMES"),
-        ("UPDATE_COUNT", "UPDATE_NAMES"),
-        ("ACTIVITY_COUNT", "ACTIVITY_NAMES"),
-    ] {
-        let line = format!("pub const {count_const}: usize = Self::{kind_const}.len();");
-        assert!(
-            source.contains(&line),
-            "missing per-kind count const `{line}`: {source}"
-        );
-    }
-}
-
-#[test]
-fn client_per_kind_count_consts_skip_absent_kinds() {
-    // Skip-emit guard: per-kind counts only emit when the
-    // corresponding `<KIND>_NAMES` aggregate is present (otherwise
-    // the const refers to a name that doesn't exist on the Client).
-    // `workflow_only` declares only workflows — only WORKFLOW_COUNT
-    // should emit.
-    let services = parse_and_validate("workflow_only");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const WORKFLOW_COUNT: usize = Self::WORKFLOW_NAMES.len();"),
-        "WORKFLOW_COUNT must emit for workflow_only: {source}"
-    );
-    for absent in [
-        "SIGNAL_COUNT",
-        "QUERY_COUNT",
-        "UPDATE_COUNT",
-        "ACTIVITY_COUNT",
-    ] {
-        assert!(
-            !source.contains(absent),
-            "{absent} must not emit when its <KIND>_NAMES is absent: {source}"
-        );
-    }
-}
-
-#[test]
-fn client_exposes_handler_summary_natural_language_const() {
-    // R6 ergonomics — `<Service>Client::HANDLER_SUMMARY: &'static str`
-    // is a pre-computed natural-language summary of the per-kind
-    // counts, with proper singular vs plural inflection. Useful for
-    // `--help` output, startup log lines, and diagnostic surfaces.
-    //
-    // `minimal_workflow` declares one of each kind ⇒ all five
-    // singulars listed.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const HANDLER_SUMMARY: &'static str = \"1 workflow, 1 signal, 1 query, 1 update, 1 activity\";"
-        ),
-        "minimal_workflow HANDLER_SUMMARY must list all five singular kinds: {source}"
-    );
-
-    // `multiple_workflows` declares 2 workflows + 1 signal ⇒ "2
-    // workflows" (plural) + "1 signal" (singular). No queries /
-    // updates / activities so those drop out.
-    let services = parse_and_validate("multiple_workflows");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const HANDLER_SUMMARY: &'static str = \"2 workflows, 1 signal\";"),
-        "multiple_workflows HANDLER_SUMMARY must use plural for 2 workflows + singular for 1 signal: {source}"
-    );
-
-    // `workflow_only` declares one workflow only ⇒ "1 workflow" alone.
-    let services = parse_and_validate("workflow_only");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const HANDLER_SUMMARY: &'static str = \"1 workflow\";"),
-        "workflow_only HANDLER_SUMMARY must contain only the workflow count: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_handler_count_const_derived_from_aggregate() {
-    // R6 ergonomics — `<Service>Client::HANDLER_COUNT: usize` is
-    // derived at compile time from `Self::ALL_HANDLER_NAMES.len()`.
-    // Lets assert-style code spell:
-    //     assert_eq!(MyClient::HANDLER_COUNT, registered.len());
-    // without a runtime `.len()` call. Also const-evaluable, useful
-    // in const-context like `static`-sized array dimensioning. Gated
-    // on the same emit guard as ALL_HANDLER_NAMES — the const refers
-    // to it by name, so emitting one without the other would not
-    // compile.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();"),
-        "missing HANDLER_COUNT const derived from ALL_HANDLER_NAMES: {source}"
-    );
-    // Sanity: ALL_HANDLER_NAMES must still be present for the const
-    // referent to resolve.
-    assert!(
-        source.contains("pub const ALL_HANDLER_NAMES: &'static [&'static str]"),
-        "ALL_HANDLER_NAMES must accompany HANDLER_COUNT (const referent): {source}"
-    );
-}
-
-#[test]
-fn client_exposes_diagnostic_summary_one_liner() {
-    // R6 ergonomics — `<Service>Client::diagnostic_summary(&self)`
-    // returns a pre-formatted one-line tracing/diagnostic string
-    // combining service identity, active namespace, plugin version,
-    // and schema digest. Format:
-    //     "<fqn>@<namespace> <plugin_version> schema=<schema_digest>"
-    // Useful for bug reports (paste into issue), `--version`-style
-    // startup log lines, sanity-check assertions in CI.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub fn diagnostic_summary(&self) -> String {"),
-        "missing diagnostic_summary fn signature: {source}"
-    );
-    // Body must format four positional args via the four canonical
-    // sources: FULLY_QUALIFIED_SERVICE_NAME (identity),
-    // self.client.namespace() (per-instance namespace),
-    // GENERATED_BY_PLUGIN_VERSION (Client const), and
-    // self::CLUDDEN_SCHEMA_DIGEST (module const).
-    assert!(
-        source.contains("\"{}@{} {} schema={}\","),
-        "format string must be `<fqn>@<namespace> <plugin_version> schema=<digest>`: {source}"
-    );
-    for arg in [
-        "                Self::FULLY_QUALIFIED_SERVICE_NAME,",
-        "                self.client.namespace(),",
-        "                Self::GENERATED_BY_PLUGIN_VERSION,",
-        "                self::CLUDDEN_SCHEMA_DIGEST,",
-    ] {
-        assert!(
-            source.contains(arg),
-            "diagnostic_summary body missing source `{arg}`: {source}"
-        );
-    }
-}
-
-#[test]
-fn client_exposes_random_workflow_id_with_prefix_helper() {
-    // R6 ergonomics — `<Service>Client::random_workflow_id_with_prefix(prefix)`
-    // returns a UUID-based workflow id with `prefix` prepended.
-    // Useful for namespacing random ids by environment / tenant /
-    // test name so dashboards can group them without parsing UUIDs.
-    // Takes `impl Display` so callers can pass &str, String, or any
-    // other Display implementor (test ids, integers for shard
-    // numbers, etc.).
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub fn random_workflow_id_with_prefix(prefix: impl ::std::fmt::Display) -> String {"
-        ),
-        "missing random_workflow_id_with_prefix fn signature: {source}"
-    );
-    assert!(
-        source.contains("::std::format!(\"{}{}\", prefix, Self::random_workflow_id())"),
-        "body must format prefix + Self::random_workflow_id(): {source}"
-    );
 }
 
 #[test]
@@ -3827,27 +3528,6 @@ fn client_lookup_handler_kind_emits_only_present_kind_probes() {
 }
 
 #[test]
-fn client_exposes_message_type_count_const_derived_from_aggregate() {
-    // R6 ergonomics — `<Service>Client::MESSAGE_TYPE_COUNT: usize`
-    // is derived at compile time from `Self::ALL_MESSAGE_TYPES.len()`.
-    // Pairs with HANDLER_COUNT for codec-coverage sanity assertions:
-    //     assert_eq!(MyClient::MESSAGE_TYPE_COUNT, codec.registered_count());
-    // const-evaluable so it lands in `static`-sized array
-    // dimensioning. Same emit guard as ALL_MESSAGE_TYPES.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const MESSAGE_TYPE_COUNT: usize = Self::ALL_MESSAGE_TYPES.len();"),
-        "missing MESSAGE_TYPE_COUNT const derived from ALL_MESSAGE_TYPES: {source}"
-    );
-    // Sanity: ALL_MESSAGE_TYPES still emits as the const referent.
-    assert!(
-        source.contains("pub const ALL_MESSAGE_TYPES: &'static [&'static str]"),
-        "ALL_MESSAGE_TYPES must accompany MESSAGE_TYPE_COUNT (const referent): {source}"
-    );
-}
-
-#[test]
 fn client_exposes_all_message_types_deduped_aggregate() {
     // R6 ergonomics — `<Service>Client::ALL_MESSAGE_TYPES: &'static
     // [&'static str]` is the deduped union of every distinct proto
@@ -3916,144 +3596,6 @@ fn client_exposes_registered_names_by_kind_pairs_const() {
 }
 
 #[test]
-fn client_exposes_activity_input_output_type_lookup_consts() {
-    // R6 ergonomics — `<Service>Client::ACTIVITY_INPUT_TYPES` /
-    // `ACTIVITY_OUTPUT_TYPES` complete the per-kind input/output
-    // type table set across all five handler kinds (workflow,
-    // signal-input-only, query, update, activity). Useful for
-    // activity payload codecs that need to deserialize requests AND
-    // serialize responses by activity name.
-    //
-    // `minimal_workflow` declares
-    // `ProcessChunk(ChunkInput) -> ChunkOutput`.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const ACTIVITY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.ProcessChunk\", \"jobs.v1.ChunkInput\")];"
-        ),
-        "ACTIVITY_INPUT_TYPES must map ProcessChunk → ChunkInput: {source}"
-    );
-    assert!(
-        source.contains(
-            "pub const ACTIVITY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.ProcessChunk\", \"jobs.v1.ChunkOutput\")];"
-        ),
-        "ACTIVITY_OUTPUT_TYPES must map ProcessChunk → ChunkOutput: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_update_input_output_type_lookup_consts() {
-    // R6 ergonomics — `<Service>Client::UPDATE_INPUT_TYPES` /
-    // `UPDATE_OUTPUT_TYPES` are the update-side parity of the workflow
-    // / query lookup tables. Updates can have non-Empty input AND
-    // output, so both directions emit. Useful for update payload
-    // codecs.
-    //
-    // `minimal_workflow` declares
-    // `Reconfigure(ReconfigureInput) -> ReconfigureOutput`.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const UPDATE_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.Reconfigure\", \"jobs.v1.ReconfigureInput\")];"
-        ),
-        "UPDATE_INPUT_TYPES must map Reconfigure → ReconfigureInput: {source}"
-    );
-    assert!(
-        source.contains(
-            "pub const UPDATE_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.Reconfigure\", \"jobs.v1.ReconfigureOutput\")];"
-        ),
-        "UPDATE_OUTPUT_TYPES must map Reconfigure → ReconfigureOutput: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_query_input_output_type_lookup_consts() {
-    // R6 ergonomics — `<Service>Client::QUERY_INPUT_TYPES` /
-    // `QUERY_OUTPUT_TYPES` are the query-side parity of
-    // WORKFLOW_INPUT_TYPES / WORKFLOW_OUTPUT_TYPES. Queries can have
-    // non-Empty output (unlike signals), so both directions emit.
-    //
-    // `minimal_workflow` declares `GetStatus(google.protobuf.Empty) -> JobStatusOutput`.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const QUERY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.GetStatus\", \"google.protobuf.Empty\")];"
-        ),
-        "QUERY_INPUT_TYPES must map GetStatus → google.protobuf.Empty: {source}"
-    );
-    assert!(
-        source.contains(
-            "pub const QUERY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.GetStatus\", \"jobs.v1.JobStatusOutput\")];"
-        ),
-        "QUERY_OUTPUT_TYPES must map GetStatus → JobStatusOutput: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_signal_input_types_lookup_const() {
-    // R6 ergonomics — `<Service>Client::SIGNAL_INPUT_TYPES` is the
-    // signal-side parity of WORKFLOW_INPUT_TYPES. Maps each signal's
-    // registered name to its input proto type FQN. Useful for signal
-    // payload codecs that need to deserialize by name. Signals are
-    // always Empty-output (rejected at validate otherwise), so there
-    // is no SIGNAL_OUTPUT_TYPES counterpart.
-    //
-    // `minimal_workflow` declares `CancelJob(CancelJobInput)`.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.CancelJob\", \"jobs.v1.CancelJobInput\")];"
-        ),
-        "SIGNAL_INPUT_TYPES must map CancelJob → CancelJobInput: {source}"
-    );
-    // Sanity: no SIGNAL_OUTPUT_TYPES (signals are always Empty-output).
-    assert!(
-        !source.contains("SIGNAL_OUTPUT_TYPES"),
-        "no SIGNAL_OUTPUT_TYPES should emit (signals are always Empty-output): {source}"
-    );
-}
-
-#[test]
-fn client_exposes_workflow_input_output_type_lookup_consts() {
-    // R6 ergonomics — `<Service>Client::WORKFLOW_INPUT_TYPES` and
-    // `WORKFLOW_OUTPUT_TYPES` are `&'static [(&'static str, &'static
-    // str)]` lookup tables mapping each workflow's registered name to
-    // its input / output proto type FQN. Useful for codecs and
-    // payload routers that need to deserialize workflow inputs by
-    // workflow name without per-rpc consts. Empty-input/output
-    // workflows surface `"google.protobuf.Empty"` verbatim.
-    //
-    // `minimal_workflow` declares `RunJob(JobInput) -> JobOutput`.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.RunJob\", \"jobs.v1.JobInput\")];"
-        ),
-        "WORKFLOW_INPUT_TYPES must map RunJob → JobInput: {source}"
-    );
-    assert!(
-        source.contains(
-            "pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.RunJob\", \"jobs.v1.JobOutput\")];"
-        ),
-        "WORKFLOW_OUTPUT_TYPES must map RunJob → JobOutput: {source}"
-    );
-
-    // `empty_input_workflow` declares `Tick(google.protobuf.Empty) -> TickOutput`.
-    // The Empty input must surface as the proto FQN verbatim.
-    let services = parse_and_validate("empty_input_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("\"google.protobuf.Empty\""),
-        "empty-input workflow must surface `google.protobuf.Empty` verbatim in the table: {source}"
-    );
-}
-
-#[test]
 fn client_exposes_activity_task_queue_table_when_declared() {
     // R6 ergonomics — `<Service>Client::ACTIVITY_TASK_QUEUE_TABLE` is
     // the activity-side parity of WORKFLOW_TASK_QUEUE_TABLE. Maps
@@ -4115,249 +3657,6 @@ fn client_omits_activity_task_queue_table_when_no_activity_declares_queue() {
 }
 
 #[test]
-fn client_exposes_workflows_with_default_child_options_classifier() {
-    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS`
-    // lists registered names of workflows that declare at least one
-    // of `parent_close_policy` or `wait_for_cancellation`. Mirrors
-    // the existing emit guard for `<wf>_default_child_options()` —
-    // a workflow appears here iff its factory was emitted under
-    // `workflows=true`. Useful for tooling that wants to know which
-    // workflows expect specific child semantics.
-    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
-        r#"
-        syntax = "proto3";
-        package wfchild.v1;
-        import "temporal/v1/temporal.proto";
-
-        service Svc {
-          rpc WithPolicy(In) returns (Out) {
-            option (temporal.v1.workflow) = {
-              task_queue: "tq"
-              parent_close_policy: PARENT_CLOSE_POLICY_REQUEST_CANCEL
-            };
-          }
-          rpc WithWait(In) returns (Out) {
-            option (temporal.v1.workflow) = {
-              task_queue: "tq"
-              wait_for_cancellation: true
-            };
-          }
-          rpc Plain(In) returns (Out) {
-            option (temporal.v1.workflow) = { task_queue: "tq" };
-          }
-        }
-        message In  {}
-        message Out {}
-        "#,
-    );
-    let services = parse::parse(&pool, &files_to_generate).expect("parse");
-    let source = render::render(&services[0], &Default::default());
-    // WithPolicy + WithWait should appear; Plain should not.
-    assert!(
-        source.contains(
-            "pub const WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS: &'static [&'static str] = &[\"wfchild.v1.Svc.WithPolicy\", \"wfchild.v1.Svc.WithWait\"];"
-        ),
-        "WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS must list WithPolicy + WithWait but not Plain: {source}"
-    );
-
-    // Skip-guard: minimal_workflow declares neither.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        !source.contains("WORKFLOWS_WITH_DEFAULT_CHILD_OPTIONS"),
-        "const must omit when no workflow declares child-options fields: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_workflows_with_timeouts_classifier() {
-    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_TIMEOUTS`
-    // lists registered names of workflows that declare at least one
-    // of execution_timeout / run_timeout / task_timeout. Useful for
-    // tooling that identifies workflows with proto-baked SLA
-    // expectations vs those that rely on server defaults.
-    //
-    // `multiple_workflows` declares two workflows: Alpha (no
-    // timeouts) and Beta (declares a run_timeout). Only Beta should
-    // appear.
-    let services = parse_and_validate("multiple_workflows");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const WORKFLOWS_WITH_TIMEOUTS: &'static [&'static str] = &[\"multi.v1.MultiService.Beta\"];"
-        ),
-        "WORKFLOWS_WITH_TIMEOUTS must list Beta (declares run_timeout) but not Alpha: {source}"
-    );
-
-    // Skip-guard: `minimal_workflow` declares no timeouts.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        !source.contains("WORKFLOWS_WITH_TIMEOUTS"),
-        "const must omit when no workflow declares any timeout: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_activities_with_retry_policy_classifier() {
-    // R6 ergonomics — `<Service>Client::ACTIVITIES_WITH_RETRY_POLICY`
-    // is the activity-side parity of WORKFLOWS_WITH_RETRY_POLICY.
-    // Lists registered names of activities that declare a proto-level
-    // retry policy on their default_options.
-    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
-        r#"
-        syntax = "proto3";
-        package actretry.v1;
-        import "temporal/v1/temporal.proto";
-
-        service Svc {
-          rpc Run(In) returns (Out) {
-            option (temporal.v1.workflow) = { task_queue: "tq" };
-          }
-          rpc Retried(In) returns (Out) {
-            option (temporal.v1.activity) = {
-              start_to_close_timeout: { seconds: 30 }
-              retry_policy: { max_attempts: 5 }
-            };
-          }
-          rpc Plain(In) returns (Out) {
-            option (temporal.v1.activity) = {
-              start_to_close_timeout: { seconds: 30 }
-            };
-          }
-        }
-        message In  {}
-        message Out {}
-        "#,
-    );
-    let services = parse::parse(&pool, &files_to_generate).expect("parse");
-    let source = render::render(&services[0], &Default::default());
-    // Only Retried (declares retry_policy) should appear.
-    assert!(
-        source.contains(
-            "pub const ACTIVITIES_WITH_RETRY_POLICY: &'static [&'static str] = &[\"actretry.v1.Svc.Retried\"];"
-        ),
-        "ACTIVITIES_WITH_RETRY_POLICY must list Retried but not Plain: {source}"
-    );
-
-    // Skip-guard: minimal_workflow's ProcessChunk activity has no
-    // default_options at all, so no retry policy.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        !source.contains("ACTIVITIES_WITH_RETRY_POLICY"),
-        "const must omit when no activity declares retry policy: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_workflows_with_retry_policy_classifier() {
-    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_RETRY_POLICY`
-    // lists registered names of workflows that declare a proto-level
-    // retry policy. Useful for tooling that distinguishes workflows
-    // with built-in retry expectations from those that rely on server
-    // defaults. Sibling of WORKFLOWS_WITH_ID_TEMPLATE and
-    // WORKFLOWS_WITH_ALIASES.
-    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
-        r#"
-        syntax = "proto3";
-        package wfretry.v1;
-        import "temporal/v1/temporal.proto";
-
-        service Svc {
-          option (temporal.v1.service) = { task_queue: "tq" };
-          rpc Retried(In) returns (Out) {
-            option (temporal.v1.workflow) = {
-              retry_policy: { max_attempts: 3 }
-            };
-          }
-          rpc Plain(In) returns (Out) {
-            option (temporal.v1.workflow) = {};
-          }
-        }
-        message In  {}
-        message Out {}
-        "#,
-    );
-    let services = parse::parse(&pool, &files_to_generate).expect("parse");
-    let source = render::render(&services[0], &Default::default());
-    // Only Retried (which declares retry_policy) should appear.
-    assert!(
-        source.contains(
-            "pub const WORKFLOWS_WITH_RETRY_POLICY: &'static [&'static str] = &[\"wfretry.v1.Svc.Retried\"];"
-        ),
-        "WORKFLOWS_WITH_RETRY_POLICY must list Retried but not Plain: {source}"
-    );
-
-    // Skip-guard: `minimal_workflow` declares no workflow retry policy.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        !source.contains("WORKFLOWS_WITH_RETRY_POLICY"),
-        "const must omit when no workflow declares a retry policy: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_workflows_with_aliases_classifier() {
-    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_ALIASES`
-    // lists registered names of workflows that declare alternate
-    // registration names. Useful for tooling that audits compat-name
-    // coverage during renames. Sibling of WORKFLOWS_WITH_ID_TEMPLATE.
-    //
-    // `workflow_aliases` declares Run with aliases.
-    let services = parse_and_validate("workflow_aliases");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const WORKFLOWS_WITH_ALIASES: &'static [&'static str] = &[\"aliases.v1.AliasService.Run\"];"
-        ),
-        "WORKFLOWS_WITH_ALIASES must list Run (has aliases): {source}"
-    );
-
-    // Skip-guard: `minimal_workflow` declares no aliases.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        !source.contains("WORKFLOWS_WITH_ALIASES"),
-        "const must omit when no workflow declares aliases: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_workflows_with_id_template_const() {
-    // R6 ergonomics — `<Service>Client::WORKFLOWS_WITH_ID_TEMPLATE`
-    // lists registered names of workflows that declare an `id`
-    // template. Useful for tooling that distinguishes workflows
-    // whose ids are synthesized from input fields from workflows
-    // that need an explicit override.
-    //
-    // `multiple_workflows` declares two workflows: Alpha (with
-    // id template) and Beta (without). Only Alpha should appear.
-    let services = parse_and_validate("multiple_workflows");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains(
-            "pub const WORKFLOWS_WITH_ID_TEMPLATE: &'static [&'static str] = &[\"multi.v1.MultiService.Alpha\"];"
-        ),
-        "WORKFLOWS_WITH_ID_TEMPLATE must list Alpha (has id template) but not Beta: {source}"
-    );
-}
-
-#[test]
-fn client_omits_workflows_with_id_template_when_none_declare() {
-    // Skip-emit guard: when no workflow declares an id template,
-    // the const must not emit. `workflow_only` declares one
-    // workflow without an `id:` line.
-    let services = parse_and_validate("workflow_only");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        !source.contains("WORKFLOWS_WITH_ID_TEMPLATE"),
-        "const must omit when no workflow declares an id template: {source}"
-    );
-}
-
-#[test]
 fn client_exposes_workflow_task_queue_table_lookup_const() {
     // R6 ergonomics — `<Service>Client::WORKFLOW_TASK_QUEUE_TABLE`
     // is a const lookup table mapping each workflow's registered
@@ -4406,25 +3705,6 @@ fn client_omits_workflow_task_queue_table_when_no_workflow_has_queue() {
     assert!(
         !source.contains("WORKFLOW_TASK_QUEUE_TABLE"),
         "table must omit when no workflow has an effective queue: {source}"
-    );
-}
-
-#[test]
-fn client_exposes_task_queue_count_const_derived_from_aggregate() {
-    // R6 ergonomics — `<Service>Client::TASK_QUEUE_COUNT: usize` is
-    // derived at compile time from `Self::TASK_QUEUES.len()`. Pairs
-    // with HANDLER_COUNT and MESSAGE_TYPE_COUNT for service-level
-    // cardinality assertions.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const TASK_QUEUE_COUNT: usize = Self::TASK_QUEUES.len();"),
-        "missing TASK_QUEUE_COUNT const derived from TASK_QUEUES: {source}"
-    );
-    // Sanity: TASK_QUEUES still emits as the const referent.
-    assert!(
-        source.contains("pub const TASK_QUEUES: &'static [&'static str]"),
-        "TASK_QUEUES must accompany TASK_QUEUE_COUNT (const referent): {source}"
     );
 }
 
@@ -5142,39 +4422,6 @@ fn handle_exposes_client_passthrough() {
 }
 
 #[test]
-fn handle_exposes_diagnostic_summary_one_liner() {
-    // R6 ergonomics — `<Wf>Handle::diagnostic_summary(&self)` is the
-    // handle-side parallel of the prior turn's
-    // `<Service>Client::diagnostic_summary()`. Pre-formatted one-line
-    // tracing/diagnostic combining workflow_name, active namespace,
-    // and the composite-identity workflow_id_with_run(). Format:
-    //     "<workflow_name>@<namespace> <workflow_id>[:<run_id>]"
-    // Useful for handle-specific bug reports.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub fn diagnostic_summary(&self) -> String {"),
-        "missing diagnostic_summary fn signature: {source}"
-    );
-    // Format string must be `<wfname>@<namespace> <composite>`.
-    assert!(
-        source.contains("                \"{}@{} {}\","),
-        "format string must be `<wfname>@<namespace> <composite>`: {source}"
-    );
-    // Each canonical source position.
-    for arg in [
-        "                Self::WORKFLOW_NAME,",
-        "                self.inner.client().namespace(),",
-        "                self.workflow_id_with_run(),",
-    ] {
-        assert!(
-            source.contains(arg),
-            "diagnostic_summary body missing source `{arg}`: {source}"
-        );
-    }
-}
-
-#[test]
 fn handle_exposes_execution_pair_structured_tuple() {
     // R6 ergonomics — `<Wf>Handle::execution_pair(&self) ->
     // Option<(String, String)>` returns the structured
@@ -5868,119 +5115,6 @@ fn marker_structs_implement_display_printing_registered_name() {
     assert!(
         body_count >= 3,
         "expected at least three Display bodies forwarding to Self::NAME, found {body_count}: {source}"
-    );
-}
-
-#[test]
-fn module_level_plugin_version_const_mirrors_client_const() {
-    // R6 ergonomics — every generated `<service>_temporal` module
-    // now carries `pub const PLUGIN_VERSION: &str = "protoc-gen-rust-temporal X.Y.Z"`,
-    // a module-level mirror of the existing per-Client
-    // `GENERATED_BY_PLUGIN_VERSION` inherent const. Lets
-    // `pub use module::*` glob imports surface the version without
-    // dragging the Client into scope, and completes the codegen-
-    // version triple at module scope (alongside CLUDDEN_SCHEMA_DIGEST
-    // and WIRE_FORMAT_VERSION).
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    // Module-level: prefix shape only (the X.Y.Z bumps with each
-    // plugin release).
-    assert!(
-        source.contains("pub const PLUGIN_VERSION: &str = \"protoc-gen-rust-temporal "),
-        "module-level PLUGIN_VERSION must carry the full prefix: {source}"
-    );
-    // Client inherent must still emit alongside (no accidental
-    // replacement).
-    assert!(
-        source.contains(
-            "pub const GENERATED_BY_PLUGIN_VERSION: &'static str = \"protoc-gen-rust-temporal "
-        ),
-        "Client GENERATED_BY_PLUGIN_VERSION must still emit alongside module-level: {source}"
-    );
-}
-
-#[test]
-fn module_level_wire_format_version_const_emits_v1_pin() {
-    // R6 ergonomics — every generated `<service>_temporal` module now
-    // carries `pub const WIRE_FORMAT_VERSION: &str = "v1"`, the
-    // pinned wire-format version of the Payload triple
-    // `(encoding="binary/protobuf", messageType, data)`. Pairs with
-    // `CLUDDEN_SCHEMA_DIGEST` (schema commit) and the existing Client
-    // `GENERATED_BY_PLUGIN_VERSION` const to give consumers a complete
-    // codegen-version triple. Lets cross-language compat tooling spot
-    // when a future v2 ever lands; today the value is hard-pinned at
-    // "v1" because WIRE-FORMAT.md says so.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const WIRE_FORMAT_VERSION: &str = \"v1\";"),
-        "WIRE_FORMAT_VERSION must be the v1 pin: {source}"
-    );
-}
-
-#[test]
-fn module_level_cludden_schema_digest_const_emits_with_bsr_prefix() {
-    // R6 ergonomics — every generated `<service>_temporal` module now
-    // carries `pub const CLUDDEN_SCHEMA_DIGEST: &str = "..."`, the
-    // BSR commit identifier of cludden's annotation schema captured at
-    // plugin build time. Lets cross-language reproducibility audits
-    // detect drift (Rust / TS / Go arms generated from different
-    // schema commits will report different digests) and surfaces the
-    // exact schema version in support tickets without inspecting the
-    // plugin binary's build metadata. The full BSR module path is
-    // preserved verbatim so tooling can resolve it directly with `buf`.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    assert!(
-        source.contains("pub const CLUDDEN_SCHEMA_DIGEST: &str = \""),
-        "missing CLUDDEN_SCHEMA_DIGEST const: {source}"
-    );
-    // Value must carry the full BSR-style prefix so tooling can
-    // dispatch to `buf` directly. We don't pin the exact hex (re-pins
-    // change it) but we DO pin the prefix shape.
-    assert!(
-        source.contains(
-            "pub const CLUDDEN_SCHEMA_DIGEST: &str = \"buf.build/cludden/protoc-gen-go-temporal:"
-        ),
-        "CLUDDEN_SCHEMA_DIGEST must carry the full `buf.build/...:` BSR prefix: {source}"
-    );
-}
-
-#[test]
-fn module_level_identity_consts_mirror_client_consts() {
-    // R6 ergonomics — `PACKAGE` / `SERVICE_NAME` /
-    // `FULLY_QUALIFIED_SERVICE_NAME` / `SOURCE_FILE` consts are now
-    // emitted at the generated module scope (in addition to the
-    // existing inherent ones on `<Service>Client`). Lets consumer code
-    // (proc macros, build scripts, dispatch tables, `pub use module::*`
-    // glob imports) spell `<service_temporal_module>::PACKAGE`
-    // directly without dragging the Client type into scope.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    // Module-level consts use `&str` (not `&'static str`) — matches
-    // the existing per-workflow / per-handler module consts.
-    assert!(
-        source.contains("    pub const PACKAGE: &str = \"jobs.v1\";"),
-        "module-level PACKAGE const must emit: {source}"
-    );
-    assert!(
-        source.contains("    pub const SERVICE_NAME: &str = \"JobService\";"),
-        "module-level SERVICE_NAME const must emit: {source}"
-    );
-    assert!(
-        source
-            .contains("    pub const FULLY_QUALIFIED_SERVICE_NAME: &str = \"jobs.v1.JobService\";"),
-        "module-level FULLY_QUALIFIED_SERVICE_NAME const must emit: {source}"
-    );
-    assert!(
-        source.contains("    pub const SOURCE_FILE: &str = \"input.proto\";"),
-        "module-level SOURCE_FILE const must emit: {source}"
-    );
-    // The existing Client inherent consts must still emit too —
-    // module-level supplements, doesn't replace.
-    assert!(
-        source.contains("        pub const PACKAGE: &'static str = \"jobs.v1\";"),
-        "Client inherent PACKAGE must still emit alongside module-level: {source}"
     );
 }
 
@@ -6984,41 +6118,12 @@ fn assert_golden(name: &str) {
 }
 
 #[test]
-fn file_header_includes_plugin_version_stamp() {
-    // R6 ergonomics — the file header `// Code generated by
-    // protoc-gen-rust-temporal v<X.Y.Z>. DO NOT EDIT.` includes the
-    // plugin's Cargo version so consumers can spot at-a-glance which
-    // plugin build produced the file (faster than reading
-    // `<module>::PLUGIN_VERSION`, which requires opening a Rust
-    // scope). Matches the convention `protoc-gen-go` and most other
-    // code generators use.
-    let services = parse_and_validate("minimal_workflow");
-    let source = render::render(&services[0], &Default::default());
-    // Prefix shape pin (the X.Y.Z bumps with each release; that's
-    // the whole point — don't anchor the exact value).
-    assert!(
-        source.starts_with("// Code generated by protoc-gen-rust-temporal v"),
-        "header must start with the version-stamped Code-generated banner: {}",
-        &source[..source.find('\n').unwrap_or(80).min(120)]
-    );
-    // The stamp must end with the DO-NOT-EDIT marker (preserved from
-    // the unstamped era so existing CI guards still match).
-    let first_line = source.lines().next().expect("at least one line");
-    assert!(
-        first_line.ends_with(". DO NOT EDIT."),
-        "header must still end with `. DO NOT EDIT.`: {first_line}"
-    );
-}
-
-/// Smoke check on top of the golden — kept because it pinpoints which
-/// fragment changed when the golden diffs.
-#[test]
 fn minimal_workflow_render_smoke() {
     let services = parse_and_validate("minimal_workflow");
     let source = render::render(&services[0], &Default::default());
 
     let must_contain = [
-        "// Code generated by protoc-gen-rust-temporal v",
+        "// Code generated by protoc-gen-rust-temporal. DO NOT EDIT.",
         "pub mod jobs_v1_job_service_temporal {",
         "use crate::jobs::v1::*;",
         "pub const RUN_JOB_WORKFLOW_NAME: &str = \"jobs.v1.JobService.RunJob\";",
