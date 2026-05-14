@@ -3149,6 +3149,31 @@ fn cli_command_exposes_handler_name_accessor() {
 }
 
 #[test]
+fn client_exposes_handler_count_const_derived_from_aggregate() {
+    // R6 ergonomics — `<Service>Client::HANDLER_COUNT: usize` is
+    // derived at compile time from `Self::ALL_HANDLER_NAMES.len()`.
+    // Lets assert-style code spell:
+    //     assert_eq!(MyClient::HANDLER_COUNT, registered.len());
+    // without a runtime `.len()` call. Also const-evaluable, useful
+    // in const-context like `static`-sized array dimensioning. Gated
+    // on the same emit guard as ALL_HANDLER_NAMES — the const refers
+    // to it by name, so emitting one without the other would not
+    // compile.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();"),
+        "missing HANDLER_COUNT const derived from ALL_HANDLER_NAMES: {source}"
+    );
+    // Sanity: ALL_HANDLER_NAMES must still be present for the const
+    // referent to resolve.
+    assert!(
+        source.contains("pub const ALL_HANDLER_NAMES: &'static [&'static str]"),
+        "ALL_HANDLER_NAMES must accompany HANDLER_COUNT (const referent): {source}"
+    );
+}
+
+#[test]
 fn client_exposes_lookup_handler_kind_dispatch_helper() {
     // R6 ergonomics — `<Service>Client::lookup_handler_kind(name) ->
     // Option<&'static str>` is a generic dispatch helper that scans

@@ -102,6 +102,7 @@ pub mod wf_v1_order_service_temporal {
         pub const QUERY_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Status"];
         pub const UPDATE_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Confirm"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["wf.v1.OrderService.Run", "wf.v1.OrderService.Cancel", "wf.v1.OrderService.Status", "wf.v1.OrderService.Confirm"];
+        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["orders"];
 
         /// Look up which handler kind a registered name belongs to.

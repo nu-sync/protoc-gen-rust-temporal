@@ -743,6 +743,25 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Service>Client::HANDLER_COUNT` const derived from
+  ALL_HANDLER_NAMES): every `<Service>Client` whose service has at
+  least one handler now exposes
+  `pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();`.
+  Compile-time evaluation (no runtime `.len()` call) — usable in
+  `static`-sized array dimensioning and other const contexts. Lets
+  assert-style code spell:
+  ```
+  assert_eq!(MyClient::HANDLER_COUNT, registered.len());
+  ```
+  for worker-registration sanity checks. Gated on the same emit
+  guard as ALL_HANDLER_NAMES — the const refers to it by name, so
+  emitting one without the other would not compile. One new positive
+  parse_validate test
+  (`client_exposes_handler_count_const_derived_from_aggregate`) pins
+  both the HANDLER_COUNT line and the presence of its
+  ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
+  Client gains the const). 236 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Wf>StartOptions::clear(&mut self)` mutating
   reset): every `<Wf>StartOptions` struct now exposes
   `pub fn clear(&mut self)` that self-replaces with `Self::default()`.

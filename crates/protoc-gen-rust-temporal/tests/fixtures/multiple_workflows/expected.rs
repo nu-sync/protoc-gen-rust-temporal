@@ -92,6 +92,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Alpha", "multi.v1.MultiService.Beta"];
         pub const SIGNAL_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Ping"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["multi.v1.MultiService.Alpha", "multi.v1.MultiService.Beta", "multi.v1.MultiService.Ping"];
+        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["multi", "multi-beta"];
 
         /// Look up which handler kind a registered name belongs to.

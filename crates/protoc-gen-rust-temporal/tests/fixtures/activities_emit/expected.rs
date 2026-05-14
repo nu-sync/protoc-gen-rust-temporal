@@ -93,6 +93,7 @@ pub mod acts_v1_chunk_service_temporal {
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.RunBatch"];
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.Process", "acts.v1.ChunkService.Heartbeat"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["acts.v1.ChunkService.RunBatch", "acts.v1.ChunkService.Process", "acts.v1.ChunkService.Heartbeat"];
+        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["chunks"];
 
         /// Look up which handler kind a registered name belongs to.

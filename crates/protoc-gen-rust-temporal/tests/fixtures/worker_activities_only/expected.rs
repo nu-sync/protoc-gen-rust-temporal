@@ -68,6 +68,7 @@ pub mod workeract_v1_activity_worker_service_temporal {
         pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const ACTIVITY_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["workeract.v1.ActivityWorkerService.Fetch", "workeract.v1.ActivityWorkerService.Ping"];
+        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
 
         /// Look up which handler kind a registered name belongs to.
         /// Returns `"workflow"` / `"signal"` / `"query"` / `"update"` / `"activity"`,

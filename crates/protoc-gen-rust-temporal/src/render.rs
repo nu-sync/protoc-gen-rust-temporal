@@ -785,6 +785,21 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
     all_names.extend(u_names.iter().copied());
     all_names.extend(act_names.iter().copied());
     emit(out, "ALL_HANDLER_NAMES", &all_names);
+    // `HANDLER_COUNT` — total count of registered handler names,
+    // derived at compile time from the just-emitted aggregate. Lets
+    // assert-style code spell:
+    //     assert_eq!(MyClient::HANDLER_COUNT, registered.len());
+    // without a runtime `.len()` call (also const-evaluable, useful in
+    // const-context like `static`-sized array dimensioning). Gated on
+    // the same emit guard as ALL_HANDLER_NAMES — the const refers to
+    // it by name, so emitting one without the other would not
+    // compile.
+    if !all_names.is_empty() {
+        let _ = writeln!(
+            out,
+            "        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();"
+        );
+    }
     // TASK_QUEUES — distinct task queues used across the service's
     // workflows + activities, in declaration order. Lets worker setup
     // validate "I'm configured for every queue this service needs" via

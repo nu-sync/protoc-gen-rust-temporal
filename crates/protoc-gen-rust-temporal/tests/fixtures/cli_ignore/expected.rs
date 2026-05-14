@@ -88,6 +88,7 @@ pub mod cli_v1_report_service_temporal {
         pub const GENERATED_BY_PLUGIN_VERSION: &'static str = "protoc-gen-rust-temporal 0.1.1";
         pub const WORKFLOW_NAMES: &'static [&'static str] = &["cli.v1.ReportService.Generate", "cli.v1.ReportService.Internal"];
         pub const ALL_HANDLER_NAMES: &'static [&'static str] = &["cli.v1.ReportService.Generate", "cli.v1.ReportService.Internal"];
+        pub const HANDLER_COUNT: usize = Self::ALL_HANDLER_NAMES.len();
         pub const TASK_QUEUES: &'static [&'static str] = &["reports"];
 
         /// Look up which handler kind a registered name belongs to.
