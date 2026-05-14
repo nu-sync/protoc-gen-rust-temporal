@@ -116,6 +116,8 @@ pub mod workerfull_v1_orchestration_service_temporal {
         pub const WORKFLOW_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "workerfull.v1.RunInput")];
         pub const WORKFLOW_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Run", "workerfull.v1.RunOutput")];
         pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Cancel", "workerfull.v1.CancelInput")];
+        pub const QUERY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Status", "google.protobuf.Empty")];
+        pub const QUERY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[("workerfull.v1.OrchestrationService.Status", "workerfull.v1.StatusOutput")];
         pub const REGISTERED_NAMES_BY_KIND: &'static [(&'static str, &'static str)] = &[("workflow", "workerfull.v1.OrchestrationService.Run"), ("signal", "workerfull.v1.OrchestrationService.Cancel"), ("query", "workerfull.v1.OrchestrationService.Status"), ("update", "workerfull.v1.OrchestrationService.Confirm"), ("activity", "workerfull.v1.OrchestrationService.Load")];
 
         /// Look up which handler kind a registered name belongs to.

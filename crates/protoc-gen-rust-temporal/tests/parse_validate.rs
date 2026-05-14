@@ -3807,6 +3807,30 @@ fn client_exposes_registered_names_by_kind_pairs_const() {
 }
 
 #[test]
+fn client_exposes_query_input_output_type_lookup_consts() {
+    // R6 ergonomics — `<Service>Client::QUERY_INPUT_TYPES` /
+    // `QUERY_OUTPUT_TYPES` are the query-side parity of
+    // WORKFLOW_INPUT_TYPES / WORKFLOW_OUTPUT_TYPES. Queries can have
+    // non-Empty output (unlike signals), so both directions emit.
+    //
+    // `minimal_workflow` declares `GetStatus(google.protobuf.Empty) -> JobStatusOutput`.
+    let services = parse_and_validate("minimal_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains(
+            "pub const QUERY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.GetStatus\", \"google.protobuf.Empty\")];"
+        ),
+        "QUERY_INPUT_TYPES must map GetStatus → google.protobuf.Empty: {source}"
+    );
+    assert!(
+        source.contains(
+            "pub const QUERY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[(\"jobs.v1.JobService.GetStatus\", \"jobs.v1.JobStatusOutput\")];"
+        ),
+        "QUERY_OUTPUT_TYPES must map GetStatus → JobStatusOutput: {source}"
+    );
+}
+
+#[test]
 fn client_exposes_signal_input_types_lookup_const() {
     // R6 ergonomics — `<Service>Client::SIGNAL_INPUT_TYPES` is the
     // signal-side parity of WORKFLOW_INPUT_TYPES. Maps each signal's

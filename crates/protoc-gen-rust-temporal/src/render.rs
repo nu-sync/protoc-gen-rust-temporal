@@ -1003,6 +1003,44 @@ fn render_service_name_aggregates(out: &mut String, svc: &ServiceModel) {
             "        pub const SIGNAL_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_in}];"
         );
     }
+    // `QUERY_INPUT_TYPES` / `QUERY_OUTPUT_TYPES` — parity with
+    // WORKFLOW_INPUT_TYPES / WORKFLOW_OUTPUT_TYPES for query payload
+    // codecs. Queries can have non-Empty output (unlike signals), so
+    // both directions emit. Skip-emit when no queries declared.
+    if !svc.queries.is_empty() {
+        let joined_in = svc
+            .queries
+            .iter()
+            .map(|q| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    q.registered_name.escape_default(),
+                    q.input_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const QUERY_INPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_in}];"
+        );
+        let joined_out = svc
+            .queries
+            .iter()
+            .map(|q| {
+                format!(
+                    "(\"{}\", \"{}\")",
+                    q.registered_name.escape_default(),
+                    q.output_type.full_name.escape_default()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "        pub const QUERY_OUTPUT_TYPES: &'static [(&'static str, &'static str)] = &[{joined_out}];"
+        );
+    }
     // `REGISTERED_NAMES_BY_KIND` — `(kind, name)` pairs across all
     // handlers. Inverse of `lookup_handler_kind`: iterates once with
     // both dimensions instead of probing per-name. Same kind labels

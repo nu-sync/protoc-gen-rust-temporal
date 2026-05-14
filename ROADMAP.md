@@ -802,6 +802,19 @@ Progress:
   ALL_HANDLER_NAMES referent. 16 fixture goldens reblessed (every
   Client gains the const). 236 parse_validate tests green. No bridge
   signature change.
+- 2026-05-13 (R6 — `<Service>Client::QUERY_INPUT_TYPES` /
+  `QUERY_OUTPUT_TYPES` lookup tables): query-side parity of the
+  workflow / signal lookup tables. Maps each query's registered name
+  to its input / output proto type FQN. Queries can have non-Empty
+  output (unlike signals), so both directions emit. Useful for query
+  payload codecs that need to deserialize requests AND serialize
+  responses by query name. Skip-emit when no queries declared. One
+  new positive parse_validate test
+  (`client_exposes_query_input_output_type_lookup_consts`) pins the
+  GetStatus → Empty / JobStatusOutput mapping on `minimal_workflow`.
+  16 fixture goldens reblessed (every Client with at least one
+  query gains the two consts). 266 parse_validate tests green;
+  workspace clippy clean. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::SIGNAL_INPUT_TYPES` lookup
   table): signal-side parity of the prior turn's
   `WORKFLOW_INPUT_TYPES`. Maps each signal's registered name to its
