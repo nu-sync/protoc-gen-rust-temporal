@@ -652,6 +652,17 @@ pub mod report_service_cli {
                 Self::TerminateGenerate(_) => "cli.v1.ReportService.Generate",
             }
         }
+        /// Action verb of this subcommand: one of `start` / `attach` / `cancel`
+        /// / `terminate` / `signal` / `query` / `update`. Pairs with [`Self::handler_name`]
+        /// for `(verb, handler)` dispatch telemetry.
+        pub fn verb(&self) -> &'static str {
+            match self {
+                Self::StartGenerate(_) => "start",
+                Self::AttachGenerate(_) => "attach",
+                Self::CancelGenerate(_) => "cancel",
+                Self::TerminateGenerate(_) => "terminate",
+            }
+        }
     }
 
     impl Cli {

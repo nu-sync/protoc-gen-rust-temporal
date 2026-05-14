@@ -743,6 +743,21 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Command::verb(&self)` action-side accessor):
+  companion ship to the prior turn's `handler_name()` accessor. Returns
+  the verb keyword (`start` / `attach` / `cancel` / `terminate` /
+  `signal` / `query` / `update`) classifying the subcommand
+  independent of the target handler. Together
+  `(cmd.verb(), cmd.handler_name())` is the full dispatch tuple —
+  useful for tagging tracing spans / metrics labels with two clean
+  dimensions instead of one composite string. Verbs are the seven CLI
+  subcommand families and remain stable across re-codegen. Same
+  emit-guard as `handler_name()` (skip when the Command enum is
+  empty). One new positive parse_validate test
+  (`cli_command_exposes_verb_accessor`) using inline proto with all
+  four workflow verbs plus per-handler-kind arms. Two fixture
+  goldens reblessed (`cli_emit`, `cli_ignore`). 219 parse_validate
+  tests green. No bridge signature change.
 - 2026-05-13 (R6 — `Command::handler_name(&self)` accessor on the
   generated CLI Command enum): every `<service>_cli::Command` enum
   now carries an inherent `pub fn handler_name(&self) -> &'static str`

@@ -3084,6 +3084,83 @@ fn cli_command_exposes_handler_name_accessor() {
 }
 
 #[test]
+fn cli_command_exposes_verb_accessor() {
+    // R6 ergonomics — `Command::verb(&self) -> &'static str` is the
+    // action-side counterpart of `handler_name()`. Returns one of
+    // `start` / `attach` / `cancel` / `terminate` / `signal` / `query`
+    // / `update` classifying the subcommand independently of the
+    // target handler. Together `(verb, handler_name)` is the full
+    // dispatch tuple — useful for tagging tracing spans / metrics
+    // labels with two clean dimensions instead of one composite.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package vbs.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn verb(&self) -> &'static str {"),
+        "missing verb fn signature: {source}"
+    );
+    // Each workflow verb arm.
+    for (variant, expected_verb) in [
+        ("Self::StartRun(_)", "start"),
+        ("Self::AttachRun(_)", "attach"),
+        ("Self::CancelRun(_)", "cancel"),
+        ("Self::TerminateRun(_)", "terminate"),
+    ] {
+        let arm = format!("{variant} => \"{expected_verb}\",");
+        assert!(
+            source.contains(&arm),
+            "missing workflow-verb arm `{arm}`: {source}"
+        );
+    }
+    // Per-handler-kind arms.
+    for (variant, expected_verb) in [
+        ("Self::SignalCancel(_)", "signal"),
+        ("Self::QueryStatus(_)", "query"),
+        ("Self::UpdateTouch(_)", "update"),
+    ] {
+        let arm = format!("{variant} => \"{expected_verb}\",");
+        assert!(
+            source.contains(&arm),
+            "missing handler arm `{arm}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn cli_command_handler_name_skipped_when_no_subcommand_variants() {
     // Skip-emit guard: when the service has no usable workflows AND no
     // signals/queries/updates, the Command enum has no variants and

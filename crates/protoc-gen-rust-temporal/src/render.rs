@@ -4463,6 +4463,61 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         }
         let _ = writeln!(out, "            }}");
         let _ = writeln!(out, "        }}");
+        // Action-side counterpart of `handler_name()`. Returns the verb
+        // keyword (start/attach/cancel/terminate/signal/query/update)
+        // classifying the subcommand independent of the target handler.
+        // Together `(cmd.verb(), cmd.handler_name())` is the full
+        // dispatch tuple — useful for tagging tracing spans / metrics
+        // labels with two clean dimensions instead of one composite
+        // string. Verbs are the seven CLI subcommand families and
+        // remain stable across re-codegen.
+        let _ = writeln!(
+            out,
+            "        /// Action verb of this subcommand: one of `start` / `attach` / `cancel`"
+        );
+        let _ = writeln!(
+            out,
+            "        /// / `terminate` / `signal` / `query` / `update`. Pairs with [`Self::handler_name`]"
+        );
+        let _ = writeln!(out, "        /// for `(verb, handler)` dispatch telemetry.");
+        let _ = writeln!(out, "        pub fn verb(&self) -> &'static str {{");
+        let _ = writeln!(out, "            match self {{");
+        for wf in &usable_workflows {
+            let pascal = wf.rpc_method.to_pascal_case();
+            let _ = writeln!(out, "                Self::Start{pascal}(_) => \"start\",");
+            let _ = writeln!(
+                out,
+                "                Self::Attach{pascal}(_) => \"attach\","
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Cancel{pascal}(_) => \"cancel\","
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Terminate{pascal}(_) => \"terminate\","
+            );
+        }
+        for sig in &svc.signals {
+            let pascal = sig.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Signal{pascal}(_) => \"signal\","
+            );
+        }
+        for q in &svc.queries {
+            let pascal = q.rpc_method.to_pascal_case();
+            let _ = writeln!(out, "                Self::Query{pascal}(_) => \"query\",");
+        }
+        for u in &svc.updates {
+            let pascal = u.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Update{pascal}(_) => \"update\","
+            );
+        }
+        let _ = writeln!(out, "            }}");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }
