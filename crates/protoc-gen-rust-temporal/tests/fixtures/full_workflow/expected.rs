@@ -671,13 +671,9 @@ pub mod full_v1_full_service_temporal {
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
         let id_reuse_policy = opts.id_reuse_policy.or(Some(temporal_runtime::WorkflowIdReusePolicy::AllowDuplicateFailedOnly));
-        let id_conflict_policy = opts.id_conflict_policy;
         let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(7200)));
         let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(3600)));
         let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));
-        let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
-        let retry_policy = opts.retry_policy;
-        let search_attributes = ::std::option::Option::<::std::collections::HashMap<::std::string::String, temporal_runtime::ProtoPayload>>::None;
         let inner = temporal_runtime::signal_with_start_workflow_proto(
             client,
             RUN_WORKFLOW_NAME,
@@ -707,13 +703,9 @@ pub mod full_v1_full_service_temporal {
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "full".to_string());
         let id_reuse_policy = opts.id_reuse_policy.or(Some(temporal_runtime::WorkflowIdReusePolicy::AllowDuplicateFailedOnly));
-        let id_conflict_policy = opts.id_conflict_policy;
         let execution_timeout = opts.execution_timeout.or(Some(Duration::from_secs(7200)));
         let run_timeout = opts.run_timeout.or(Some(Duration::from_secs(3600)));
         let task_timeout = opts.task_timeout.or(Some(Duration::from_secs(60)));
-        let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
-        let retry_policy = opts.retry_policy;
-        let search_attributes = ::std::option::Option::<::std::collections::HashMap<::std::string::String, temporal_runtime::ProtoPayload>>::None;
         let wait_policy = wait_policy.unwrap_or(temporal_runtime::WaitPolicy::Completed);
         let (inner, update_result) = temporal_runtime::update_with_start_workflow_proto::<RunInput, ReconfigureInput, ReconfigureOutput>(
             client,

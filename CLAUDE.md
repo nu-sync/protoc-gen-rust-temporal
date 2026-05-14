@@ -36,6 +36,9 @@ remain hand-written against `temporalio-sdk`.
 - `docs/SUPPORT-STATUS.md` — single index of every `temporal.v1.*` annotation
   field with its current support status (supported / rejected / intentionally
   ignored). Required reading before adding or relaxing a rejection rule.
+- `examples/job-queue/AGENTS.md` — example-specific guidance for the real
+  integration scenario that exercises generated clients, worker contracts, the
+  HTTP API, and CLI usage together.
 
 ## Workspace layout
 

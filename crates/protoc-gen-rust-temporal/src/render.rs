@@ -1810,6 +1810,36 @@ fn render_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
     let _ = writeln!(out, "{ind}let search_attributes = {sa_literal};");
 }
 
+/// Resolve only the start options accepted by the current with-start runtime
+/// helpers. Regular workflow starts use `render_default_resolutions` above.
+fn render_with_start_default_resolutions(out: &mut String, wf: &WorkflowModel, ind: &str) {
+    let id_reuse_default = wf.id_reuse_policy.map(|p| {
+        format!(
+            "temporal_runtime::WorkflowIdReusePolicy::{}",
+            p.rust_variant()
+        )
+    });
+    let resolutions: [(&'static str, Option<String>); 4] = [
+        ("id_reuse_policy", id_reuse_default),
+        (
+            "execution_timeout",
+            wf.execution_timeout.map(duration_literal),
+        ),
+        ("run_timeout", wf.run_timeout.map(duration_literal)),
+        ("task_timeout", wf.task_timeout.map(duration_literal)),
+    ];
+    for (field, default) in resolutions {
+        match default {
+            Some(value) => {
+                let _ = writeln!(out, "{ind}let {field} = opts.{field}.or(Some({value}));");
+            }
+            None => {
+                let _ = writeln!(out, "{ind}let {field} = opts.{field};");
+            }
+        }
+    }
+}
+
 /// Build the expression that fills the start path's `search_attributes`
 /// variable. Returns:
 /// * `None` for proto-unset *and* `SearchAttributesSpec::Empty` (the
@@ -3466,7 +3496,7 @@ fn render_signal_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
-    render_default_resolutions(out, wf, "        ");
+    render_with_start_default_resolutions(out, wf, "        ");
     let _ = writeln!(
         out,
         "        let inner = temporal_runtime::signal_with_start_workflow_proto("
@@ -3564,7 +3594,7 @@ fn render_update_with_start_fn(
             "        let task_queue = opts.task_queue.expect(\"workflow has no proto-level task_queue; opts.task_queue is required\");"
         );
     }
-    render_default_resolutions(out, wf, "        ");
+    render_with_start_default_resolutions(out, wf, "        ");
     // Resolve `wait_policy` against the update's proto-declared default
     // (`UpdateOptions.wait_for_stage` / deprecated `wait_policy`), falling
     // back to `Completed` when none is declared.

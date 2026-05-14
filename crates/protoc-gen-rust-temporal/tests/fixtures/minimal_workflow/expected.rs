@@ -603,13 +603,9 @@ pub mod jobs_v1_job_service_temporal {
         });
         let task_queue = opts.task_queue.unwrap_or_else(|| "jobs".to_string());
         let id_reuse_policy = opts.id_reuse_policy;
-        let id_conflict_policy = opts.id_conflict_policy;
         let execution_timeout = opts.execution_timeout;
         let run_timeout = opts.run_timeout;
         let task_timeout = opts.task_timeout;
-        let enable_eager_workflow_start = opts.enable_eager_workflow_start.unwrap_or(false);
-        let retry_policy = opts.retry_policy;
-        let search_attributes = ::std::option::Option::<::std::collections::HashMap<::std::string::String, temporal_runtime::ProtoPayload>>::None;
         let inner = temporal_runtime::signal_with_start_workflow_proto(
             client,
             RUN_JOB_WORKFLOW_NAME,
