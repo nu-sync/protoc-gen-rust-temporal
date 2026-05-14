@@ -4549,6 +4549,71 @@ fn render_cli_module(out: &mut String, svc: &ServiceModel) {
         }
         let _ = writeln!(out, "            }}");
         let _ = writeln!(out, "        }}");
+        // Third dispatch-tuple accessor pairing with `verb()` and
+        // `handler_name()`. Returns the workflow id this subcommand
+        // targets, when known. `Start*` variants return the user's
+        // `--workflow-id` override (`None` ⇒ runtime synthesizes an id
+        // from the proto template / random); all other variants
+        // require an explicit positional id and always return `Some`.
+        // Together `(verb, handler_name, workflow_id)` is the full
+        // dispatch tuple — one call instead of unwrapping each
+        // variant's args inline.
+        let _ = writeln!(
+            out,
+            "        /// Workflow id this subcommand targets, when known."
+        );
+        let _ = writeln!(
+            out,
+            "        /// `Start*` variants return the user's `--workflow-id` override (`None` means"
+        );
+        let _ = writeln!(
+            out,
+            "        /// the runtime will synthesize one); all other variants always return `Some`."
+        );
+        let _ = writeln!(out, "        pub fn workflow_id(&self) -> Option<&str> {{");
+        let _ = writeln!(out, "            match self {{");
+        for wf in &usable_workflows {
+            let pascal = wf.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Start{pascal}(args) => args.workflow_id.as_deref(),"
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Attach{pascal}(args) => Some(&args.workflow_id),"
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Cancel{pascal}(args) => Some(&args.workflow_id),"
+            );
+            let _ = writeln!(
+                out,
+                "                Self::Terminate{pascal}(args) => Some(&args.workflow_id),"
+            );
+        }
+        for sig in &svc.signals {
+            let pascal = sig.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Signal{pascal}(args) => Some(&args.workflow_id),"
+            );
+        }
+        for q in &svc.queries {
+            let pascal = q.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Query{pascal}(args) => Some(&args.workflow_id),"
+            );
+        }
+        for u in &svc.updates {
+            let pascal = u.rpc_method.to_pascal_case();
+            let _ = writeln!(
+                out,
+                "                Self::Update{pascal}(args) => Some(&args.workflow_id),"
+            );
+        }
+        let _ = writeln!(out, "            }}");
+        let _ = writeln!(out, "        }}");
         let _ = writeln!(out, "    }}");
         let _ = writeln!(out);
     }

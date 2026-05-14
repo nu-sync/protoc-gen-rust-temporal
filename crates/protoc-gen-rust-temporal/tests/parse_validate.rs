@@ -3251,6 +3251,80 @@ fn cli_command_exposes_verb_accessor() {
 }
 
 #[test]
+fn cli_command_exposes_workflow_id_accessor() {
+    // R6 ergonomics — `Command::workflow_id(&self) -> Option<&str>` is
+    // the third dispatch-tuple accessor. Together with `verb()` and
+    // `handler_name()` it gives `(verb, handler, workflow_id)` for
+    // structured logging without inline pattern-matching of args.
+    //
+    // `Start*` returns the user's `--workflow-id` override
+    // (Option<String> on the args struct → as_deref). All other
+    // variants require an explicit positional id and always return
+    // `Some`.
+    let (pool, files_to_generate, _tmp) = compile_fixture_inline(
+        r#"
+        syntax = "proto3";
+        package wid.v1;
+        import "google/protobuf/empty.proto";
+        import "temporal/v1/temporal.proto";
+
+        service Svc {
+          option (temporal.v1.service) = { task_queue: "tq" };
+          rpc Run(In) returns (Out) {
+            option (temporal.v1.workflow) = {
+              signal: [{ ref: "Cancel" }]
+              query:  [{ ref: "Status" }]
+              update: [{ ref: "Touch" }]
+            };
+          }
+          rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.signal) = {};
+          }
+          rpc Status(google.protobuf.Empty) returns (StatusOutput) {
+            option (temporal.v1.query) = {};
+          }
+          rpc Touch(google.protobuf.Empty) returns (google.protobuf.Empty) {
+            option (temporal.v1.update) = {};
+          }
+        }
+        message In  {}
+        message Out {}
+        message StatusOutput { string phase = 1; }
+        "#,
+    );
+    let services = parse::parse(&pool, &files_to_generate).expect("parse");
+    let opts = protoc_gen_rust_temporal::options::RenderOptions {
+        cli: true,
+        ..Default::default()
+    };
+    let source = render::render(&services[0], &opts);
+    assert!(
+        source.contains("pub fn workflow_id(&self) -> Option<&str> {"),
+        "missing workflow_id fn signature: {source}"
+    );
+    // Start variant: `as_deref()` chain (since args.workflow_id is Option<String>).
+    assert!(
+        source.contains("Self::StartRun(args) => args.workflow_id.as_deref(),"),
+        "Start arm must use as_deref() (Option<String> override): {source}"
+    );
+    // All non-Start workflow verbs: Some-wrapped positional id.
+    for variant in [
+        "Self::AttachRun(args)",
+        "Self::CancelRun(args)",
+        "Self::TerminateRun(args)",
+        "Self::SignalCancel(args)",
+        "Self::QueryStatus(args)",
+        "Self::UpdateTouch(args)",
+    ] {
+        let arm = format!("{variant} => Some(&args.workflow_id),");
+        assert!(
+            source.contains(&arm),
+            "missing positional-id arm `{arm}`: {source}"
+        );
+    }
+}
+
+#[test]
 fn cli_command_handler_name_skipped_when_no_subcommand_variants() {
     // Skip-emit guard: when the service has no usable workflows AND no
     // signals/queries/updates, the Command enum has no variants and

@@ -743,6 +743,29 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `Command::workflow_id(&self)` third dispatch-tuple
+  accessor): completes the dispatch-tuple trio on the CLI Command
+  enum. Where `verb()` returns the action keyword and `handler_name()`
+  returns the targeted handler's registered name, `workflow_id()`
+  returns the workflow id this subcommand targets when known. Lets
+  middleware spell:
+  ```
+  tracing::info!(
+    verb = cmd.verb(), handler = cmd.handler_name(),
+    workflow_id = ?cmd.workflow_id()
+  );
+  ```
+  in one shot, instead of unwrapping each variant's args inline.
+  `Start*` returns the user's `--workflow-id` override (Option<String>
+  on the args struct, threaded through `as_deref()`); all other
+  variants require an explicit positional id and always return
+  `Some`. Same emit-guard as the pair (skip when Command enum is
+  empty). One new positive parse_validate test
+  (`cli_command_exposes_workflow_id_accessor`) using inline proto with
+  all four workflow verbs plus per-handler-kind arms, pinning the
+  `as_deref()` shape on Start and the `Some(&args.workflow_id)` shape
+  on the rest. Two fixture goldens reblessed (`cli_emit`, `cli_ignore`).
+  222 parse_validate tests green. No bridge signature change.
 - 2026-05-13 (R6 — `<Service>Client::TASK_QUEUES` distinct-queue
   aggregate const): every `<Service>Client` whose service uses at
   least one task queue (workflow or activity, declared or inherited)

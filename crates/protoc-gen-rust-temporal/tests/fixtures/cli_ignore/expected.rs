@@ -664,6 +664,17 @@ pub mod report_service_cli {
                 Self::TerminateGenerate(_) => "terminate",
             }
         }
+        /// Workflow id this subcommand targets, when known.
+        /// `Start*` variants return the user's `--workflow-id` override (`None` means
+        /// the runtime will synthesize one); all other variants always return `Some`.
+        pub fn workflow_id(&self) -> Option<&str> {
+            match self {
+                Self::StartGenerate(args) => args.workflow_id.as_deref(),
+                Self::AttachGenerate(args) => Some(&args.workflow_id),
+                Self::CancelGenerate(args) => Some(&args.workflow_id),
+                Self::TerminateGenerate(args) => Some(&args.workflow_id),
+            }
+        }
     }
 
     impl Cli {
