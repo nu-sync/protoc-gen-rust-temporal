@@ -318,6 +318,7 @@ pub mod multi_v1_multi_service_temporal {
         pub const INPUT_TYPE: &'static str = self::ALPHA_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::ALPHA_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::ALPHA_TASK_QUEUE;
+        pub const ID_TEMPLATE: &'static str = self::ALPHA_WORKFLOW_ID_TEMPLATE;
 
         pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self { inner }

@@ -743,6 +743,26 @@ Progress:
   gone. Several fixture goldens reblessed (every Args struct
   gained the Debug derive). 178 parse_validate tests green. No
   bridge signature change.
+- 2026-05-13 (R6 — `<Wf>Handle::ID_TEMPLATE` inherent const completes
+  Handle identity matrix): every generated `<Wf>Handle` whose workflow
+  declares an `id` template now exposes the template verbatim as
+  `pub const ID_TEMPLATE: &'static str` re-exporting the existing
+  `<RPC>_WORKFLOW_ID_TEMPLATE` module const. Closes the parity gap
+  in the Handle's identity-const matrix — `WORKFLOW_NAME`,
+  `INPUT_TYPE`, `OUTPUT_TYPE`, `TASK_QUEUE` were already directly
+  accessible as `MyHandle::FOO`; ID_TEMPLATE was previously only on
+  the Definition trait, forcing diagnostic code that wanted to log
+  "this handle's workflow_id was derived from template `…`" to drag
+  in a trait import. Skip-emit when the workflow declares no id
+  template (most workflows synthesize a UUID at runtime); a baked
+  empty string would mislead diagnostic code into thinking a template
+  existed. Two new positive parse_validate tests, one per emit-guard
+  branch:
+  `handle_struct_re_exposes_id_template_const_when_declared` and
+  `handle_struct_omits_id_template_const_when_not_declared`. Seven
+  fixture goldens reblessed (every fixture whose workflow declares
+  an id template). 210 parse_validate tests green. No bridge
+  signature change.
 - 2026-05-13 (R6 — `<Service>Client::DEFAULT_TASK_QUEUE` const):
   when a service declares a default task queue at the service-level
   `(temporal.v1.service).task_queue` annotation, the generated

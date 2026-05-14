@@ -2957,6 +2957,37 @@ fn handle_struct_exposes_identity_consts() {
 }
 
 #[test]
+fn handle_struct_re_exposes_id_template_const_when_declared() {
+    // R6 ergonomics — completes the identity-const matrix on the Handle.
+    // `WORKFLOW_NAME` / `INPUT_TYPE` / `OUTPUT_TYPE` / `TASK_QUEUE` are
+    // already re-exposed; ID_TEMPLATE was previously only on the
+    // Definition trait. Now also on the inherent Handle impl when the
+    // workflow declares an id template — useful when diagnostic code
+    // wants to log "this handle's workflow_id was derived from template
+    // `…`" without a trait import dance.
+    let services = parse_and_validate("full_workflow");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        source.contains("pub const ID_TEMPLATE: &'static str = self::RUN_WORKFLOW_ID_TEMPLATE;"),
+        "Handle must re-expose ID_TEMPLATE when workflow declares one: {source}"
+    );
+}
+
+#[test]
+fn handle_struct_omits_id_template_const_when_not_declared() {
+    // Skip-guard parity with the existing Definition-trait emit. Most
+    // workflows declare no id template (the runtime synthesizes a
+    // UUID), and emitting `ID_TEMPLATE: ""` would mislead diagnostic
+    // code into thinking a template existed.
+    let services = parse_and_validate("workflow_only");
+    let source = render::render(&services[0], &Default::default());
+    assert!(
+        !source.contains("pub const ID_TEMPLATE: &'static str"),
+        "Handle must omit ID_TEMPLATE when workflow declares none: {source}"
+    );
+}
+
+#[test]
 fn handle_exposes_set_run_id_mutating_setter() {
     // R6 ergonomics — `<Wf>Handle::set_run_id(&mut self,
     // Option<String>)` is the mutating alternative to the

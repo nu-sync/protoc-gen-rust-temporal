@@ -304,6 +304,7 @@ pub mod wf_v1_order_service_temporal {
         pub const INPUT_TYPE: &'static str = self::RUN_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::RUN_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_TASK_QUEUE;
+        pub const ID_TEMPLATE: &'static str = self::RUN_WORKFLOW_ID_TEMPLATE;
 
         pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self { inner }

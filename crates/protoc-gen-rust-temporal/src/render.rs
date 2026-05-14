@@ -1964,6 +1964,22 @@ fn render_handle(out: &mut String, svc: &ServiceModel, wf: &WorkflowModel) {
             "        pub const TASK_QUEUE: &'static str = self::{tq_const};"
         );
     }
+    // ID_TEMPLATE re-export: completes the identity-const matrix on the
+    // Handle (WORKFLOW_NAME, INPUT_TYPE, OUTPUT_TYPE, TASK_QUEUE, ID_TEMPLATE
+    // all spellable as `MyHandle::FOO`). Useful when diagnostic code wants
+    // to log "this handle's workflow_id was derived from template `…`".
+    // Skip-emit when the workflow declares no id template (most workflows);
+    // tracks the existing Definition-trait emit guard.
+    if wf.id_template_source.is_some() {
+        let id_const = format!(
+            "{}_WORKFLOW_ID_TEMPLATE",
+            wf.rpc_method.to_shouty_snake_case()
+        );
+        let _ = writeln!(
+            out,
+            "        pub const ID_TEMPLATE: &'static str = self::{id_const};"
+        );
+    }
     let _ = writeln!(out);
     // `from_inner` — inverse of `into_inner`. Lets test harnesses
     // construct a typed handle from a hand-built bridge handle

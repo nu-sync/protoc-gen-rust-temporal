@@ -314,6 +314,7 @@ pub mod cli_v1_report_service_temporal {
         pub const INPUT_TYPE: &'static str = self::GENERATE_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::GENERATE_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::GENERATE_TASK_QUEUE;
+        pub const ID_TEMPLATE: &'static str = self::GENERATE_WORKFLOW_ID_TEMPLATE;
 
         pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self { inner }

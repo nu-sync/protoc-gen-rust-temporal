@@ -276,6 +276,7 @@ pub mod acts_v1_chunk_service_temporal {
         pub const INPUT_TYPE: &'static str = self::RUN_BATCH_INPUT_TYPE;
         pub const OUTPUT_TYPE: &'static str = self::RUN_BATCH_OUTPUT_TYPE;
         pub const TASK_QUEUE: &'static str = self::RUN_BATCH_TASK_QUEUE;
+        pub const ID_TEMPLATE: &'static str = self::RUN_BATCH_WORKFLOW_ID_TEMPLATE;
 
         pub fn from_inner(inner: temporal_runtime::WorkflowHandle) -> Self {
             Self { inner }
