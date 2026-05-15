@@ -201,6 +201,21 @@ build needs `google.protobuf.descriptor.proto` from the protobuf distribution.
 On failure, inspect the printed `interop/.dev-logs/*.log` groups or download
 the `interop-dev-logs` artifact.
 
+The workflow clones the shared harness before restoring caches so GitHub Actions
+can reuse both Cargo workspaces. It also caches the harness `.dev-tools`
+directory, npm's package cache for `interop/ts-client`, and the Temporal CLI
+download used by `temporalio-sdk-core`'s ephemeral dev server. When changing
+this workflow, measure one cold run and one warm rerun with:
+
+```bash
+gh run view <run-id> --repo nu-sync/protoc-gen-rust-temporal --json jobs
+gh run view <run-id> --repo nu-sync/protoc-gen-rust-temporal --job <job-id> --log
+```
+
+Compare the `ts-client-to-rust-worker` total duration, the `Run interop
+harness` step duration, and cache-hit lines for npm, `actions/cache`, and
+`Swatinem/rust-cache`.
+
 When adding a new emit branch:
 1. Add a fixture under `tests/fixtures/<name>/input.proto`.
 2. Cover the parse + validate path in `parse_validate.rs`.
