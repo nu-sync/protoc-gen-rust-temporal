@@ -41,10 +41,22 @@ jobs:
           TS_TEMPORAL_VERSION: "0.1.0"
         run: cargo run -p interop-harness -- test
 
+      - name: Print interop logs
+        if: failure()
+        run: |
+          if [ -d interop/.dev-logs ]; then
+            for log in interop/.dev-logs/*.log; do
+              echo "::group::$(basename "$log")"
+              sed -n '1,240p' "$log"
+              echo "::endgroup::"
+            done
+          fi
+
       - name: Upload interop logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: interop-dev-logs
           path: interop/.dev-logs
+          include-hidden-files: true
           if-no-files-found: ignore
