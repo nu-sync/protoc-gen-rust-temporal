@@ -1,0 +1,76 @@
+name: interop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ts-client-to-rust-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build local Rust generator
+        run: cargo build -p protoc-gen-rust-temporal
+
+      - name: Clone interop harness
+        run: git clone --depth 1 https://github.com/nu-sync/protoc-gen-temporal-interop interop
+
+      - name: Run interop harness
+        working-directory: interop
+        env:
+          RUST_TEMPORAL_PLUGIN: ${{ github.workspace }}/target/debug/protoc-gen-rust-temporal
+          RUST_TEMPORAL_WORKSPACE: ${{ github.workspace }}
+          TS_TEMPORAL_VERSION: "0.1.0"
+        run: cargo run -p interop-harness -- test
+
+      - name: Print interop logs
+        if: failure()
+        run: |
+          if [ -d interop/.dev-logs ]; then
+            for log in interop/.dev-logs/*.log; do
+              echo "::group::$(basename "$log")"
+              sed -n '1,240p' "$log"
+              echo "::endgroup::"
+            done
+          fi
+
+      - name: Upload interop logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interop-dev-logs
+          path: interop/.dev-logs
+          include-hidden-files: true
+          if-no-files-found: ignore
