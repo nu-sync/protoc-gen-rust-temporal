@@ -5,12 +5,20 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   ts-client-to-rust-worker:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +45,7 @@ jobs:
         run: cargo build -p protoc-gen-rust-temporal
 
       - name: Clone interop harness
-        run: git clone https://github.com/nu-sync/protoc-gen-temporal-interop interop
+        run: git clone --depth 1 https://github.com/nu-sync/protoc-gen-temporal-interop interop
 
       - name: Run interop harness
         working-directory: interop

@@ -172,6 +172,35 @@ Two layers, both required to stay green:
   in-process render. Catches stdin/stdout framing regressions and
   `CodeGeneratorResponse.error` plumbing that the in-process tests miss.
 
+## Pull request interop CI
+
+`.github/workflows/interop.yml` runs on every pull request and on pushes to
+`main`. This is the cross-repository compatibility gate for the Rust generator:
+it builds the local `protoc-gen-rust-temporal` binary from the PR checkout, then
+clones `nu-sync/protoc-gen-temporal-interop` and runs:
+
+```bash
+cargo run -p interop-harness -- test
+```
+
+The workflow passes:
+
+- `RUST_TEMPORAL_PLUGIN` — the locally built plugin binary.
+- `RUST_TEMPORAL_WORKSPACE` — this checkout, so the generated worker is patched
+  to use the local `temporal-proto-runtime` and
+  `temporal-proto-runtime-bridge` crates.
+- `TS_TEMPORAL_VERSION` — the pinned remote TypeScript generator version.
+
+So this repo's PR CI tests **local Rust generator/runtime/bridge** against the
+**remote pinned TypeScript generator**, not local Rust against remote Rust. The
+harness generates both sides, starts a real Temporal dev server, starts the
+generated Rust worker, and drives it with the generated TypeScript client.
+
+The workflow installs both `buf` and `protoc`; the pinned TypeScript generator
+build needs `google.protobuf.descriptor.proto` from the protobuf distribution.
+On failure, inspect the printed `interop/.dev-logs/*.log` groups or download
+the `interop-dev-logs` artifact.
+
 When adding a new emit branch:
 1. Add a fixture under `tests/fixtures/<name>/input.proto`.
 2. Cover the parse + validate path in `parse_validate.rs`.
