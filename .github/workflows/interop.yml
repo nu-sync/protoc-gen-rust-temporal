@@ -1,0 +1,50 @@
+name: interop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ts-client-to-rust-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build local Rust generator
+        run: cargo build -p protoc-gen-rust-temporal
+
+      - name: Clone interop harness
+        run: git clone https://github.com/nu-sync/protoc-gen-temporal-interop interop
+
+      - name: Run interop harness
+        working-directory: interop
+        env:
+          RUST_TEMPORAL_PLUGIN: ${{ github.workspace }}/target/debug/protoc-gen-rust-temporal
+          RUST_TEMPORAL_WORKSPACE: ${{ github.workspace }}
+          TS_TEMPORAL_VERSION: "0.1.0"
+        run: cargo run -p interop-harness -- test
+
+      - name: Upload interop logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interop-dev-logs
+          path: interop/.dev-logs
+          if-no-files-found: ignore
